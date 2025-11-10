@@ -1,0 +1,248 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Malgun Gothic', '맑은 고딕', Arial, sans-serif;
+    background-color: #f0f0f0;
+    color: #000;
+    font-size: 12px;
+    padding: 10px;
+}
+
+.container {
+    max-width: 100%;
+    background-color: #fff;
+    padding: 20px;
+}
+
+h1 {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #0078d4;
+    color: white;
+    border: 1px solid #005a9e;
+}
+
+h2 {
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    padding: 5px;
+    background-color: #e7e7e7;
+    border-left: 3px solid #0078d4;
+}
+
+.section {
+    margin-bottom: 30px;
+    border: 1px solid #d0d0d0;
+    padding: 15px;
+    background-color: #fafafa;
+}
+
+/* 폼 스타일 */
+.form-inline {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.form-inline input,
+.form-inline button {
+    padding: 6px 8px;
+    border: 1px solid #ababab;
+    font-size: 12px;
+}
+
+.form-inline input {
+    flex: 1;
+    min-width: 120px;
+    background-color: white;
+}
+
+.form-inline input:focus {
+    outline: 2px solid #0078d4;
+    border-color: #0078d4;
+}
+
+.form-inline input[readonly] {
+    background-color: #e0e0e0;
+}
+
+/* 버튼 스타일 */
+.btn {
+    padding: 6px 12px;
+    background-color: #0078d4;
+    color: white;
+    border: 1px solid #005a9e;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: normal;
+}
+
+.btn:hover {
+    background-color: #005a9e;
+}
+
+.btn:active {
+    background-color: #004578;
+}
+
+.btn-gray {
+    background-color: #888;
+    border-color: #666;
+}
+
+.btn-gray:hover {
+    background-color: #666;
+}
+
+/* 테이블 스타일 (엑셀 스타일) */
+.table-wrapper {
+    overflow-x: auto;
+    overflow-y: auto;
+    border: 1px solid #d0d0d0;
+    margin-top: 10px;
+    max-height: 380px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+}
+
+thead {
+    background-color: #e7e7e7;
+    position: sticky;
+    top: 0;
+}
+
+th {
+    padding: 8px;
+    text-align: left;
+    font-weight: bold;
+    border: 1px solid #d0d0d0;
+    background-color: #e7e7e7;
+    font-size: 12px;
+}
+
+td {
+    padding: 6px 8px;
+    border: 1px solid #e0e0e0;
+    font-size: 12px;
+}
+
+tbody tr:hover {
+    background-color: #f0f8ff;
+}
+
+tbody tr.selected {
+    background-color: #cce4f7;
+}
+
+tbody tr.low-stock {
+    background-color: #ffe6e6;
+}
+
+/* 편집 가능한 셀 */
+td.editable {
+    cursor: cell;
+}
+
+td.editable:hover {
+    background-color: #fff4cc;
+    outline: 1px dashed #0078d4;
+}
+
+/* 클릭 가능한 행 */
+.clickable-row {
+    cursor: pointer;
+}
+
+.clickable-row:hover {
+    background-color: #e8f4fd;
+}
+
+/* 일괄 등록 테이블 입력 스타일 */
+#bulkInsertTable input.bulk-input {
+    width: 100%;
+    padding: 4px 6px;
+    border: 1px solid #ccc;
+    font-size: 12px;
+    box-sizing: border-box;
+}
+
+#bulkInsertTable input.bulk-input:focus {
+    outline: 2px solid #0078d4;
+    border-color: #0078d4;
+}
+
+#bulkInsertTable td {
+    padding: 2px;
+}
+
+#bulkInsertTable tbody tr {
+    background-color: white;
+}
+
+#bulkInsertTable tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+#bulkInsertTable tbody tr:hover {
+    background-color: #f0f8ff;
+}
+
+/* 메시지 */
+.message {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    padding: 10px 20px;
+    border: 1px solid;
+    border-radius: 3px;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+    display: none;
+    z-index: 1000;
+    font-size: 12px;
+}
+
+.message.success {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+.message.error {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+.message.info {
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+    color: #0c5460;
+}
+
+/* 수정/삭제 버튼 */
+.btn-small {
+    padding: 3px 8px;
+    font-size: 11px;
+    background-color: #0078d4;
+    color: white;
+    border: 1px solid #005a9e;
+    cursor: pointer;
+}
+
+.btn-small:hover {
+    background-color: #005a9e;
+}

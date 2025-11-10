@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.part.mapper.PartUsageMapper">
+
+    <!-- ResultMap 정의 -->
+    <resultMap id="partUsageResultMap" type="com.example.part.dto.PartUsageDTO">
+        <id property="id" column="id"/>
+        <result property="partNumber" column="part_number"/>
+        <result property="quantityUsed" column="quantity_used"/>
+        <result property="usageLocation" column="usage_location"/>
+        <result property="usedDate" column="used_date"/>
+        <result property="note" column="note"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="partName" column="part_name"/>
+        <result property="unit" column="unit"/>
+    </resultMap>
+
+    <!-- 부품 사용 내역 등록 -->
+    <insert id="insertPartUsage" parameterType="com.example.part.dto.PartUsageDTO">
+        INSERT INTO part_usage (
+            part_number,
+            quantity_used,
+            usage_location,
+            used_date,
+            note,
+            created_by
+        ) VALUES (
+            #{partNumber},
+            #{quantityUsed},
+            #{usageLocation},
+            #{usedDate},
+            #{note},
+            #{createdBy}
+        )
+    </insert>
+
+    <!-- 부품 사용 내역 수정 -->
+    <update id="updatePartUsage" parameterType="com.example.part.dto.PartUsageDTO">
+        UPDATE part_usage
+        SET
+            quantity_used = #{quantityUsed},
+            usage_location = #{usageLocation},
+            used_date = #{usedDate},
+            note = #{note}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 전체 사용 내역 조회 (공개 상태만) -->
+    <select id="selectAllPartUsage" resultMap="partUsageResultMap">
+        SELECT
+            pu.id,
+            pu.part_number,
+            pu.quantity_used,
+            pu.usage_location,
+            pu.used_date,
+            pu.note,
+            pu.created_at,
+            pu.created_by,
+            pu.del_status,
+            p.part_name,
+            p.unit
+        FROM part_usage pu
+        LEFT JOIN parts p ON pu.part_number = p.part_number
+        WHERE pu.del_status = '공개'
+          AND (p.del_status = '공개' OR p.del_status IS NULL)
+        ORDER BY pu.used_date DESC, pu.created_at DESC
+    </select>
+
+    <!-- 특정 부품의 사용 내역 조회 (공개 상태만) -->
+    <select id="selectPartUsageByPartNumber" parameterType="string" resultMap="partUsageResultMap">
+        SELECT
+            pu.id,
+            pu.part_number,
+            pu.quantity_used,
+            pu.usage_location,
+            pu.used_date,
+            pu.note,
+            pu.created_at,
+            pu.created_by,
+            pu.del_status,
+            p.part_name,
+            p.unit
+        FROM part_usage pu
+        LEFT JOIN parts p ON pu.part_number = p.part_number
+        WHERE pu.part_number = #{partNumber}
+          AND pu.del_status = '공개'
+          AND (p.del_status = '공개' OR p.del_status IS NULL)
+        ORDER BY pu.used_date DESC, pu.created_at DESC
+    </select>
+
+    <!-- 특정 사용처의 사용 내역 조회 (공개 상태만) -->
+    <select id="selectPartUsageByLocation" parameterType="string" resultMap="partUsageResultMap">
+        SELECT
+            pu.id,
+            pu.part_number,
+            pu.quantity_used,
+            pu.usage_location,
+            pu.used_date,
+            pu.note,
+            pu.created_at,
+            pu.created_by,
+            pu.del_status,
+            p.part_name,
+            p.unit
+        FROM part_usage pu
+        LEFT JOIN parts p ON pu.part_number = p.part_number
+        WHERE pu.usage_location LIKE CONCAT('%', #{usageLocation}, '%')
+          AND pu.del_status = '공개'
+          AND (p.del_status = '공개' OR p.del_status IS NULL)
+        ORDER BY pu.used_date DESC, pu.created_at DESC
+    </select>
+
+    <!-- 내림차순 정렬 (공개 상태만) -->
+    <select id="getPartUsageOrderByDesc" resultMap="partUsageResultMap">
+        SELECT
+            pu.id,
+            pu.part_number,
+            pu.quantity_used,
+            pu.usage_location,
+            pu.used_date,
+            pu.note,
+            pu.created_at,
+            pu.created_by,
+            pu.del_status,
+            p.part_name,
+            p.unit
+        FROM part_usage pu
+        LEFT JOIN parts p ON pu.part_number = p.part_number
+        WHERE pu.del_status = '공개'
+          AND (p.del_status = '공개' OR p.del_status IS NULL)
+        ORDER BY ${column} DESC
+    </select>
+
+    <!-- 오름차순 정렬 (공개 상태만) -->
+    <select id="getPartUsageOrderByAsc" resultMap="partUsageResultMap">
+        SELECT
+            pu.id,
+            pu.part_number,
+            pu.quantity_used,
+            pu.usage_location,
+            pu.used_date,
+            pu.note,
+            pu.created_at,
+            pu.created_by,
+            pu.del_status,
+            p.part_name,
+            p.unit
+        FROM part_usage pu
+        LEFT JOIN parts p ON pu.part_number = p.part_number
+        WHERE pu.del_status = '공개'
+          AND (p.del_status = '공개' OR p.del_status IS NULL)
+        ORDER BY ${column} ASC
+    </select>
+
+    <!-- 기존 사용내역 1건 조회 (공개 상태만) -->
+    <select id="findById" resultType="com.example.part.dto.PartUsageDTO">
+        SELECT
+            id,
+            part_number,
+            quantity_used,
+            usage_location,
+            used_date,
+            note,
+            created_at,
+            created_by,
+            del_status
+        FROM part_usage
+        WHERE id = #{id}
+          AND del_status = '공개'
+    </select>
+
+    <!-- 부품 사용 내역 비공개 처리 -->
+    <update id="softDeletePartUsage" parameterType="int">
+        UPDATE part_usage
+        SET del_status = '비공개'
+        WHERE id = #{id}
+    </update>
+
+</mapper>
