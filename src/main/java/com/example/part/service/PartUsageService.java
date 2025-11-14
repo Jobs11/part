@@ -1,29 +1,46 @@
 package com.example.part.service;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import com.example.part.dto.PartUsageDTO;
 
 public interface PartUsageService {
 
-    // 부품 사용 내역 등록
-    void insertPartUsage(PartUsageDTO partUsageDTO);
+    // 출고 등록
+    void registerUsage(PartUsageDTO partUsageDTO);
 
-    // 부품 수정
-    void updatePartUsage(PartUsageDTO partUsageDTO);
+    // 출고 수정
+    void updateUsage(PartUsageDTO partUsageDTO);
 
-    // 전체 사용 내역 조회
-    List<PartUsageDTO> getAllPartUsage();
+    // 단건 조회
+    PartUsageDTO getUsageById(int usageId);
 
-    // 특정 부품의 사용 내역 조회
-    List<PartUsageDTO> getPartUsageByPartNumber(String partNumber);
+    // 전체 사용 내역
+    List<PartUsageDTO> getAllUsage();
 
-    // 특정 사용처의 사용 내역 조회
-    List<PartUsageDTO> getPartUsageByLocation(String usageLocation);
+    // 검색 (부품명, 사용처, 부품번호)
+    List<PartUsageDTO> searchUsage(String keyword);
 
-    List<PartUsageDTO> getPartUsageDescSorted(String column);
+    // 사용처별 조회
+    List<PartUsageDTO> getUsageByLocation(String usageLocation);
 
-    List<PartUsageDTO> getPartUsageAscSorted(String column);
+    // 부품번호별 조회
+    List<PartUsageDTO> getUsageByPartNumber(String partNumber);
 
-    void softDeletePartUsage(int id);
+    // 카테고리별 조회
+    List<PartUsageDTO> getUsageByCategory(int categoryId);
+
+    // 기간별 조회
+    List<PartUsageDTO> getUsageByDateRange(LocalDate startDate, LocalDate endDate);
+
+    // 정렬 조회
+    List<PartUsageDTO> getUsageSorted(String column, String order);
+
+    // 부품별 사용 합계
+    List<Map<String, Object>> getUsageSummaryByPart();
+
+    // 검색 정렬 조회
+    List<PartUsageDTO> searchWithSort(String keyword, String column, String order);
 }

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.part.mapper.PartLocationMapper">
+
+    <!-- ResultMap -->
+    <resultMap id="partLocationResultMap" type="com.example.part.dto.PartLocationDTO">
+        <id property="locationId" column="location_id" />
+        <result property="locationCode" column="location_code" />
+        <result property="partNumber" column="part_number" />
+        <result property="partName" column="part_name" />
+        <result property="posX" column="pos_x" />
+        <result property="posY" column="pos_y" />
+        <result property="note" column="note" />
+        <result property="updatedAt" column="updated_at" />
+    </resultMap>
+
+    <!-- 전체 조회 -->
+    <select id="selectAllLocations" resultMap="partLocationResultMap">
+        SELECT * FROM part_location ORDER BY pos_x, pos_y
+    </select>
+
+    <!-- 단일 조회 -->
+    <select id="findByCode" resultMap="partLocationResultMap" parameterType="string">
+        SELECT * FROM part_location WHERE location_code = #{locationCode}
+    </select>
+
+    <!-- 등록 (INSERT) -->
+    <insert id="insertLocation" parameterType="com.example.part.dto.PartLocationDTO" useGeneratedKeys="true" keyProperty="locationId">
+        INSERT INTO part_location (location_code, part_number, part_name, pos_x, pos_y, note)
+        VALUES (#{locationCode}, #{partNumber}, #{partName}, #{posX}, #{posY}, #{note})
+    </insert>
+
+    <!-- 수정 (UPDATE) -->
+    <update id="updateLocation" parameterType="com.example.part.dto.PartLocationDTO">
+        UPDATE part_location
+        SET part_number = #{partNumber},
+            part_name = #{partName},
+            note = #{note}
+        WHERE location_code = #{locationCode}
+    </update>
+
+    <!-- 삭제 -->
+    <delete id="deleteLocation" parameterType="string">
+        DELETE FROM part_location WHERE location_code = #{locationCode}
+    </delete>
+
+</mapper>

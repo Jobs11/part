@@ -47,6 +47,45 @@
             margin: 0;
             flex: 1;
         }
+
+        .form-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .form-group label {
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 3px;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 6px 8px;
+            border: 1px solid #ababab;
+            font-size: 12px;
+        }
+
+        .form-group textarea {
+            min-height: 60px;
+            resize: vertical;
+        }
+
+        .required::after {
+            content: " *";
+            color: red;
+        }
     </style>
 </head>
 
@@ -54,110 +93,133 @@
     <div class="container">
         <h1>부품 재고 관리 시스템</h1>
 
-        <!-- 부품 등록 -->
+        <!-- 부품 입고 등록 -->
         <div class="section">
             <div class="section-header">
-                <h2>부품 등록 (부품 번호 동일시 수량만 업데이트)</h2>
+                <h2>부품 입고 등록</h2>
                 <button class="help-toggle" onclick="toggleHelp('help1')">📖 사용방법</button>
             </div>
             <div id="help1" class="help-section">
                 💡 <strong>사용 방법:</strong><br>
-                • 부품번호, 부품명, 수량을 입력하여 부품을 등록합니다.<br>
-                • 동일한 부품번호가 이미 존재하는 경우, 기존 수량에 입력한 수량이 더해집니다.<br>
-                • 부품번호는 "P-0001" 형식으로 입력하며, 자동으로 "P-"가 입력되어 있습니다.<br>
-                • 단위와 설명은 선택 사항입니다.
+                • 카테고리를 선택하면 부품번호가 자동으로 생성됩니다.<br>
+                • 부품명, 수량, 구매금액, 구매일자는 필수 입력 항목입니다.<br>
+                • 해외 구매 시 통화와 환율을 입력하면 원화로 자동 환산됩니다.<br>
+                • 같은 부품을 다시 입고하려면 기존 부품번호를 선택하세요.
             </div>
-            <form id="insertForm" class="form-inline">
-                <input type="text" id="insertPartNumber" placeholder="예: P-0001" value="P-" required>
-                <input type="text" id="insertPartName" placeholder="부품명" required>
-                <input type="number" id="insertQuantity" placeholder="수량" required min="0">
-                <input type="text" id="insertUnit" placeholder="단위">
-                <input type="text" id="insertDescription" placeholder="설명">
-                <button type="submit" class="btn">등록</button>
+            <form id="incomingForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="required">카테고리</label>
+                        <select id="categoryId" required>
+                            <option value="">선택하세요</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>부품번호</label>
+                        <input type="text" id="partNumber" placeholder="자동 생성" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="required">부품명</label>
+                        <input type="text" id="partName" placeholder="부품명" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="required">입고 수량</label>
+                        <input type="number" id="incomingQuantity" placeholder="수량" required min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>단위</label>
+                        <input type="text" id="unit" placeholder="EA" value="EA">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="required">구매금액 (원화)</label>
+                        <input type="number" id="purchasePrice" placeholder="원화 금액" required min="0" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>통화</label>
+                        <select id="currency">
+                            <option value="KRW">KRW (원)</option>
+                            <option value="USD">USD (달러)</option>
+                            <option value="JPY">JPY (엔)</option>
+                            <option value="EUR">EUR (유로)</option>
+                            <option value="CNY">CNY (위안)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="exchangeRateGroup" style="display: none;">
+                        <label>환율</label>
+                        <input type="number" id="exchangeRate" placeholder="환율" step="0.0001">
+                    </div>
+                    <div class="form-group" id="originalPriceGroup" style="display: none;">
+                        <label>원화 환산 전 금액</label>
+                        <input type="number" id="originalPrice" placeholder="외화 금액" step="0.01">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="required">구매일자</label>
+                        <input type="date" id="purchaseDate" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;">
+                        <label class="required">설명</label>
+                        <textarea id="description" placeholder="부품 설명 (필수)" required></textarea>
+                    </div>
+                    <div class="form-group" style="flex: 2;">
+                        <label>비고</label>
+                        <textarea id="note" placeholder="비고"></textarea>
+                    </div>
+                </div>
+
+                <div style="margin-top: 10px;">
+                    <button type="submit" class="btn">입고 등록</button>
+                    <button type="button" onclick="clearIncomingForm()" class="btn btn-gray">초기화</button>
+                </div>
             </form>
         </div>
 
-        <!-- 부품 일괄 등록 -->
+        <!-- 입고 리스트 -->
         <div class="section">
             <div class="section-header">
-                <h2>부품 일괄 등록</h2>
+                <h2>입고 리스트 (더블클릭으로 수정 가능)</h2>
                 <button class="help-toggle" onclick="toggleHelp('help2')">📖 사용방법</button>
             </div>
             <div id="help2" class="help-section">
                 💡 <strong>사용 방법:</strong><br>
-                • 여러 개의 부품을 한 번에 등록할 수 있습니다.<br>
-                • 기본 5개 행이 제공되며, 필요시 "입력 행 추가" 버튼으로 행을 추가할 수 있습니다.<br>
-                • 부품번호, 부품명, 수량이 모두 입력된 행만 등록됩니다.<br>
-                • 동일한 부품번호가 있는 경우 수량이 자동으로 합산됩니다.
-            </div>
-            <div style="margin-bottom: 10px;">
-                <button onclick="toggleBulkInsert()" class="btn">일괄 등록 열기/닫기</button>
-                <button onclick="addBulkRow()" class="btn" id="addRowBtn" style="display: none;">입력 행 추가 +</button>
-                <button onclick="removeBulkRow()" class="btn btn-gray" id="removeRowBtn" style="display: none;">마지막 행 삭제
-                    -</button>
-            </div>
-            <div id="bulkInsertArea" style="display: none;">
-                <form id="bulkInsertForm">
-                    <div class="table-wrapper" style="max-height: 450px;">
-                        <table id="bulkInsertTable">
-                            <thead>
-                                <tr>
-                                    <th style="width: 5%;">No</th>
-                                    <th style="width: 20%;">부품번호</th>
-                                    <th style="width: 25%;">부품명</th>
-                                    <th style="width: 13%;">수량</th>
-                                    <th style="width: 12%;">단위</th>
-                                    <th style="width: 25%;">설명</th>
-                                </tr>
-                            </thead>
-                            <tbody id="bulkInsertBody">
-                                <!-- 동적으로 추가됨 -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <div style="margin-top: 10px;">
-                        <button type="submit" class="btn">일괄 등록 실행</button>
-                        <button type="button" onclick="clearBulkForm()" class="btn btn-gray">전체 초기화</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- 부품 전체 리스트 -->
-        <div class="section">
-            <div class="section-header">
-                <h2>부품 전체 리스트 (셀 더블클릭으로 수정 가능)</h2>
-                <button class="help-toggle" onclick="toggleHelp('help3')">📖 사용방법</button>
-            </div>
-            <div id="help3" class="help-section">
-                💡 <strong>사용 방법:</strong><br>
-                • 등록된 모든 부품을 조회할 수 있습니다.<br>
-                • 부품번호 또는 부품명으로 검색이 가능합니다.<br>
-                • 컬럼 헤더를 클릭하면 해당 항목 기준으로 오름차순/내림차순 정렬됩니다.<br>
-                • 편집 가능한 셀을 더블클릭하면 직접 수정할 수 있습니다. (Enter로 저장, ESC로 취소)<br>
-                • 부품의 행을 클릭하면 하단 "부품 사용처 등록"에 자동으로 선택됩니다.
+                • 등록된 모든 입고 내역을 확인할 수 있습니다.<br>
+                • 부품명 또는 부품번호로 검색이 가능합니다.<br>
+                • 편집 가능한 셀(부품명, 수량, 금액, 통화, 구매일자)을 더블클릭하면 직접 수정할 수 있습니다.<br>
+                • Enter로 저장, ESC로 취소합니다.
             </div>
             <div class="form-inline" style="margin-bottom: 10px;">
-                <input type="text" id="partsSearchInput" placeholder="부품번호 또는 부품명으로 검색" style="min-width: 250px;">
-                <button onclick="searchParts()" class="btn">검색</button>
-                <button onclick="loadAllParts()" class="btn">전체 보기</button>
+                <input type="text" id="incomingSearchInput" placeholder="부품명 또는 부품번호로 검색" style="min-width: 250px;">
+                <button onclick="searchIncoming()" class="btn">검색</button>
+                <button onclick="loadAllIncoming()" class="btn">전체 보기</button>
             </div>
-            <button onclick="loadAllParts()" class="btn">새로고침</button>
+            <button onclick="loadAllIncoming()" class="btn">새로고침</button>
             <div class="table-wrapper">
-                <table id="partsTable">
+                <table id="incomingTable">
                     <thead>
                         <tr>
-                            <th onclick="sortTable('part_number')" style="cursor: pointer;">부품번호 ▲▼</th>
-                            <th onclick="sortTable('part_name')" style="cursor: pointer;">부품명 ▲▼</th>
-                            <th onclick="sortTable('quantity')" style="cursor: pointer;">수량 ▲▼</th>
+                            <th onclick="sortIncomingTable('incoming_id')" style="cursor: pointer;">입고ID ▲▼</th>
+                            <th onclick="sortIncomingTable('part_number')" style="cursor: pointer;">부품번호 ▲▼</th>
+                            <th onclick="sortIncomingTable('category_name')" style="cursor: pointer;">카테고리 ▲▼</th>
+                            <th onclick="sortIncomingTable('part_name')" style="cursor: pointer;">부품명 ▲▼</th>
+                            <th onclick="sortIncomingTable('incoming_quantity')" style="cursor: pointer;">입고수량 ▲▼</th>
                             <th>단위</th>
-                            <th>설명</th>
-                            <th>등록일</th>
+                            <th onclick="sortIncomingTable('purchase_price')" style="cursor: pointer;">구매금액 ▲▼</th>
+                            <th>통화</th>
+                            <th onclick="sortIncomingTable('purchase_date')" style="cursor: pointer;">구매일자 ▲▼</th>
+                            <th onclick="sortIncomingTable('created_at')" style="cursor: pointer;">등록일 ▲▼</th>
                         </tr>
                     </thead>
-                    <tbody id="partsTableBody">
+                    <tbody id="incomingTableBody">
                         <tr>
-                            <td colspan="6" style="text-align: center;">로딩 중...</td>
+                            <td colspan="10" style="text-align: center;">로딩 중...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -168,19 +230,18 @@
         <div class="section">
             <div class="section-header">
                 <h2>재고 부족 부품</h2>
-                <button class="help-toggle" onclick="toggleHelp('help4')">📖 사용방법</button>
+                <button class="help-toggle" onclick="toggleHelp('help3')">📖 사용방법</button>
             </div>
-            <div id="help4" class="help-section">
+            <div id="help3" class="help-section">
                 💡 <strong>사용 방법:</strong><br>
                 • 기준 수량 이하인 부품을 조회합니다.<br>
-                • 기준 수량을 입력하고 "검색" 버튼을 클릭하세요. (기본값: 10개)<br>
-                • 수량이 적은 순서대로 정렬되어 표시됩니다.<br>
+                • 기준 수량을 입력하고 "검색" 버튼을 클릭하세요.<br>
                 • 재고 부족 부품은 빨간색 배경으로 강조 표시됩니다.
             </div>
             <div class="form-inline" style="margin-bottom: 10px;">
                 <input type="number" id="lowStockThreshold" placeholder="기준 수량" value="10" min="1"
                     style="max-width: 120px;">
-                <button onclick="loadLowStockParts()" class="btn">검색</button>
+                <button onclick="loadLowStock()" class="btn">검색</button>
             </div>
             <div class="table-wrapper">
                 <table id="lowStockTable">
@@ -188,9 +249,9 @@
                         <tr>
                             <th>부품번호</th>
                             <th>부품명</th>
-                            <th>수량</th>
+                            <th>카테고리</th>
+                            <th>현재재고</th>
                             <th>단위</th>
-                            <th>설명</th>
                         </tr>
                     </thead>
                     <tbody id="lowStockTableBody">
@@ -202,63 +263,88 @@
             </div>
         </div>
 
-        <!-- 부품 사용처 등록 -->
+        <!-- 부품 출고 등록 -->
         <div class="section">
             <div class="section-header">
-                <h2>부품 사용처 등록</h2>
+                <h2>부품 출고 등록</h2>
+                <button class="help-toggle" onclick="toggleHelp('help4')">📖 사용방법</button>
+            </div>
+            <div id="help4" class="help-section">
+                💡 <strong>사용 방법:</strong><br>
+                • 아래 "현재 재고 현황"에서 출고할 부품의 행을 클릭하면 자동으로 선택됩니다.<br>
+                • 출고 수량, 사용처, 사용일을 입력하고 등록하면 재고에서 자동으로 차감됩니다.<br>
+                • 재고가 부족한 경우 출고할 수 없습니다.
+            </div>
+            <form id="usageForm">
+                <input type="hidden" id="usageIncomingId">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="required">부품번호</label>
+                        <input type="text" id="usagePartNumber" placeholder="재고 현황에서 부품 클릭" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="required">부품명</label>
+                        <input type="text" id="usagePartName" placeholder="부품명" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="required">출고 수량</label>
+                        <input type="number" id="quantityUsed" placeholder="출고 수량" required min="1">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="required">사용처</label>
+                        <input type="text" id="usageLocation" placeholder="사용처" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="required">사용일</label>
+                        <input type="date" id="usedDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>비고</label>
+                        <input type="text" id="usageNote" placeholder="비고">
+                    </div>
+                </div>
+
+                <div style="margin-top: 10px;">
+                    <button type="submit" class="btn">출고 등록</button>
+                    <button type="button" onclick="clearUsageForm()" class="btn btn-gray">초기화</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 부품 출고 내역 -->
+        <div class="section">
+            <div class="section-header">
+                <h2>부품 출고 내역</h2>
                 <button class="help-toggle" onclick="toggleHelp('help5')">📖 사용방법</button>
             </div>
             <div id="help5" class="help-section">
                 💡 <strong>사용 방법:</strong><br>
-                • 부품을 사용한 내역을 등록합니다.<br>
-                • 위 "부품 전체 리스트"에서 사용할 부품의 행을 클릭하면 부품번호와 부품명이 자동으로 입력됩니다.<br>
-                • 사용 수량, 사용처, 사용일을 입력하고 등록하면 재고에서 자동으로 차감됩니다.<br>
-                • 비고는 선택 사항입니다.
-            </div>
-            <form id="usageForm" class="form-inline">
-                <input type="text" id="usagePartNumber" placeholder="부품번호 (리스트 클릭)" readonly>
-                <input type="text" id="usagePartName" placeholder="부품명" readonly>
-                <input type="number" id="quantityUsed" placeholder="사용 수량" required min="1">
-                <input type="text" id="usageLocation" placeholder="사용처" required>
-                <input type="date" id="usedDate" required>
-                <input type="text" id="usageNote" placeholder="비고">
-                <button type="submit" class="btn">등록</button>
-                <button type="button" onclick="clearUsageForm()" class="btn btn-gray">초기화</button>
-            </form>
-        </div>
-
-        <!-- 부품 사용 내역 -->
-        <div class="section">
-            <div class="section-header">
-                <h2>부품 사용 내역</h2>
-                <button class="help-toggle" onclick="toggleHelp('help6')">📖 사용방법</button>
-            </div>
-            <div id="help6" class="help-section">
-                💡 <strong>사용 방법:</strong><br>
-                • 등록된 모든 부품 사용 내역을 조회할 수 있습니다.<br>
+                • 등록된 모든 출고 내역을 조회할 수 있습니다.<br>
                 • 부품번호 또는 사용처로 검색이 가능합니다.<br>
-                • 컬럼 헤더를 클릭하면 해당 항목 기준으로 오름차순/내림차순 정렬됩니다.<br>
-                • 편집 가능한 셀을 더블클릭하면 직접 수정할 수 있습니다. (수정 시 재고가 자동 반영됩니다)
+                • 편집 가능한 셀(출고수량, 사용처, 사용일)을 더블클릭하면 직접 수정할 수 있습니다.<br>
+                • Enter로 저장, ESC로 취소합니다. (수정 시 재고가 자동 반영됩니다)
             </div>
             <div class="form-inline" style="margin-bottom: 10px;">
-                <input type="text" id="usagePartFilter" placeholder="부품번호로 검색">
-                <button onclick="filterUsageByPart()" class="btn">부품번호 검색</button>
-                <input type="text" id="usageLocationFilter" placeholder="사용처로 검색">
-                <button onclick="filterUsageByLocation()" class="btn">사용처 검색</button>
+                <input type="text" id="usageSearchInput" placeholder="부품번호 또는 사용처로 검색">
+                <button onclick="searchUsage()" class="btn">검색</button>
                 <button onclick="loadAllUsage()" class="btn">전체 보기</button>
             </div>
             <div class="table-wrapper">
                 <table id="usageTable">
                     <thead>
                         <tr>
-                            <th onclick="sortUsageTable('used_date')" style="cursor:pointer;">사용일 ▲▼</th>
-                            <th onclick="sortUsageTable('part_number')" style="cursor:pointer;">부품번호 ▲▼</th>
-                            <th onclick="sortUsageTable('part_name')" style="cursor:pointer;">부품명 ▲▼</th>
-                            <th onclick="sortUsageTable('quantity_used')" style="cursor:pointer;">사용 수량 ▲▼</th>
+                            <th onclick="sortUsageTable('used_date')" style="cursor: pointer;">사용일 ▲▼</th>
+                            <th onclick="sortUsageTable('part_number')" style="cursor: pointer;">부품번호 ▲▼</th>
+                            <th onclick="sortUsageTable('part_name')" style="cursor: pointer;">부품명 ▲▼</th>
+                            <th onclick="sortUsageTable('quantity_used')" style="cursor: pointer;">출고수량 ▲▼</th>
                             <th>단위</th>
-                            <th onclick="sortUsageTable('usage_location')" style="cursor:pointer;">사용처 ▲▼</th>
+                            <th onclick="sortUsageTable('usage_location')" style="cursor: pointer;">사용처 ▲▼</th>
                             <th>비고</th>
-                            <th>기록일</th>
+                            <th onclick="sortUsageTable('created_at')" style="cursor: pointer;">등록일 ▲▼</th>
                         </tr>
                     </thead>
                     <tbody id="usageTableBody">
@@ -270,17 +356,101 @@
             </div>
         </div>
 
+        <!-- 현재 재고 현황 (맨 아래로 이동) -->
+        <div class="section">
+            <div class="section-header">
+                <h2>현재 재고 현황</h2>
+                <button class="help-toggle" onclick="toggleHelp('help6')">📖 사용방법</button>
+            </div>
+            <div id="help6" class="help-section">
+                💡 <strong>사용 방법:</strong><br>
+                • 부품별로 입고-출고를 계산하여 현재 재고를 표시합니다.<br>
+                • 부품의 행을 클릭하면 상단 "출고 등록"에 자동으로 선택됩니다.
+            </div>
+
+            <button onclick="loadInventory()" class="btn">새로고침</button>
+            <div class="table-wrapper">
+                <table id="inventoryTable">
+                    <thead>
+                        <tr>
+                            <th onclick="sortInventoryTable('part_number')" style="cursor: pointer;">부품번호 ▲▼</th>
+                            <th onclick="sortInventoryTable('part_name')" style="cursor: pointer;">부품명 ▲▼</th>
+                            <th onclick="sortInventoryTable('category_name')" style="cursor: pointer;">카테고리 ▲▼</th>
+                            <th onclick="sortInventoryTable('current_stock')" style="cursor: pointer;">현재재고 ▲▼</th>
+                            <th>단위</th>
+                            <th onclick="sortInventoryTable('total_incoming')" style="cursor: pointer;">총입고 ▲▼</th>
+                            <th onclick="sortInventoryTable('total_used')" style="cursor: pointer;">총출고 ▲▼</th>
+                            <th onclick="sortInventoryTable('incoming_count')" style="cursor: pointer;">입고횟수 ▲▼</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody">
+                        <tr>
+                            <td colspan="8" style="text-align: center;">로딩 중...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <!-- 부품 배치도 섹션 -->
+        <div class="section">
+            <div class="section-header">
+                <h2>부품 배치도</h2>
+                <button class="help-toggle" onclick="toggleHelp('help7')">📖 사용방법</button>
+            </div>
+
+            <div id="selectedPartDisplay" class="selected-part-display">
+                선택된 부품: 없음
+            </div>
+
+            <div id="help7" class="help-section">
+                💡 <strong>사용 방법:</strong><br>
+                • 상단 A~AA, 좌측 1~32 위치의 칸이 부품 배치 공간입니다.<br>
+                • ‘현재 재고 현황’에서 부품을 클릭한 후, 배치도 칸을 클릭하여 등록하세요.<br>
+                • 등록된 칸에는 부품명이 표시됩니다.<br>
+                • ‘배치도 새로고침’으로 저장된 배치를 다시 불러올 수 있습니다.
+            </div>
+
+            <div style="margin-bottom: 10px;">
+                <div style="margin-bottom: 10px;">
+                    <input type="text" id="gridSearchInput" placeholder="부품명 또는 부품번호로 검색" style="min-width: 250px;">
+                    <button onclick="searchGrid()" class="btn">검색</button>
+                    <button onclick="clearGridSearch()" class="btn btn-gray">초기화</button>
+                </div>
+                <button id="toggleGridBtn" class="btn">배치도 열기</button>
+                <button id="refreshGridBtn" class="btn btn-gray">배치도 새로고침</button>
+            </div>
+
+            <div id="gridContainer" style="display: none;">
+                <div id="grid" class="grid-container"></div>
+            </div>
+        </div>
+
         <!-- 메시지 표시 -->
         <div id="message" class="message"></div>
     </div>
 
-    <script src="js/main.js?v=7"></script>
+    <script src="js/main.js?v=34"></script>
     <script>
         // 사용방법 토글 함수
         function toggleHelp(id) {
             const helpSection = document.getElementById(id);
             helpSection.classList.toggle('show');
         }
+
+        // 통화 변경 시 환율/원화 필드 표시/숨김
+        document.getElementById('currency').addEventListener('change', function () {
+            const currency = this.value;
+            const exchangeRateGroup = document.getElementById('exchangeRateGroup');
+            const originalPriceGroup = document.getElementById('originalPriceGroup');
+
+            if (currency === 'KRW') {
+                exchangeRateGroup.style.display = 'none';
+                originalPriceGroup.style.display = 'none';
+            } else {
+                exchangeRateGroup.style.display = 'flex';
+                originalPriceGroup.style.display = 'flex';
+            }
+        });
     </script>
 </body>
 

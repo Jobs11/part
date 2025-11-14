@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.part.mapper.PartIncomingMapper">
+
+    <!-- ResultMap -->
+    <resultMap id="incomingResultMap" type="com.example.part.dto.PartIncomingDTO">
+        <id property="incomingId" column="incoming_id"/>
+        <result property="partNumber" column="part_number"/>
+        <result property="categoryId" column="category_id"/>
+        <result property="categoryName" column="category_name"/>
+        <result property="partName" column="part_name"/>
+        <result property="description" column="description"/>
+        <result property="unit" column="unit"/>
+        <result property="incomingQuantity" column="incoming_quantity"/>
+        <result property="purchasePrice" column="purchase_price"/>
+        <result property="currency" column="currency"/>
+        <result property="exchangeRate" column="exchange_rate"/>
+        <result property="originalPrice" column="original_price"/>
+        <result property="purchaseDate" column="purchase_date"/>
+        <result property="supplier" column="supplier"/>
+        <result property="invoiceNumber" column="invoice_number"/>
+        <result property="note" column="note"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <!-- ✅ 입고 등록 -->
+    <insert id="insertIncoming" parameterType="com.example.part.dto.PartIncomingDTO" useGeneratedKeys="true" keyProperty="incomingId">
+        INSERT INTO part_incoming (
+            part_number,
+            category_id,
+            part_name,
+            description,
+            unit,
+            incoming_quantity,
+            purchase_price,
+            currency,
+            exchange_rate,
+            original_price,
+            purchase_date,
+            supplier,
+            invoice_number,
+            note,
+            created_by
+        ) VALUES (
+            #{partNumber},
+            #{categoryId},
+            #{partName},
+            #{description},
+            #{unit},
+            #{incomingQuantity},
+            #{purchasePrice},
+            #{currency},
+            #{exchangeRate},
+            #{originalPrice},
+            #{purchaseDate},
+            #{supplier},
+            #{invoiceNumber},
+            #{note},
+            #{createdBy}
+        )
+    </insert>
+
+    <!-- ✅ 전체 입고 내역 조회 -->
+    <select id="selectAllIncoming" resultMap="incomingResultMap">
+        SELECT
+            pi.*,
+            c.category_name
+        FROM part_incoming pi
+        LEFT JOIN category c ON pi.category_id = c.category_id
+        ORDER BY pi.created_at ASC
+    </select>
+
+    <!-- ✅ incoming_id로 단건 조회 -->
+    <select id="findById" resultMap="incomingResultMap" parameterType="int">
+        SELECT
+            pi.*,
+            c.category_name
+        FROM part_incoming pi
+        LEFT JOIN category c ON pi.category_id = c.category_id
+        WHERE pi.incoming_id = #{incomingId}
+    </select>
+
+    <!-- ✅ 특정 부품번호로 조회 -->
+    <select id="findByPartNumber" resultMap="incomingResultMap" parameterType="string">
+        SELECT
+            pi.*,
+            c.category_name
+        FROM part_incoming pi
+        LEFT JOIN category c ON pi.category_id = c.category_id
+        WHERE pi.part_number = #{partNumber}
+        ORDER BY pi.created_at DESC
+    </select>
+
+    <!-- ✅ 부품명으로 검색 -->
+    <select id="searchByPartName" resultMap="incomingResultMap" parameterType="string">
+        SELECT
+            pi.*,
+            c.category_name
+        FROM part_incoming pi
+        LEFT JOIN category c ON pi.category_id = c.category_id
+        WHERE pi.part_name LIKE CONCAT('%', #{partName}, '%')
+        OR pi.part_number LIKE CONCAT('%', #{partName}, '%')
+        ORDER BY pi.created_at DESC
+    </select>
+
+    <!-- ✅ 카테고리별 입고 내역 -->
+    <select id="selectIncomingByCategory" resultMap="incomingResultMap" parameterType="int">
+        SELECT
+            pi.*,
+            c.category_name
+        FROM part_incoming pi
+        LEFT JOIN category c ON pi.category_id = c.category_id
+        WHERE pi.category_id = #{categoryId}
+        ORDER BY pi.created_at DESC
+    </select>
+
+    <!-- ✅ 부품별 현재 재고 집계 -->
+    <select id="getCurrentInventory" resultType="map">
+        SELECT
+            pi.part_number,
+            pi.part_name,
+            c.category_name,
+            pi.unit,
+            SUM(pi.incoming_quantity) AS total_incoming,
+            COALESCE(SUM(pu.quantity_used), 0) AS total_used,
+            (SUM(pi.incoming_quantity) - COALESCE(SUM(pu.quantity_used), 0)) AS current_stock,
+            COUNT(DISTINCT pi.incoming_id) AS incoming_count
+        FROM part_incoming pi
+        LEFT JOIN category c ON pi.category_id = c.category_id
+        LEFT JOIN part_usage pu ON pi.incoming_id = pu.incoming_id
+        GROUP BY pi.part_number, pi.part_name, c.category_name, pi.unit
+        ORDER BY pi.part_number
+    </select>
+
+    <!-- ✅ 재고 부족 조회 (현재 재고 기준) -->
+    <select id="selectLowStock" resultType="map" parameterType="int">
+        SELECT
+            pi.part_number,
+            pi.part_name,
+            c.category_name,
+            pi.unit,
+            (SUM(pi.incoming_quantity) - COALESCE(SUM(pu.quantity_used), 0)) AS current_stock
+        FROM part_incoming pi
+        LEFT JOIN category c ON pi.category_id = c.category_id
+        LEFT JOIN part_usage pu ON pi.incoming_id = pu.incoming_id
+        GROUP BY pi.part_number, pi.part_name, c.category_name, pi.unit
+        HAVING current_stock &lt;= #{threshold}
+        ORDER BY current_stock ASC
+    </select>
+
+    <!-- ✅ 입고 정보 수정 -->
+    <update id="updateIncoming" parameterType="com.example.part.dto.PartIncomingDTO">
+        UPDATE part_incoming
+        SET
+            part_name = #{partName},
+            description = #{description},
+            unit = #{unit},
+            incoming_quantity = #{incomingQuantity},
+            purchase_price = #{purchasePrice},
+            currency = #{currency},
+            exchange_rate = #{exchangeRate},
+            original_price = #{originalPrice},
+            purchase_date = #{purchaseDate},
+            supplier = #{supplier},
+            invoice_number = #{invoiceNumber},
+            note = #{note}
+        WHERE incoming_id = #{incomingId}
+    </update>
+
+    <!-- ✅ 정렬 (동적) -->
+    <select id="getIncomingOrderBy" resultMap="incomingResultMap">
+        SELECT
+            pi.*,
+            c.category_name
+        FROM part_incoming pi
+        LEFT JOIN category c ON pi.category_id = c.category_id
+        ORDER BY ${column} ${order}
+    </select>
+
+    <!-- 카테고리 + 부품명으로 기존 부품 찾기 -->
+    <select id="findByPartNameAndCategory" resultMap="incomingResultMap">
+        SELECT
+            pi.*,
+            c.category_name
+        FROM part_incoming pi
+        LEFT JOIN category c ON pi.category_id = c.category_id
+        WHERE pi.category_id = #{categoryId}
+        AND pi.part_name = #{partName}
+        ORDER BY pi.created_at DESC
+        LIMIT 1
+    </select>
+
+    <!-- 검색 + 정렬 통합 -->
+    <select id="searchWithSort" resultMap="incomingResultMap">
+        SELECT
+            pi.*,
+            c.category_name
+        FROM part_incoming pi
+        LEFT JOIN category c ON pi.category_id = c.category_id
+        WHERE pi.part_name LIKE CONCAT('%', #{keyword}, '%')
+        OR pi.part_number LIKE CONCAT('%', #{keyword}, '%')
+        ORDER BY ${column} ${order}
+    </select>
+
+
+</mapper>

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.part.mapper.CategoryMapper">
+
+    <!-- ✅ ResultMap -->
+    <resultMap id="categoryResultMap" type="com.example.part.dto.CategoryDTO">
+        <id property="categoryId" column="category_id"/>
+        <result property="categoryCode" column="category_code"/>
+        <result property="categoryName" column="category_name"/>
+        <result property="description" column="description"/>
+        <result property="lastNumber" column="last_number"/>
+        <result property="isActive" column="is_active"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <!-- ✅ 전체 카테고리 조회 -->
+    <select id="selectAllCategories" resultMap="categoryResultMap">
+        SELECT *
+        FROM category
+        WHERE is_active = 1
+        ORDER BY category_name ASC
+    </select>
+
+    <!-- ✅ 단일 카테고리 조회 -->
+    <select id="findById" resultMap="categoryResultMap" parameterType="int">
+        SELECT *
+        FROM category
+        WHERE category_id = #{categoryId}
+    </select>
+
+    <!-- ✅ 카테고리 코드로 조회 -->
+    <select id="findByCode" resultMap="categoryResultMap" parameterType="string">
+        SELECT *
+        FROM category
+        WHERE category_code = #{categoryCode}
+    </select>
+
+    <!-- ✅ 카테고리 등록 -->
+    <insert id="insertCategory" parameterType="com.example.part.dto.CategoryDTO">
+        INSERT INTO category (
+            category_code,
+            category_name,
+            description,
+            last_number,
+            is_active
+        ) VALUES (
+            #{categoryCode},
+            #{categoryName},
+            #{description},
+            #{lastNumber},
+            #{isActive}
+        )
+    </insert>
+
+    <!-- ✅ 카테고리 정보 수정 -->
+    <update id="updateCategory" parameterType="com.example.part.dto.CategoryDTO">
+        UPDATE category
+        SET
+            category_name = #{categoryName},
+            description = #{description},
+            is_active = #{isActive}
+        WHERE category_id = #{categoryId}
+    </update>
+
+    <!-- ✅ 부품번호 자동 발급용: last_number 조회 -->
+    <select id="getLastNumber" resultType="int" parameterType="int">
+        SELECT last_number
+        FROM category
+        WHERE category_id = #{categoryId}
+    </select>
+
+    <!-- ✅ 부품번호 자동 발급용: last_number 증가 -->
+    <update id="updateLastNumber">
+        UPDATE category
+        SET last_number = #{lastNumber}
+        WHERE category_id = #{categoryId}
+    </update>
+
+    <!-- ✅ 카테고리 비활성화 -->
+    <update id="deactivateCategory" parameterType="int">
+        UPDATE category
+        SET is_active = 0
+        WHERE category_id = #{categoryId}
+    </update>
+
+    <!-- ✅ 카테고리 삭제 -->
+    <delete id="deleteCategory" parameterType="int">
+        DELETE FROM category
+        WHERE category_id = #{categoryId}
+    </delete>
+
+</mapper>

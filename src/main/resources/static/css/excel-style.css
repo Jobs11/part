@@ -246,3 +246,101 @@ td.editable:hover {
 .btn-small:hover {
     background-color: #005a9e;
 }
+
+
+
+/* ===============================
+   📦 부품 배치도 스타일
+=============================== */
+
+.selected-part-display {
+    border: 1px solid #d0d0d0;
+    background-color: #f4f8fc;
+    color: #005a9e;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: bold;
+    border-left: 4px solid #0078d4;
+    border-radius: 3px;
+    margin-bottom: 10px;
+}
+
+.grid-container {
+    display: grid;
+    grid-template-columns: 40px repeat(27, 100px);
+    /* 80px → 100px */
+    grid-auto-rows: 60px;
+    /* 50px → 60px */
+    border: 1px solid #ccc;
+    overflow: auto;
+    max-height: 800px;
+    background-color: #fff;
+}
+
+.header-cell,
+.side-cell,
+.cell {
+    border: 1px solid #ccc;
+    text-align: center;
+    font-size: 11px;
+    line-height: normal;
+    /* 🔹 고정 라인 제거 */
+    padding: 2px;
+    /* 🔹 텍스트 간격 확보 */
+    word-break: keep-all;
+    /* 🔹 한글 단어 단위로 줄바꿈 */
+    overflow-wrap: break-word;
+    /* 🔹 긴 단어 자동 줄바꿈 */
+}
+
+
+.header-cell {
+    background-color: #e7f0ff;
+    font-weight: bold;
+    line-height: 60px;
+    /* 50px → 60px */
+}
+
+.side-cell {
+    background-color: #f8f8f8;
+    font-weight: bold;
+    line-height: 60px;
+    /* 50px → 60px */
+}
+
+.cell {
+    background-color: white;
+    cursor: pointer;
+    transition: background 0.2s;
+    vertical-align: middle;
+    /* 🔹 가운데 정렬 */
+}
+
+.cell:hover {
+    background-color: #e3f2ff;
+}
+
+.cell.selected {
+    background-color: #0078d4;
+    color: white;
+}
+
+/* 🔹 등록된 부품 스타일 */
+.cell.assigned,
+.cell[style*="background-color"] {
+    font-weight: bold;
+    color: #004578;
+}
+
+/* 🔹 셀 안의 텍스트 */
+.cell strong {
+    display: block;
+    font-size: 11px;
+    line-height: 1.2;
+}
+
+.cell span {
+    display: block;
+    font-size: 10px;
+    color: #333;
+}

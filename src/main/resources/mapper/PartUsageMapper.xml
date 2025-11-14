@@ -5,22 +5,25 @@
 <mapper namespace="com.example.part.mapper.PartUsageMapper">
 
     <!-- ResultMap 정의 -->
-    <resultMap id="partUsageResultMap" type="com.example.part.dto.PartUsageDTO">
-        <id property="id" column="id"/>
+    <resultMap id="usageResultMap" type="com.example.part.dto.PartUsageDTO">
+        <id property="usageId" column="usage_id"/>
+        <result property="incomingId" column="incoming_id"/>
         <result property="partNumber" column="part_number"/>
+        <result property="partName" column="part_name"/>
+        <result property="categoryName" column="category_name"/>
+        <result property="unit" column="unit"/>
         <result property="quantityUsed" column="quantity_used"/>
         <result property="usageLocation" column="usage_location"/>
         <result property="usedDate" column="used_date"/>
         <result property="note" column="note"/>
-        <result property="createdAt" column="created_at"/>
         <result property="createdBy" column="created_by"/>
-        <result property="partName" column="part_name"/>
-        <result property="unit" column="unit"/>
+        <result property="createdAt" column="created_at"/>
     </resultMap>
 
-    <!-- 부품 사용 내역 등록 -->
-    <insert id="insertPartUsage" parameterType="com.example.part.dto.PartUsageDTO">
+    <!-- ✅ 출고(사용) 등록 -->
+    <insert id="insertPartUsage" parameterType="com.example.part.dto.PartUsageDTO" useGeneratedKeys="true" keyProperty="usageId">
         INSERT INTO part_usage (
+            incoming_id,
             part_number,
             quantity_used,
             usage_location,
@@ -28,6 +31,7 @@
             note,
             created_by
         ) VALUES (
+            #{incomingId},
             #{partNumber},
             #{quantityUsed},
             #{usageLocation},
@@ -37,7 +41,7 @@
         )
     </insert>
 
-    <!-- 부품 사용 내역 수정 -->
+    <!-- ✅ 출고 수정 -->
     <update id="updatePartUsage" parameterType="com.example.part.dto.PartUsageDTO">
         UPDATE part_usage
         SET
@@ -45,138 +49,149 @@
             usage_location = #{usageLocation},
             used_date = #{usedDate},
             note = #{note}
-        WHERE id = #{id}
+        WHERE usage_id = #{usageId}
     </update>
 
-    <!-- 전체 사용 내역 조회 (공개 상태만) -->
-    <select id="selectAllPartUsage" resultMap="partUsageResultMap">
+    <!-- ✅ usage_id로 단건 조회 -->
+    <select id="findById" resultMap="usageResultMap" parameterType="int">
         SELECT
-            pu.id,
-            pu.part_number,
-            pu.quantity_used,
-            pu.usage_location,
-            pu.used_date,
-            pu.note,
-            pu.created_at,
-            pu.created_by,
-            pu.del_status,
-            p.part_name,
-            p.unit
+            pu.*,
+            pi.part_name,
+            pi.unit,
+            c.category_name
         FROM part_usage pu
-        LEFT JOIN parts p ON pu.part_number = p.part_number
-        WHERE pu.del_status = '공개'
-          AND (p.del_status = '공개' OR p.del_status IS NULL)
+        LEFT JOIN part_incoming pi ON pu.incoming_id = pi.incoming_id
+        LEFT JOIN category c ON pi.category_id = c.category_id
+        WHERE pu.usage_id = #{usageId}
+    </select>
+
+    <!-- ✅ 전체 사용 내역 -->
+    <select id="selectAllUsage" resultMap="usageResultMap">
+        SELECT
+            pu.*,
+            pi.part_name,
+            pi.unit,
+            c.category_name
+        FROM part_usage pu
+        LEFT JOIN part_incoming pi ON pu.incoming_id = pi.incoming_id
+        LEFT JOIN category c ON pi.category_id = c.category_id
         ORDER BY pu.used_date DESC, pu.created_at DESC
     </select>
 
-    <!-- 특정 부품의 사용 내역 조회 (공개 상태만) -->
-    <select id="selectPartUsageByPartNumber" parameterType="string" resultMap="partUsageResultMap">
+    <!-- ✅ 검색 기능 (부품명, 사용처, 부품번호 동시 검색) -->
+    <select id="searchUsage" resultMap="usageResultMap" parameterType="string">
         SELECT
-            pu.id,
-            pu.part_number,
-            pu.quantity_used,
-            pu.usage_location,
-            pu.used_date,
-            pu.note,
-            pu.created_at,
-            pu.created_by,
-            pu.del_status,
-            p.part_name,
-            p.unit
+            pu.*,
+            pi.part_name,
+            pi.unit,
+            c.category_name
         FROM part_usage pu
-        LEFT JOIN parts p ON pu.part_number = p.part_number
-        WHERE pu.part_number = #{partNumber}
-          AND pu.del_status = '공개'
-          AND (p.del_status = '공개' OR p.del_status IS NULL)
-        ORDER BY pu.used_date DESC, pu.created_at DESC
+        LEFT JOIN part_incoming pi ON pu.incoming_id = pi.incoming_id
+        LEFT JOIN category c ON pi.category_id = c.category_id
+        WHERE
+            pi.part_name LIKE CONCAT('%', #{keyword}, '%')
+            OR pu.usage_location LIKE CONCAT('%', #{keyword}, '%')
+            OR pu.part_number LIKE CONCAT('%', #{keyword}, '%')
+        ORDER BY pu.used_date DESC
     </select>
 
-    <!-- 특정 사용처의 사용 내역 조회 (공개 상태만) -->
-    <select id="selectPartUsageByLocation" parameterType="string" resultMap="partUsageResultMap">
+    <!-- ✅ 사용처별 조회 -->
+    <select id="selectUsageByLocation" parameterType="string" resultMap="usageResultMap">
         SELECT
-            pu.id,
-            pu.part_number,
-            pu.quantity_used,
-            pu.usage_location,
-            pu.used_date,
-            pu.note,
-            pu.created_at,
-            pu.created_by,
-            pu.del_status,
-            p.part_name,
-            p.unit
+            pu.*,
+            pi.part_name,
+            pi.unit,
+            c.category_name
         FROM part_usage pu
-        LEFT JOIN parts p ON pu.part_number = p.part_number
+        LEFT JOIN part_incoming pi ON pu.incoming_id = pi.incoming_id
+        LEFT JOIN category c ON pi.category_id = c.category_id
         WHERE pu.usage_location LIKE CONCAT('%', #{usageLocation}, '%')
-          AND pu.del_status = '공개'
-          AND (p.del_status = '공개' OR p.del_status IS NULL)
-        ORDER BY pu.used_date DESC, pu.created_at DESC
+        ORDER BY pu.used_date DESC
     </select>
 
-    <!-- 내림차순 정렬 (공개 상태만) -->
-    <select id="getPartUsageOrderByDesc" resultMap="partUsageResultMap">
+    <!-- ✅ 부품번호별 조회 -->
+    <select id="selectUsageByPartNumber" parameterType="string" resultMap="usageResultMap">
         SELECT
-            pu.id,
-            pu.part_number,
-            pu.quantity_used,
-            pu.usage_location,
-            pu.used_date,
-            pu.note,
-            pu.created_at,
-            pu.created_by,
-            pu.del_status,
-            p.part_name,
-            p.unit
+            pu.*,
+            pi.part_name,
+            pi.unit,
+            c.category_name
         FROM part_usage pu
-        LEFT JOIN parts p ON pu.part_number = p.part_number
-        WHERE pu.del_status = '공개'
-          AND (p.del_status = '공개' OR p.del_status IS NULL)
-        ORDER BY ${column} DESC
+        LEFT JOIN part_incoming pi ON pu.incoming_id = pi.incoming_id
+        LEFT JOIN category c ON pi.category_id = c.category_id
+        WHERE pu.part_number = #{partNumber}
+        ORDER BY pu.used_date DESC
     </select>
 
-    <!-- 오름차순 정렬 (공개 상태만) -->
-    <select id="getPartUsageOrderByAsc" resultMap="partUsageResultMap">
+    <!-- ✅ 카테고리별 조회 -->
+    <select id="selectUsageByCategory" parameterType="int" resultMap="usageResultMap">
         SELECT
-            pu.id,
-            pu.part_number,
-            pu.quantity_used,
-            pu.usage_location,
-            pu.used_date,
-            pu.note,
-            pu.created_at,
-            pu.created_by,
-            pu.del_status,
-            p.part_name,
-            p.unit
+            pu.*,
+            pi.part_name,
+            pi.unit,
+            c.category_name
         FROM part_usage pu
-        LEFT JOIN parts p ON pu.part_number = p.part_number
-        WHERE pu.del_status = '공개'
-          AND (p.del_status = '공개' OR p.del_status IS NULL)
-        ORDER BY ${column} ASC
+        LEFT JOIN part_incoming pi ON pu.incoming_id = pi.incoming_id
+        LEFT JOIN category c ON pi.category_id = c.category_id
+        WHERE pi.category_id = #{categoryId}
+        ORDER BY pu.used_date DESC
     </select>
 
-    <!-- 기존 사용내역 1건 조회 (공개 상태만) -->
-    <select id="findById" resultType="com.example.part.dto.PartUsageDTO">
+    <!-- ✅ 기간별 조회 (날짜 필터) -->
+    <select id="selectUsageByDateRange" resultMap="usageResultMap">
         SELECT
-            id,
-            part_number,
-            quantity_used,
-            usage_location,
-            used_date,
-            note,
-            created_at,
-            created_by,
-            del_status
-        FROM part_usage
-        WHERE id = #{id}
-          AND del_status = '공개'
+            pu.*,
+            pi.part_name,
+            pi.unit,
+            c.category_name
+        FROM part_usage pu
+        LEFT JOIN part_incoming pi ON pu.incoming_id = pi.incoming_id
+        LEFT JOIN category c ON pi.category_id = c.category_id
+        WHERE pu.used_date BETWEEN #{startDate} AND #{endDate}
+        ORDER BY pu.used_date DESC
     </select>
 
-    <!-- 부품 사용 내역 비공개 처리 -->
-    <update id="softDeletePartUsage" parameterType="int">
-        UPDATE part_usage
-        SET del_status = '비공개'
-        WHERE id = #{id}
-    </update>
+    <!-- ✅ 정렬 (열 이름 + ASC/DESC 동적) -->
+    <select id="sortUsage" resultMap="usageResultMap">
+        SELECT
+            pu.*,
+            pi.part_name,
+            pi.unit,
+            c.category_name
+        FROM part_usage pu
+        LEFT JOIN part_incoming pi ON pu.incoming_id = pi.incoming_id
+        LEFT JOIN category c ON pi.category_id = c.category_id
+        ORDER BY ${column} ${order}
+    </select>
+
+    <!-- ✅ 부품별 사용 합계 (통계용) -->
+    <select id="selectUsageSummaryByPart" resultType="map">
+        SELECT
+            pu.part_number,
+            pi.part_name,
+            c.category_name,
+            SUM(pu.quantity_used) AS total_used
+        FROM part_usage pu
+        LEFT JOIN part_incoming pi ON pu.incoming_id = pi.incoming_id
+        LEFT JOIN category c ON pi.category_id = c.category_id
+        GROUP BY pu.part_number, pi.part_name, c.category_name
+        ORDER BY total_used DESC
+    </select>
+
+    <!-- 검색 + 정렬 통합 -->
+    <select id="searchWithSort" resultMap="usageResultMap">
+        SELECT
+            pu.*,
+            pi.part_name,
+            pi.unit,
+            c.category_name
+        FROM part_usage pu
+        LEFT JOIN part_incoming pi ON pu.incoming_id = pi.incoming_id
+        LEFT JOIN category c ON pi.category_id = c.category_id
+        WHERE pi.part_name LIKE CONCAT('%', #{keyword}, '%')
+        OR pu.usage_location LIKE CONCAT('%', #{keyword}, '%')
+        OR pu.part_number LIKE CONCAT('%', #{keyword}, '%')
+        ORDER BY ${column} ${order}
+    </select>
 
 </mapper>
