@@ -9,6 +9,8 @@ public interface PartLocationService {
 
     PartLocationDTO getLocationByCode(String code);
 
+    PartLocationDTO getLocationByPartNumber(String partNumber);
+
     boolean saveOrUpdate(PartLocationDTO dto);
 
     boolean deleteByCode(String code);

@@ -1,5 +1,6 @@
 package com.example.part.controller;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -150,6 +151,28 @@ public class PartIncomingController {
             @RequestParam String column,
             @RequestParam String order) {
         return ResponseEntity.ok(partIncomingService.searchWithSort(keyword, column, order));
+    }
+
+    @PostMapping("/bulk")
+    public ResponseEntity<?> bulkInsert(@RequestBody List<PartIncomingDTO> incomingList) {
+        int successCount = 0;
+        int failCount = 0;
+
+        for (PartIncomingDTO dto : incomingList) {
+            try {
+                // 입고 등록 (내부에서 기존 부품 체크 후 번호 생성 또는 재사용)
+                partIncomingService.registerIncoming(dto);
+                successCount++;
+            } catch (Exception e) {
+                failCount++;
+            }
+        }
+
+        Map<String, Integer> result = new HashMap<>();
+        result.put("success", successCount);
+        result.put("fail", failCount);
+
+        return ResponseEntity.ok(result);
     }
 
 }

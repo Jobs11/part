@@ -13,6 +13,7 @@ public class PartIncomingDTO {
     private Integer categoryId;
     private String categoryName; // JOIN용
     private String partName;
+    private String location; // 부품 위치 (입력용, 저장되지 않음)
     private String description;
     private String unit;
 

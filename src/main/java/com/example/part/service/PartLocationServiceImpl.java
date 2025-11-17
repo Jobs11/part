@@ -26,6 +26,11 @@ public class PartLocationServiceImpl implements PartLocationService {
     }
 
     @Override
+    public PartLocationDTO getLocationByPartNumber(String partNumber) {
+        return partLocationMapper.findByPartNumber(partNumber);
+    }
+
+    @Override
     public boolean saveOrUpdate(PartLocationDTO dto) {
         PartLocationDTO existing = partLocationMapper.findByCode(dto.getLocationCode());
         if (existing == null) {

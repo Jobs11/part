@@ -21,9 +21,14 @@
         SELECT * FROM part_location ORDER BY pos_x, pos_y
     </select>
 
-    <!-- 단일 조회 -->
+    <!-- 단일 조회 (위치 코드로) -->
     <select id="findByCode" resultMap="partLocationResultMap" parameterType="string">
         SELECT * FROM part_location WHERE location_code = #{locationCode}
+    </select>
+
+    <!-- 단일 조회 (부품번호로) -->
+    <select id="findByPartNumber" resultMap="partLocationResultMap" parameterType="string">
+        SELECT * FROM part_location WHERE part_number = #{partNumber} LIMIT 1
     </select>
 
     <!-- 등록 (INSERT) -->

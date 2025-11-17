@@ -38,20 +38,24 @@
         WHERE category_code = #{categoryCode}
     </select>
 
+    <!-- ✅ 카테고리 이름으로 조회 -->
+    <select id="findByName" resultMap="categoryResultMap" parameterType="string">
+        SELECT *
+        FROM category
+        WHERE category_name = #{categoryName}
+        AND is_active = 1
+    </select>
+
     <!-- ✅ 카테고리 등록 -->
     <insert id="insertCategory" parameterType="com.example.part.dto.CategoryDTO">
         INSERT INTO category (
             category_code,
             category_name,
-            description,
-            last_number,
-            is_active
+            description
         ) VALUES (
             #{categoryCode},
             #{categoryName},
-            #{description},
-            #{lastNumber},
-            #{isActive}
+            #{description}
         )
     </insert>
 
@@ -78,6 +82,17 @@
         SET last_number = #{lastNumber}
         WHERE category_id = #{categoryId}
     </update>
+
+    <!-- ✅ 부품번호 자동 발급용: last_number 원자적 증가 및 조회 -->
+    <update id="incrementAndGetLastNumber" parameterType="int">
+        UPDATE category
+        SET last_number = LAST_INSERT_ID(last_number + 1)
+        WHERE category_id = #{categoryId}
+    </update>
+
+    <select id="getLastNumberAfterIncrement" resultType="int">
+        SELECT LAST_INSERT_ID() AS last_number
+    </select>
 
     <!-- ✅ 카테고리 비활성화 -->
     <update id="deactivateCategory" parameterType="int">

@@ -19,6 +19,9 @@ public interface CategoryMapper {
     // 카테고리 코드로 조회
     CategoryDTO findByCode(@Param("categoryCode") String categoryCode);
 
+    // 카테고리 이름으로 조회
+    CategoryDTO findByName(@Param("categoryName") String categoryName);
+
     // 카테고리 등록
     int insertCategory(CategoryDTO categoryDTO);
 
@@ -30,6 +33,12 @@ public interface CategoryMapper {
 
     // 부품번호 자동 발급용: last_number 증가
     int updateLastNumber(@Param("categoryId") int categoryId, @Param("lastNumber") int lastNumber);
+
+    // 부품번호 자동 발급용: last_number 원자적 증가
+    int incrementAndGetLastNumber(@Param("categoryId") int categoryId);
+
+    // 부품번호 자동 발급용: 증가 후 last_number 조회 (LAST_INSERT_ID 사용)
+    int getLastNumberAfterIncrement();
 
     // 카테고리 비활성화
     int deactivateCategory(@Param("categoryId") int categoryId);

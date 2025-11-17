@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.part.mapper.PartImageMapper">
+
+    <!-- ResultMap -->
+    <resultMap id="partImageResultMap" type="com.example.part.dto.PartImageDTO">
+        <id property="imageId" column="image_id"/>
+        <result property="incomingId" column="incoming_id"/>
+        <result property="imageType" column="image_type"/>
+        <result property="imageUrl" column="image_url"/>
+        <result property="storageType" column="storage_type"/>
+        <result property="fileName" column="file_name"/>
+        <result property="fileSize" column="file_size"/>
+        <result property="mimeType" column="mime_type"/>
+        <result property="displayOrder" column="display_order"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <!-- 이미지 등록 -->
+    <insert id="insertImage" parameterType="com.example.part.dto.PartImageDTO"
+            useGeneratedKeys="true" keyProperty="imageId">
+        INSERT INTO part_images (
+            incoming_id,
+            image_type,
+            image_url,
+            storage_type,
+            file_name,
+            file_size,
+            mime_type,
+            display_order
+        ) VALUES (
+            #{incomingId},
+            #{imageType},
+            #{imageUrl},
+            #{storageType},
+            #{fileName},
+            #{fileSize},
+            #{mimeType},
+            #{displayOrder}
+        )
+    </insert>
+
+    <!-- ID로 조회 -->
+    <select id="selectById" resultMap="partImageResultMap" parameterType="int">
+        SELECT * FROM part_images
+        WHERE image_id = #{imageId}
+    </select>
+
+    <!-- 입고 ID로 조회 -->
+    <select id="selectByIncomingId" resultMap="partImageResultMap" parameterType="int">
+        SELECT * FROM part_images
+        WHERE incoming_id = #{incomingId}
+        ORDER BY display_order, created_at
+    </select>
+
+    <!-- 입고 ID + 이미지 타입으로 조회 -->
+    <select id="selectByIncomingIdAndType" resultMap="partImageResultMap">
+        SELECT * FROM part_images
+        WHERE incoming_id = #{incomingId}
+          AND image_type = #{imageType}
+        ORDER BY display_order, created_at
+    </select>
+
+    <!-- 전체 조회 -->
+    <select id="selectAllImages" resultMap="partImageResultMap">
+        SELECT * FROM part_images
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- 이미지 삭제 -->
+    <delete id="deleteImage" parameterType="int">
+        DELETE FROM part_images
+        WHERE image_id = #{imageId}
+    </delete>
+
+</mapper>

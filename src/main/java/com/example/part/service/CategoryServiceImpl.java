@@ -111,6 +111,41 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional
+    public CategoryDTO findOrCreateCategoryByName(String categoryName) {
+        // 1. 이름으로 카테고리 조회
+        CategoryDTO category = categoryMapper.findByName(categoryName);
+
+        if (category != null) {
+            return category;
+        }
+
+        // 2. 없으면 새로 생성 (코드는 이름의 첫 글자 대문자 사용)
+        String categoryCode = categoryName.substring(0, 1).toUpperCase();
+
+        // 코드 중복 체크 및 번호 추가
+        CategoryDTO existing = categoryMapper.findByCode(categoryCode);
+        int suffix = 1;
+        String finalCode = categoryCode;
+        while (existing != null) {
+            finalCode = categoryCode + suffix;
+            existing = categoryMapper.findByCode(finalCode);
+            suffix++;
+        }
+
+        CategoryDTO newCategory = new CategoryDTO();
+        newCategory.setCategoryCode(finalCode);
+        newCategory.setCategoryName(categoryName);
+        newCategory.setDescription("자동 생성된 카테고리");
+
+        categoryMapper.insertCategory(newCategory);
+        log.info("새 카테고리 자동 생성: {} ({})", categoryName, finalCode);
+
+        // 생성된 카테고리 반환
+        return categoryMapper.findByName(categoryName);
+    }
+
+    @Override
+    @Transactional
     public void createCategory(CategoryDTO categoryDTO) {
         // 중복 체크
         CategoryDTO existing = categoryMapper.findByCode(categoryDTO.getCategoryCode());
@@ -137,23 +172,28 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional
-    public String generatePartNumber(int categoryId) {
-        // 1. 카테고리 조회
+    public synchronized String generatePartNumber(int categoryId) {
+        log.info("=== generatePartNumber 호출 시작 - categoryId: {} ===", categoryId);
+
+        // 1. 카테고리 조회 (카테고리 코드 가져오기)
         CategoryDTO category = getCategoryById(categoryId);
+        log.info("카테고리 조회 완료 - 코드: {}, 현재 last_number: {}", category.getCategoryCode(), category.getLastNumber());
 
-        // 2. 다음 번호 계산
-        int nextNumber = category.getLastNumber() + 1;
-
-        // 3. 부품번호 생성 (예: E-0001)
-        String partNumber = String.format("%s-%04d", category.getCategoryCode(), nextNumber);
-
-        // 4. last_number 업데이트
-        int result = categoryMapper.updateLastNumber(categoryId, nextNumber);
+        // 2. last_number 원자적 증가 (DB에서 직접 +1)
+        int result = categoryMapper.incrementAndGetLastNumber(categoryId);
+        log.info("incrementAndGetLastNumber 실행 결과: {}", result);
         if (result == 0) {
             throw new RuntimeException("부품번호 생성에 실패했습니다.");
         }
 
-        log.info("부품번호 생성: {}", partNumber);
+        // 3. 증가된 last_number 조회 (LAST_INSERT_ID로 현재 커넥션의 값 가져오기)
+        int nextNumber = categoryMapper.getLastNumberAfterIncrement();
+        log.info("증가 후 조회된 last_number: {}", nextNumber);
+
+        // 4. 부품번호 생성 (예: E-0001)
+        String partNumber = String.format("%s-%04d", category.getCategoryCode(), nextNumber);
+
+        log.info("=== 부품번호 생성 완료: {} ===", partNumber);
         return partNumber;
     }
 

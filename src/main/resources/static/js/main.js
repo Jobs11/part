@@ -13,15 +13,63 @@ let currentInventorySortOrder = 'asc';
 
 // 페이지 로드 시 실행
 document.addEventListener('DOMContentLoaded', function () {
-    document.getElementById('incomingForm').addEventListener('submit', registerIncoming);
-    document.getElementById('usageForm').addEventListener('submit', registerUsage);
+    const incomingForm = document.getElementById('incomingForm');
+    const usageForm = document.getElementById('usageForm');
+    const purchaseDateEl = document.getElementById('purchaseDate');
+    const usedDateEl = document.getElementById('usedDate');
+    const categoryIdEl = document.getElementById('categoryId');
 
-    document.getElementById('purchaseDate').value = new Date().toISOString().split('T')[0];
-    document.getElementById('usedDate').value = new Date().toISOString().split('T')[0];
+    if (incomingForm) incomingForm.addEventListener('submit', registerIncoming);
+    if (usageForm) usageForm.addEventListener('submit', registerUsage);
 
-    document.getElementById('categoryId').addEventListener('change', onCategoryChange);
+    if (purchaseDateEl) purchaseDateEl.value = new Date().toISOString().split('T')[0];
+    if (usedDateEl) usedDateEl.value = new Date().toISOString().split('T')[0];
 
-    loadCategories();
+    if (categoryIdEl) categoryIdEl.addEventListener('change', onCategoryChange);
+
+    // 환율 자동 계산 이벤트 리스너
+    const originalPriceEl = document.getElementById('originalPrice');
+    const exchangeRateEl = document.getElementById('exchangeRate');
+    if (originalPriceEl) originalPriceEl.addEventListener('input', calculateKRW);
+    if (exchangeRateEl) exchangeRateEl.addEventListener('input', calculateKRW);
+
+    // 통화 변경 시 환율 자동 조회
+    const currencyEl = document.getElementById('currency');
+    if (currencyEl) {
+        currencyEl.addEventListener('change', async function () {
+            const currency = this.value;
+            const exchangeRateGroup = document.getElementById('exchangeRateGroup');
+            const originalPriceGroup = document.getElementById('originalPriceGroup');
+            const exchangeRateInput = document.getElementById('exchangeRate');
+
+            if (currency === 'KRW') {
+                if (exchangeRateGroup) exchangeRateGroup.style.display = 'none';
+                if (originalPriceGroup) originalPriceGroup.style.display = 'none';
+            } else {
+                if (exchangeRateGroup) exchangeRateGroup.style.display = 'flex';
+                if (originalPriceGroup) originalPriceGroup.style.display = 'flex';
+
+                // 환율 자동 조회
+                try {
+                    const response = await fetch(`/livewalk/exchange-rate/${currency}`);
+                    if (response.ok) {
+                        const rate = await response.json();
+                        if (exchangeRateInput) exchangeRateInput.value = rate;
+                        showMessage(`${currency} 환율: ${rate}`, 'info');
+                        calculateKRW(); // 환율 조회 후 자동 계산
+                    }
+                } catch (error) {
+                    showMessage('환율 조회 실패', 'error');
+                }
+            }
+        });
+    }
+
+    // 데이터 로드
+    loadCategories().then(() => {
+        // 카테고리 로드 후 입고 등록 테이블 초기 행 생성
+        addBulkRow();
+    });
     loadAllIncoming();
     loadInventory();
     loadLowStock();
@@ -37,23 +85,30 @@ async function loadCategories() {
         categoriesData = await response.json();
 
         const select = document.getElementById('categoryId');
-        select.innerHTML = '<option value="">선택하세요</option>';
+        if (select) {
+            select.innerHTML = '<option value="">선택하세요</option>';
 
-        categoriesData.forEach(category => {
-            const option = document.createElement('option');
-            option.value = category.categoryId;
-            option.textContent = `${category.categoryName} (${category.categoryCode})`;
-            select.appendChild(option);
-        });
+            categoriesData.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.categoryId;
+                option.textContent = `${category.categoryName} (${category.categoryCode})`;
+                select.appendChild(option);
+            });
+        }
     } catch (error) {
         showMessage('카테고리 조회 오류: ' + error.message, 'error');
     }
 }
 
 async function onCategoryChange() {
-    const categoryId = document.getElementById('categoryId').value;
+    const categoryIdEl = document.getElementById('categoryId');
+    const partNumberEl = document.getElementById('partNumber');
+
+    if (!categoryIdEl) return;
+
+    const categoryId = categoryIdEl.value;
     if (!categoryId) {
-        document.getElementById('partNumber').value = '';
+        if (partNumberEl) partNumberEl.value = '';
         return;
     }
 
@@ -65,7 +120,7 @@ async function onCategoryChange() {
         const nextNumber = category.lastNumber + 1;
         const previewPartNumber = `${category.categoryCode}-${String(nextNumber).padStart(4, '0')}`;
 
-        document.getElementById('partNumber').value = previewPartNumber + ' (미리보기)';
+        if (partNumberEl) partNumberEl.value = previewPartNumber + ' (미리보기)';
     } catch (error) {
         showMessage('부품번호 미리보기 오류: ' + error.message, 'error');
     }
@@ -76,26 +131,10 @@ async function registerIncoming(e) {
     e.preventDefault();
 
     const categoryId = parseInt(document.getElementById('categoryId').value);
-
-    let partNumber = '';
-    try {
-        const response = await fetch(`${CATEGORY_API}/${categoryId}/generate-part-number`, {
-            method: 'POST'
-        });
-
-        if (!response.ok) throw new Error('부품번호 생성 실패');
-
-        partNumber = await response.text();
-    } catch (error) {
-        showMessage('부품번호 생성 오류: ' + error.message, 'error');
-        return;
-    }
-
     const currency = document.getElementById('currency').value;
 
     const incomingData = {
         categoryId: categoryId,
-        partNumber: partNumber,
         partName: document.getElementById('partName').value,
         description: document.getElementById('description').value,
         unit: document.getElementById('unit').value,
@@ -113,7 +152,7 @@ async function registerIncoming(e) {
     }
 
     try {
-        const response = await fetch(`${INCOMING_API}/with-number`, {
+        const response = await fetch(INCOMING_API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(incomingData)
@@ -152,7 +191,7 @@ async function loadAllIncoming() {
         if (!response.ok) throw new Error('데이터 조회 실패');
 
         const incomingList = await response.json();
-        displayIncomingList(incomingList);
+        await displayIncomingList(incomingList);
     } catch (error) {
         showMessage('입고 리스트 조회 오류: ' + error.message, 'error');
     }
@@ -173,7 +212,7 @@ async function searchIncoming() {
         if (!response.ok) throw new Error('검색 실패');
 
         const incomingList = await response.json();
-        displayIncomingList(incomingList);
+        await displayIncomingList(incomingList);
         showMessage(`${incomingList.length}개 검색됨`, 'info');
     } catch (error) {
         showMessage('검색 오류: ' + error.message, 'error');
@@ -205,42 +244,68 @@ async function sortIncomingTable(column) {
         if (!response.ok) throw new Error('정렬 실패');
 
         const incomingList = await response.json();
-        displayIncomingList(incomingList);
+        await displayIncomingList(incomingList);
         showMessage(`${column} 기준 ${currentIncomingSortOrder === 'asc' ? '오름차순' : '내림차순'} 정렬`, 'info');
     } catch (error) {
         showMessage('정렬 오류: ' + error.message, 'error');
     }
 }
 
-function displayIncomingList(incomingList) {
+async function displayIncomingList(incomingList) {
     const tbody = document.getElementById('incomingTableBody');
 
     if (incomingList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center;">입고 내역이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" style="text-align: center;">입고 내역이 없습니다.</td></tr>';
         return;
     }
 
-    tbody.innerHTML = incomingList.map(incoming => `
-        <tr>
-            <td>${incoming.incomingId}</td>
-            <td>${incoming.partNumber || '-'}</td>
-            <td>${incoming.categoryName || '-'}</td>
-            <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'partName', '${escapeHtml(incoming.partName)}')">${incoming.partName || '-'}</td>
-            <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'incomingQuantity', ${incoming.incomingQuantity})">${incoming.incomingQuantity}</td>
-            <td>${incoming.unit || '-'}</td>
-            <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'purchasePrice', ${incoming.purchasePrice})">${formatNumber(incoming.purchasePrice)} 원</td>
-            <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'currency', '${incoming.currency}')">${incoming.currency || '-'}</td>
-            <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'purchaseDate', '${incoming.purchaseDate}')">${formatDate(incoming.purchaseDate)}</td>
-            <td>${formatDateTime(incoming.createdAt)}</td>
-        </tr>
-    `).join('');
+    // 각 항목의 사진 개수 조회
+    const rowsPromises = incomingList.map(async (incoming) => {
+        let imageCount = 0;
+        try {
+            const response = await fetch(`/livewalk/part-images/incoming/${incoming.incomingId}`);
+            if (response.ok) {
+                const images = await response.json();
+                imageCount = images.length;
+            }
+        } catch (error) {
+            console.error('사진 개수 조회 오류:', error);
+        }
+
+        const originalPrice = incoming.originalPrice ? formatNumber(incoming.originalPrice) : '-';
+        const originalPriceDisplay = incoming.currency !== 'KRW' && incoming.originalPrice ? originalPrice : '-';
+        const canEditOriginalPrice = incoming.currency !== 'KRW';
+        const canEditPurchasePrice = incoming.currency === 'KRW'; // KRW일 때만 구매금액 수정 가능
+
+        return `
+            <tr data-incoming-id="${incoming.incomingId}">
+                <td>${incoming.categoryName || '-'}</td>
+                <td>${incoming.partNumber || '-'}</td>
+                <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'partName', '${escapeHtml(incoming.partName)}')">${incoming.partName || '-'}</td>
+                <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'description', '${escapeHtml(incoming.description || '')}')">${incoming.description || '-'}</td>
+                <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'incomingQuantity', ${incoming.incomingQuantity})">${incoming.incomingQuantity}</td>
+                <td>${incoming.unit || '-'}</td>
+                <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'currency', '${incoming.currency}')">${incoming.currency || '-'}</td>
+                <td class="${canEditOriginalPrice ? 'editable' : ''}" ${canEditOriginalPrice ? `ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'originalPrice', ${incoming.originalPrice || 0}, ${incoming.exchangeRate || 0})"` : ''}>${originalPriceDisplay}</td>
+                <td class="${canEditPurchasePrice ? 'editable' : ''}" ${canEditPurchasePrice ? `ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'purchasePrice', ${incoming.purchasePrice})"` : ''}>${formatNumber(incoming.purchasePrice)} 원</td>
+                <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'purchaseDate', '${incoming.purchaseDate}')">${formatDate(incoming.purchaseDate)}</td>
+                <td>${formatDateTime(incoming.createdAt)}</td>
+                <td><button class="btn-small" onclick="openImageModal(${incoming.incomingId})">📷 ${imageCount > 0 ? imageCount + '장' : '사진'}</button></td>
+                <td><button class="btn-small" onclick="openLocationModal('${incoming.partNumber}')">📍 배치도</button></td>
+            </tr>
+        `;
+    });
+
+    const rows = await Promise.all(rowsPromises);
+    tbody.innerHTML = rows.join('');
 }
 
 // 입고 셀 편집
-function makeIncomingEditable(event, incomingId, field, currentValue) {
+function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRate) {
     event.stopPropagation();
     const cell = event.target;
     const originalValue = currentValue;
+    const storedExchangeRate = exchangeRate; // originalPrice 수정 시 필요한 환율
 
     if (cell.querySelector('input') || cell.querySelector('select')) return;
 
@@ -259,7 +324,7 @@ function makeIncomingEditable(event, incomingId, field, currentValue) {
     } else {
         inputElement = document.createElement('input');
         inputElement.type =
-            field === 'incomingQuantity' || field === 'purchasePrice' ? 'number' :
+            field === 'incomingQuantity' || field === 'purchasePrice' || field === 'originalPrice' ? 'number' :
                 field === 'purchaseDate' ? 'date' : 'text';
 
         if (field === 'purchaseDate' && currentValue) {
@@ -268,7 +333,7 @@ function makeIncomingEditable(event, incomingId, field, currentValue) {
             inputElement.value = (currentValue === '-' || !currentValue) ? '' : currentValue;
         }
 
-        if (field === 'purchasePrice') {
+        if (field === 'purchasePrice' || field === 'originalPrice') {
             inputElement.step = '0.01';
         }
     }
@@ -286,7 +351,11 @@ function makeIncomingEditable(event, incomingId, field, currentValue) {
         const newValue = inputElement.value.trim();
 
         if (newValue === String(originalValue) || (!newValue && !originalValue)) {
-            cell.textContent = originalValue || '-';
+            if (field === 'originalPrice') {
+                cell.textContent = originalValue ? formatNumber(originalValue) : '-';
+            } else {
+                cell.textContent = originalValue || '-';
+            }
             return;
         }
 
@@ -300,8 +369,32 @@ function makeIncomingEditable(event, incomingId, field, currentValue) {
             // 수정할 필드만 업데이트
             const updatedData = { ...currentData };
 
-            if (field === 'incomingQuantity' || field === 'purchasePrice') {
+            if (field === 'incomingQuantity' || field === 'purchasePrice' || field === 'originalPrice') {
                 updatedData[field] = parseFloat(newValue);
+
+                // originalPrice 수정 시 purchasePrice도 자동 재계산
+                if (field === 'originalPrice' && currentData.currency !== 'KRW') {
+                    const newOriginalPrice = parseFloat(newValue);
+
+                    // 최신 환율 조회
+                    try {
+                        const rateResponse = await fetch(`/livewalk/exchange-rate/${currentData.currency}`);
+                        if (rateResponse.ok) {
+                            const latestRate = await rateResponse.json();
+                            updatedData.exchangeRate = latestRate;
+                            updatedData.purchasePrice = newOriginalPrice * latestRate;
+                            showMessage(`최신 환율(${currentData.currency}: ${latestRate}) 적용`, 'info');
+                        } else {
+                            // 환율 조회 실패 시 기존 환율 사용
+                            updatedData.purchasePrice = newOriginalPrice * storedExchangeRate;
+                            showMessage('기존 환율 사용 (최신 환율 조회 실패)', 'info');
+                        }
+                    } catch (error) {
+                        // 환율 조회 실패 시 기존 환율 사용
+                        updatedData.purchasePrice = newOriginalPrice * storedExchangeRate;
+                        showMessage('기존 환율 사용 (환율 조회 오류)', 'info');
+                    }
+                }
             } else {
                 updatedData[field] = newValue;
             }
@@ -317,6 +410,10 @@ function makeIncomingEditable(event, incomingId, field, currentValue) {
                     cell.textContent = formatDate(newValue);
                 } else if (field === 'purchasePrice') {
                     cell.textContent = formatNumber(newValue) + ' 원';
+                } else if (field === 'originalPrice') {
+                    cell.textContent = formatNumber(newValue);
+                    // 전체 리스트 새로고침하여 purchasePrice도 업데이트된 값 표시
+                    await loadAllIncoming();
                 } else {
                     cell.textContent = newValue || '-';
                 }
@@ -325,11 +422,19 @@ function makeIncomingEditable(event, incomingId, field, currentValue) {
                 loadLowStock();
             } else {
                 const message = await response.text();
-                cell.textContent = originalValue || '-';
+                if (field === 'originalPrice') {
+                    cell.textContent = originalValue ? formatNumber(originalValue) : '-';
+                } else {
+                    cell.textContent = originalValue || '-';
+                }
                 showMessage('수정 실패: ' + message, 'error');
             }
         } catch (error) {
-            cell.textContent = originalValue || '-';
+            if (field === 'originalPrice') {
+                cell.textContent = originalValue ? formatNumber(originalValue) : '-';
+            } else {
+                cell.textContent = originalValue || '-';
+            }
             showMessage('수정 오류: ' + error.message, 'error');
         }
     };
@@ -344,6 +449,8 @@ function makeIncomingEditable(event, incomingId, field, currentValue) {
                 cell.textContent = formatDate(originalValue);
             } else if (field === 'purchasePrice') {
                 cell.textContent = formatNumber(originalValue) + ' 원';
+            } else if (field === 'originalPrice') {
+                cell.textContent = originalValue ? formatNumber(originalValue) : '-';
             } else {
                 cell.textContent = originalValue || '-';
             }
@@ -442,9 +549,9 @@ function displayLowStock(lowStock) {
 
     tbody.innerHTML = lowStock.map(item => `
         <tr class="low-stock">
+            <td>${item.category_name || '-'}</td>
             <td>${item.part_number}</td>
             <td>${item.part_name}</td>
-            <td>${item.category_name || '-'}</td>
             <td><strong>${item.current_stock}</strong></td>
             <td>${item.unit || '-'}</td>
         </tr>
@@ -782,6 +889,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
 });
 
 async function toggleGrid() {
@@ -1006,4 +1114,770 @@ function clearGridSearch() {
         cell.style.boxShadow = 'none';
     });
     showMessage('검색 초기화', 'info');
+}
+
+function calculateKRW() {
+    const originalPrice = parseFloat(document.getElementById('originalPrice').value) || 0;
+    const exchangeRate = parseFloat(document.getElementById('exchangeRate').value) || 0;
+
+    if (originalPrice > 0 && exchangeRate > 0) {
+        const purchasePrice = originalPrice * exchangeRate;
+        document.getElementById('purchasePrice').value = purchasePrice.toFixed(2);
+    }
+}
+
+let currentIncomingIdForImage = null;
+
+// 모달 열기
+async function openImageModal(incomingId) {
+    currentIncomingIdForImage = incomingId;
+    document.getElementById('imageModal').style.display = 'block';
+    await loadImages(incomingId);
+}
+
+// 모달 닫기
+function closeImageModal() {
+    document.getElementById('imageModal').style.display = 'none';
+    currentIncomingIdForImage = null;
+    document.getElementById('modalFileInput').value = '';
+}
+
+// 이미지 목록 불러오기
+async function loadImages(incomingId) {
+    try {
+        const response = await fetch(`/livewalk/part-images/incoming/${incomingId}`);
+        if (!response.ok) throw new Error('이미지 조회 실패');
+
+        const images = await response.json();
+        const container = document.getElementById('imageListContainer');
+
+        if (images.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: #888;">등록된 사진이 없습니다.</p>';
+            return;
+        }
+
+        container.innerHTML = images.map(img => `
+            <div style="position: relative; border: 1px solid #ddd; padding: 5px;">
+                <img src="${img.imageUrl}" style="width: 100%; height: 150px; object-fit: cover; cursor: pointer;" onclick="window.open('${img.imageUrl}', '_blank')">
+                <div style="display: flex; gap: 5px; margin-top: 5px;">
+                    <button class="btn-small" style="flex: 1;" onclick="downloadImage('${img.imageUrl}', '${img.fileName}')">다운로드</button>
+                    <button class="btn-small" style="flex: 1; background-color: #dc3545;" onclick="deleteImage(${img.imageId})">삭제</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        showMessage('이미지 조회 오류: ' + error.message, 'error');
+    }
+}
+
+// 이미지 업로드
+async function uploadImageFromModal() {
+    const fileInput = document.getElementById('modalFileInput');
+
+    if (!fileInput.files || fileInput.files.length === 0) {
+        showMessage('파일을 선택하세요', 'error');
+        return;
+    }
+
+    // 여러 파일 업로드
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < fileInput.files.length; i++) {
+        const formData = new FormData();
+        formData.append('file', fileInput.files[i]);
+        formData.append('incomingId', currentIncomingIdForImage);
+        formData.append('imageType', 'part');
+
+        try {
+            const response = await fetch('/livewalk/part-images/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                successCount++;
+            } else {
+                failCount++;
+            }
+        } catch (error) {
+            failCount++;
+        }
+    }
+
+    showMessage(`업로드 완료: ${successCount}장 성공, ${failCount}장 실패`, successCount > 0 ? 'success' : 'error');
+    fileInput.value = '';
+    await loadImages(currentIncomingIdForImage);
+}
+
+// 이미지 삭제
+async function deleteImage(imageId) {
+    if (!confirm('이 사진을 삭제하시겠습니까?')) return;
+
+    try {
+        const response = await fetch(`/livewalk/part-images/${imageId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showMessage('삭제 완료', 'success');
+            await loadImages(currentIncomingIdForImage);
+        } else {
+            const message = await response.text();
+            showMessage('삭제 실패: ' + message, 'error');
+        }
+    } catch (error) {
+        showMessage('삭제 오류: ' + error.message, 'error');
+    }
+}
+
+// 이미지 다운로드
+function downloadImage(url, fileName) {
+    fetch(url)
+        .then(response => response.blob())
+        .then(blob => {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = fileName || 'image.jpg';
+            link.click();
+            URL.revokeObjectURL(link.href);
+        })
+        .catch(error => {
+            showMessage('다운로드 실패: ' + error.message, 'error');
+        });
+}
+
+// 행 추가 (1개씩)
+function addBulkRow() {
+    const tbody = document.getElementById('bulkInsertTableBody');
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td>
+            <select class="bulk-input bulk-category">
+                <option value="">선택</option>
+            </select>
+        </td>
+        <td><input type="text" class="bulk-input bulk-part-number" placeholder="부품번호" required></td>
+        <td><input type="text" class="bulk-input bulk-part-name" placeholder="부품명"></td>
+        <td><input type="text" class="bulk-input bulk-location" placeholder="위치"></td>
+        <td><input type="number" class="bulk-input bulk-quantity" placeholder="수량" min="1"></td>
+        <td><input type="text" class="bulk-input bulk-unit" value="EA"></td>
+        <td><input type="number" class="bulk-input bulk-price" placeholder="금액" min="0" step="0.01"></td>
+        <td><input type="date" class="bulk-input bulk-date"></td>
+        <td><input type="text" class="bulk-input bulk-description" placeholder="설명"></td>
+        <td><input type="text" class="bulk-input bulk-note" placeholder="비고(선택)"></td>
+    `;
+    tbody.appendChild(tr);
+
+    // 날짜 기본값 설정
+    tr.querySelector('.bulk-date').value = new Date().toISOString().split('T')[0];
+
+    // 카테고리 로드
+    loadCategoriesForBulk();
+}
+
+// 행 삭제 (마지막 행)
+function removeBulkRow() {
+    const tbody = document.getElementById('bulkInsertTableBody');
+    if (tbody.children.length > 1) {
+        tbody.removeChild(tbody.lastChild);
+    } else {
+        showMessage('최소 1개의 행은 유지되어야 합니다.', 'info');
+    }
+}
+
+// 일괄 등록용 카테고리 로드
+async function loadCategoriesForBulk() {
+    if (categoriesData.length === 0) {
+        await loadCategories();
+    }
+
+    // 개별 행의 카테고리 드롭다운 채우기
+    document.querySelectorAll('.bulk-category').forEach(select => {
+        if (select.children.length <= 1) { // 이미 로드되지 않은 경우만
+            categoriesData.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.categoryId;
+                option.textContent = `${category.categoryName} (${category.categoryCode})`;
+                select.appendChild(option);
+            });
+        }
+    });
+
+    // 일괄 선택 드롭다운 채우기 (항상 새로고침)
+    const bulkSelect = document.getElementById('bulkCategorySelect');
+    if (bulkSelect) {
+        const currentValue = bulkSelect.value;
+        // 기존 옵션 제거 (첫 번째 "개별 선택" 제외)
+        while (bulkSelect.children.length > 1) {
+            bulkSelect.removeChild(bulkSelect.lastChild);
+        }
+        // 새로운 옵션 추가
+        categoriesData.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category.categoryId;
+            option.textContent = `${category.categoryName} (${category.categoryCode})`;
+            bulkSelect.appendChild(option);
+        });
+        // 이전 선택 값이 있으면 복원
+        if (currentValue && bulkSelect.querySelector(`option[value="${currentValue}"]`)) {
+            bulkSelect.value = currentValue;
+        }
+    }
+}
+
+// 일괄 카테고리 적용
+function applyBulkCategory() {
+    const bulkCategoryId = document.getElementById('bulkCategorySelect').value;
+
+    if (!bulkCategoryId) {
+        return; // "개별 선택"인 경우 아무것도 하지 않음
+    }
+
+    // 모든 행의 카테고리를 선택된 값으로 변경
+    document.querySelectorAll('.bulk-category').forEach(select => {
+        select.value = bulkCategoryId;
+    });
+
+    showMessage('모든 행에 카테고리가 일괄 적용되었습니다.', 'success');
+}
+
+// 테이블 초기화
+function clearBulkTable() {
+    if (!confirm('입력된 내용을 모두 지우시겠습니까?')) return;
+    const tbody = document.getElementById('bulkInsertTableBody');
+    tbody.innerHTML = '';
+    addBulkRow();
+}
+
+// 일괄 등록 실행
+async function submitBulkInsert() {
+    const tbody = document.getElementById('bulkInsertTableBody');
+    const rows = tbody.querySelectorAll('tr');
+
+
+    const dataList = [];
+
+    // 입력된 행만 수집
+    rows.forEach((row) => {
+        const partNumber = row.querySelector('.bulk-part-number').value.trim();
+        const categoryId = row.querySelector('.bulk-category').value;
+        const partName = row.querySelector('.bulk-part-name').value.trim();
+        const location = row.querySelector('.bulk-location').value.trim();
+        const quantity = row.querySelector('.bulk-quantity').value;
+        const unit = row.querySelector('.bulk-unit').value.trim();
+        const price = row.querySelector('.bulk-price').value;
+        const date = row.querySelector('.bulk-date').value;
+        const description = row.querySelector('.bulk-description').value.trim();
+        const note = row.querySelector('.bulk-note').value.trim();
+
+        // 필수 항목: 부품번호, 카테고리, 부품명, 수량, 금액, 구매일자, 설명
+        if (partNumber && categoryId && partName && quantity && price && date && description) {
+            const data = {
+                partNumber: partNumber,
+                categoryId: parseInt(categoryId),
+                partName: partName,
+                location: location || null,
+                incomingQuantity: parseInt(quantity),
+                unit: unit || 'EA',
+                purchasePrice: parseFloat(price),
+                currency: 'KRW',
+                purchaseDate: date,
+                description: description,
+                note: note,
+                createdBy: 'system'
+            };
+
+            dataList.push(data);
+        }
+    });
+
+    if (dataList.length === 0) {
+        showMessage('등록할 데이터가 없습니다. 필수 항목을 입력하세요.', 'error');
+        return;
+    }
+
+    if (!confirm(`${dataList.length}건을 등록하시겠습니까?`)) return;
+
+    try {
+        const response = await fetch(`${INCOMING_API}/bulk`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dataList)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            showMessage(`등록 완료: ${result.success}건 성공, ${result.fail}건 실패`, 'success');
+            clearBulkTable();
+            loadAllIncoming();
+            loadInventory();
+            loadLowStock();
+        } else {
+            const message = await response.text();
+            showMessage('등록 실패: ' + message, 'error');
+        }
+    } catch (error) {
+        showMessage('서버 연결 오류: ' + error.message, 'error');
+    }
+}
+
+// ==================== 카테고리 모달 관련 ====================
+async function openCategoryModal() {
+    document.getElementById('categoryModal').style.display = 'block';
+    document.getElementById('categoryForm').reset();
+    await loadCategoryList();
+}
+
+function closeCategoryModal() {
+    document.getElementById('categoryModal').style.display = 'none';
+    document.getElementById('categoryForm').reset();
+}
+
+async function loadCategoryList() {
+    try {
+        const response = await fetch(CATEGORY_API);
+        const categories = await response.json();
+
+        const tbody = document.getElementById('categoryListBody');
+        tbody.innerHTML = '';
+
+        categories.forEach(category => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${category.categoryCode}</td>
+                <td>${category.categoryName}</td>
+                <td>${category.description || '-'}</td>
+                <td>
+                    <button class="btn-small" onclick="deleteCategory(${category.categoryId}, '${escapeHtml(category.categoryName)}')" style="background-color: #dc3545; color: white; border: none; padding: 4px 8px; cursor: pointer; border-radius: 3px;">삭제</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (error) {
+        showMessage('카테고리 목록 조회 오류: ' + error.message, 'error');
+    }
+}
+
+async function deleteCategory(categoryId, categoryName) {
+    if (!confirm(`카테고리 "${categoryName}"을(를) 삭제하시겠습니까?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${CATEGORY_API}/${categoryId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showMessage('카테고리 삭제 완료', 'success');
+            await loadCategoryList(); // 목록 새로고침
+            await loadCategories(); // 전체 카테고리 새로고침
+            loadCategoriesForBulk(); // 입고 등록 드롭다운 새로고침
+        } else {
+            const errorMessage = await response.text();
+            showMessage('카테고리 삭제 실패: ' + errorMessage, 'error');
+        }
+    } catch (error) {
+        showMessage('서버 연결 오류: ' + error.message, 'error');
+    }
+}
+
+async function submitCategory(event) {
+    event.preventDefault();
+
+    const categoryData = {
+        categoryCode: document.getElementById('categoryCode').value.trim(),
+        categoryName: document.getElementById('categoryName').value.trim(),
+        description: document.getElementById('categoryDescription').value.trim() || null
+    };
+
+    try {
+        const response = await fetch(CATEGORY_API, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(categoryData)
+        });
+
+        if (response.ok) {
+            const message = await response.text();
+            showMessage(message, 'success');
+            document.getElementById('categoryForm').reset();
+            await loadCategoryList(); // 목록 새로고침
+            await loadCategories(); // 전체 카테고리 새로고침
+            loadCategoriesForBulk(); // 입고 등록 드롭다운 새로고침
+        } else {
+            const errorMessage = await response.text();
+            showMessage('카테고리 등록 실패: ' + errorMessage, 'error');
+        }
+    } catch (error) {
+        showMessage('서버 연결 오류: ' + error.message, 'error');
+    }
+}
+
+// ============================================
+// CSV 다운로드 관련 함수
+// ============================================
+
+// CSV 다운로드 타입 및 데이터 저장
+let currentCsvType = '';
+let currentCsvData = null;
+let currentCsvColumns = [];
+
+/**
+ * CSV 컬럼 선택 모달 열기
+ */
+function openCsvColumnModal(csvType, data, allColumns) {
+    currentCsvType = csvType;
+    currentCsvData = data;
+    currentCsvColumns = allColumns;
+
+    const columnList = document.getElementById('csvColumnList');
+    columnList.innerHTML = '';
+
+    allColumns.forEach((column) => {
+        const label = document.createElement('label');
+        label.style.display = 'block';
+        label.style.padding = '8px';
+        label.style.cursor = 'pointer';
+        label.style.borderBottom = '1px solid #f0f0f0';
+        label.innerHTML = `
+            <input type="checkbox" class="csv-column-checkbox" value="${column}" checked style="margin-right: 8px;">
+            ${column}
+        `;
+        columnList.appendChild(label);
+    });
+
+    document.getElementById('csvColumnModal').style.display = 'block';
+}
+
+/**
+ * CSV 컬럼 선택 모달 닫기
+ */
+function closeCsvColumnModal() {
+    document.getElementById('csvColumnModal').style.display = 'none';
+    currentCsvType = '';
+    currentCsvData = null;
+    currentCsvColumns = [];
+}
+
+/**
+ * 전체 컬럼 선택
+ */
+function selectAllColumns() {
+    document.querySelectorAll('.csv-column-checkbox').forEach(checkbox => {
+        checkbox.checked = true;
+    });
+}
+
+/**
+ * 전체 컬럼 해제
+ */
+function deselectAllColumns() {
+    document.querySelectorAll('.csv-column-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+}
+
+/**
+ * 선택된 컬럼으로 CSV 다운로드 확정
+ */
+function confirmCsvDownload() {
+    const selectedColumns = [];
+    document.querySelectorAll('.csv-column-checkbox:checked').forEach(checkbox => {
+        selectedColumns.push(checkbox.value);
+    });
+
+    if (selectedColumns.length === 0) {
+        showMessage('최소 1개 이상의 컬럼을 선택해주세요.', 'error');
+        return;
+    }
+
+    // 선택된 컬럼만 포함하여 CSV 생성
+    const filteredData = currentCsvData.map(row => {
+        const filteredRow = {};
+        selectedColumns.forEach(col => {
+            filteredRow[col] = row[col];
+        });
+        return filteredRow;
+    });
+
+    const csvContent = convertToCSV(selectedColumns, filteredData);
+    const today = new Date().toISOString().split('T')[0];
+
+    let filename = '';
+    switch (currentCsvType) {
+        case 'incoming':
+            filename = `입고리스트_${today}.csv`;
+            break;
+        case 'inventory':
+            filename = `재고현황_${today}.csv`;
+            break;
+        case 'lowstock':
+            filename = `재고부족_${today}.csv`;
+            break;
+        case 'usage':
+            filename = `출고내역_${today}.csv`;
+            break;
+    }
+
+    downloadCSV(filename, csvContent);
+    showMessage('CSV 다운로드 완료', 'success');
+    closeCsvColumnModal();
+}
+
+/**
+ * 데이터를 CSV 형식으로 변환 (UTF-8 BOM 포함)
+ */
+function convertToCSV(headers, data) {
+    const BOM = '\uFEFF';
+    const headerRow = headers.join(',');
+    const dataRows = data.map(row => {
+        return headers.map(header => {
+            const value = row[header] || '';
+            const stringValue = String(value);
+            if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+                return '"' + stringValue.replace(/"/g, '""') + '"';
+            }
+            return stringValue;
+        }).join(',');
+    });
+    return BOM + headerRow + '\n' + dataRows.join('\n');
+}
+
+/**
+ * CSV 파일 다운로드 트리거
+ */
+function downloadCSV(filename, csvContent) {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+/**
+ * 입고 리스트 CSV 다운로드
+ */
+async function downloadIncomingCSV() {
+    try {
+        const response = await fetch(INCOMING_API);
+        if (!response.ok) throw new Error('데이터 조회 실패');
+
+        const data = await response.json();
+
+        const csvData = data.map(item => ({
+            '입고ID': item.incomingId,
+            '카테고리': item.categoryName,
+            '부품번호': item.partNumber,
+            '부품명': item.partName,
+            '설명': item.description,
+            '입고수량': item.incomingQuantity,
+            '단위': item.unit,
+            '통화': item.currency,
+            '외화단가': item.originalPrice,
+            '환율': item.exchangeRate,
+            '구매금액': item.purchasePrice,
+            '공급업체': item.supplier,
+            '입고일': item.incomingDate,
+            '등록일시': item.createdAt,
+            '비고': item.remarks
+        }));
+
+        const headers = ['입고ID', '카테고리', '부품번호', '부품명', '설명', '입고수량', '단위', '통화', '외화단가', '환율', '구매금액', '공급업체', '입고일', '등록일시', '비고'];
+
+        // 컬럼 선택 모달 열기
+        openCsvColumnModal('incoming', csvData, headers);
+    } catch (error) {
+        showMessage('CSV 다운로드 오류: ' + error.message, 'error');
+    }
+}
+
+/**
+ * 재고 현황 CSV 다운로드
+ */
+async function downloadInventoryCSV() {
+    try {
+        const response = await fetch(`${INCOMING_API}/inventory`);
+        if (!response.ok) throw new Error('데이터 조회 실패');
+
+        const data = await response.json();
+
+        const csvData = data.map(item => ({
+            '카테고리': item.category_name,
+            '부품번호': item.part_number,
+            '부품명': item.part_name,
+            '총입고': item.total_incoming,
+            '총출고': item.total_outgoing || 0,
+            '현재고': item.current_stock,
+            '평균단가': item.avg_price,
+            '재고금액': item.stock_value
+        }));
+
+        const headers = ['카테고리', '부품번호', '부품명', '총입고', '총출고', '현재고', '평균단가', '재고금액'];
+
+        // 컬럼 선택 모달 열기
+        openCsvColumnModal('inventory', csvData, headers);
+    } catch (error) {
+        showMessage('CSV 다운로드 오류: ' + error.message, 'error');
+    }
+}
+
+/**
+ * 재고 부족 CSV 다운로드
+ */
+async function downloadLowStockCSV() {
+    try {
+        const threshold = parseInt(document.getElementById('lowStockThreshold').value) || 5;
+        const response = await fetch(`${INCOMING_API}/low-stock?threshold=${threshold}`);
+        if (!response.ok) throw new Error('데이터 조회 실패');
+
+        const data = await response.json();
+
+        const csvData = data.map(item => ({
+            '카테고리': item.category_name,
+            '부품번호': item.part_number,
+            '부품명': item.part_name,
+            '현재고': item.current_stock,
+            '평균단가': item.avg_price
+        }));
+
+        const headers = ['카테고리', '부품번호', '부품명', '현재고', '평균단가'];
+
+        // 컬럼 선택 모달 열기
+        openCsvColumnModal('lowstock', csvData, headers);
+    } catch (error) {
+        showMessage('CSV 다운로드 오류: ' + error.message, 'error');
+    }
+}
+
+/**
+ * 출고 내역 CSV 다운로드
+ */
+async function downloadUsageCSV() {
+    try {
+        const response = await fetch(USAGE_API);
+        if (!response.ok) throw new Error('데이터 조회 실패');
+
+        const data = await response.json();
+
+        const csvData = data.map(item => ({
+            '출고ID': item.usageId,
+            '카테고리': item.categoryName,
+            '부품번호': item.partNumber,
+            '부품명': item.partName,
+            '출고수량': item.usageQuantity,
+            '사용처': item.usagePurpose,
+            '출고일': item.usageDate,
+            '비고': item.remarks
+        }));
+
+        const headers = ['출고ID', '카테고리', '부품번호', '부품명', '출고수량', '사용처', '출고일', '비고'];
+
+        // 컬럼 선택 모달 열기
+        openCsvColumnModal('usage', csvData, headers);
+    } catch (error) {
+        showMessage('CSV 다운로드 오류: ' + error.message, 'error');
+    }
+}
+
+// ============================================
+// 부품 위치 관련 함수
+// ============================================
+
+/**
+ * 부품 위치 모달 열기
+ */
+async function openLocationModal(partNumber) {
+    try {
+        // 부품 위치 정보 조회
+        const response = await fetch(`/livewalk/part-locations/part/${partNumber}`);
+        if (!response.ok) {
+            showMessage('부품 위치 정보를 찾을 수 없습니다.', 'error');
+            return;
+        }
+
+        const location = await response.json();
+
+        // 모달 열기
+        document.getElementById('locationModalPartNumber').textContent = partNumber;
+        document.getElementById('locationGridModal').style.display = 'block';
+
+        // 그리드 생성
+        createLocationGrid(location.locationCode);
+    } catch (error) {
+        showMessage('배치도 조회 오류: ' + error.message, 'error');
+    }
+}
+
+/**
+ * 32x27 배치도 그리드 생성
+ * 세로: 숫자 (1-32)
+ * 가로: 영어 (A-Z, AA) - 27개
+ */
+function createLocationGrid(highlightLocation) {
+    const container = document.getElementById('locationGridContainer');
+    const rows = 32;  // 세로 (숫자)
+    const cols = 27;  // 가로 (영어)
+
+    let html = '<table style="border-collapse: collapse; margin: 0 auto;">';
+
+    // 가로 레이블 (A-Z, AA) - 27개
+    const colLabels = [];
+    for (let i = 0; i < cols; i++) {
+        if (i < 26) {
+            colLabels.push(String.fromCharCode(65 + i)); // A-Z
+        } else {
+            colLabels.push('A' + String.fromCharCode(65 + (i - 26))); // AA
+        }
+    }
+
+    // 헤더 (가로 - 영어)
+    html += '<tr><th style="border: 1px solid #ddd; padding: 5px; background: #f5f5f5; min-width: 30px;"></th>';
+    for (let col = 0; col < cols; col++) {
+        html += `<th style="border: 1px solid #ddd; padding: 5px; background: #f5f5f5; min-width: 30px; font-size: 12px;">${colLabels[col]}</th>`;
+    }
+    html += '</tr>';
+
+    // 행 생성 (세로 - 숫자 1-32)
+    for (let row = 1; row <= rows; row++) {
+        html += '<tr>';
+        html += `<th style="border: 1px solid #ddd; padding: 5px; background: #f5f5f5; font-size: 12px;">${row}</th>`;
+
+        for (let col = 0; col < cols; col++) {
+            const cellLocation = `${colLabels[col]}-${row}`;
+            const isHighlight = cellLocation === highlightLocation;
+
+            const bgColor = isHighlight ? '#ff6600' : '#fff';
+            const textColor = isHighlight ? '#fff' : '#333';
+            const fontWeight = isHighlight ? 'bold' : 'normal';
+            const fontSize = isHighlight ? '14px' : '11px';
+
+            html += `<td style="border: 1px solid #ddd; padding: 8px; text-align: center; background: ${bgColor}; color: ${textColor}; font-weight: ${fontWeight}; font-size: ${fontSize}; min-width: 40px; min-height: 30px;">`;
+            if (isHighlight) {
+                html += cellLocation;
+            }
+            html += '</td>';
+        }
+
+        html += '</tr>';
+    }
+
+    html += '</table>';
+
+    container.innerHTML = html;
+}
+
+/**
+ * 배치도 모달 닫기
+ */
+function closeLocationGridModal() {
+    document.getElementById('locationGridModal').style.display = 'none';
 }

@@ -16,7 +16,7 @@ import com.example.part.service.PartLocationService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/livewalk/part-location")
+@RequestMapping("/livewalk/part-locations")
 @RequiredArgsConstructor
 public class PartLocationController {
 
@@ -27,9 +27,14 @@ public class PartLocationController {
         return partLocationService.getAllLocations();
     }
 
-    @GetMapping("/{code}")
+    @GetMapping("/code/{code}")
     public PartLocationDTO getLocation(@PathVariable String code) {
         return partLocationService.getLocationByCode(code);
+    }
+
+    @GetMapping("/part/{partNumber}")
+    public PartLocationDTO getLocationByPartNumber(@PathVariable String partNumber) {
+        return partLocationService.getLocationByPartNumber(partNumber);
     }
 
     @PostMapping

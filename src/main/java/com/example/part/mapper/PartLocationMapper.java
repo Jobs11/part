@@ -12,6 +12,8 @@ public interface PartLocationMapper {
 
     PartLocationDTO findByCode(String locationCode);
 
+    PartLocationDTO findByPartNumber(String partNumber);
+
     int insertLocation(PartLocationDTO dto);
 
     int updateLocation(PartLocationDTO dto);
