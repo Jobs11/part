@@ -55,7 +55,15 @@
     <!-- ✅ usage_id로 단건 조회 -->
     <select id="findById" resultMap="usageResultMap" parameterType="int">
         SELECT
-            pu.*,
+            pu.usage_id,
+            pu.incoming_id,
+            pu.part_number,
+            pu.quantity_used,
+            pu.usage_location,
+            pu.used_date,
+            pu.note,
+            pu.created_by,
+            pu.created_at,
             pi.part_name,
             pi.unit,
             c.category_name
@@ -68,7 +76,15 @@
     <!-- ✅ 전체 사용 내역 -->
     <select id="selectAllUsage" resultMap="usageResultMap">
         SELECT
-            pu.*,
+            pu.usage_id,
+            pu.incoming_id,
+            pu.part_number,
+            pu.quantity_used,
+            pu.usage_location,
+            pu.used_date,
+            pu.note,
+            pu.created_by,
+            pu.created_at,
             pi.part_name,
             pi.unit,
             c.category_name
@@ -81,7 +97,15 @@
     <!-- ✅ 검색 기능 (부품명, 사용처, 부품번호 동시 검색) -->
     <select id="searchUsage" resultMap="usageResultMap" parameterType="string">
         SELECT
-            pu.*,
+            pu.usage_id,
+            pu.incoming_id,
+            pu.part_number,
+            pu.quantity_used,
+            pu.usage_location,
+            pu.used_date,
+            pu.note,
+            pu.created_by,
+            pu.created_at,
             pi.part_name,
             pi.unit,
             c.category_name
@@ -98,7 +122,15 @@
     <!-- ✅ 사용처별 조회 -->
     <select id="selectUsageByLocation" parameterType="string" resultMap="usageResultMap">
         SELECT
-            pu.*,
+            pu.usage_id,
+            pu.incoming_id,
+            pu.part_number,
+            pu.quantity_used,
+            pu.usage_location,
+            pu.used_date,
+            pu.note,
+            pu.created_by,
+            pu.created_at,
             pi.part_name,
             pi.unit,
             c.category_name
@@ -112,7 +144,15 @@
     <!-- ✅ 부품번호별 조회 -->
     <select id="selectUsageByPartNumber" parameterType="string" resultMap="usageResultMap">
         SELECT
-            pu.*,
+            pu.usage_id,
+            pu.incoming_id,
+            pu.part_number,
+            pu.quantity_used,
+            pu.usage_location,
+            pu.used_date,
+            pu.note,
+            pu.created_by,
+            pu.created_at,
             pi.part_name,
             pi.unit,
             c.category_name
@@ -126,7 +166,15 @@
     <!-- ✅ 카테고리별 조회 -->
     <select id="selectUsageByCategory" parameterType="int" resultMap="usageResultMap">
         SELECT
-            pu.*,
+            pu.usage_id,
+            pu.incoming_id,
+            pu.part_number,
+            pu.quantity_used,
+            pu.usage_location,
+            pu.used_date,
+            pu.note,
+            pu.created_by,
+            pu.created_at,
             pi.part_name,
             pi.unit,
             c.category_name
@@ -140,7 +188,15 @@
     <!-- ✅ 기간별 조회 (날짜 필터) -->
     <select id="selectUsageByDateRange" resultMap="usageResultMap">
         SELECT
-            pu.*,
+            pu.usage_id,
+            pu.incoming_id,
+            pu.part_number,
+            pu.quantity_used,
+            pu.usage_location,
+            pu.used_date,
+            pu.note,
+            pu.created_by,
+            pu.created_at,
             pi.part_name,
             pi.unit,
             c.category_name
@@ -154,7 +210,15 @@
     <!-- ✅ 정렬 (열 이름 + ASC/DESC 동적) -->
     <select id="sortUsage" resultMap="usageResultMap">
         SELECT
-            pu.*,
+            pu.usage_id,
+            pu.incoming_id,
+            pu.part_number,
+            pu.quantity_used,
+            pu.usage_location,
+            pu.used_date,
+            pu.note,
+            pu.created_by,
+            pu.created_at,
             pi.part_name,
             pi.unit,
             c.category_name
@@ -181,7 +245,15 @@
     <!-- 검색 + 정렬 통합 -->
     <select id="searchWithSort" resultMap="usageResultMap">
         SELECT
-            pu.*,
+            pu.usage_id,
+            pu.incoming_id,
+            pu.part_number,
+            pu.quantity_used,
+            pu.usage_location,
+            pu.used_date,
+            pu.note,
+            pu.created_by,
+            pu.created_at,
             pi.part_name,
             pi.unit,
             c.category_name
@@ -192,6 +264,66 @@
         OR pu.usage_location LIKE CONCAT('%', #{keyword}, '%')
         OR pu.part_number LIKE CONCAT('%', #{keyword}, '%')
         ORDER BY ${column} ${order}
+    </select>
+
+    <!-- 출고 고급 검색 -->
+    <select id="searchAdvanced" resultMap="usageResultMap" parameterType="map">
+        SELECT
+            pu.usage_id,
+            pu.incoming_id,
+            pu.part_number,
+            pu.quantity_used,
+            pu.usage_location,
+            pu.used_date,
+            pu.note,
+            pu.created_by,
+            pu.created_at,
+            pi.part_name,
+            pi.unit,
+            c.category_name
+        FROM part_usage pu
+        LEFT JOIN part_incoming pi ON pu.incoming_id = pi.incoming_id
+        LEFT JOIN category c ON pi.category_id = c.category_id
+        WHERE 1 = 1
+
+        <if test="column != null and column != '' and keyword != null and keyword != ''">
+            AND ${column} LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+
+        <if test="(column == null or column == '')
+                and keyword != null and keyword != ''">
+            AND (
+                pu.part_number LIKE CONCAT('%', #{keyword}, '%')
+                OR pi.part_name LIKE CONCAT('%', #{keyword}, '%')
+                OR pu.usage_location LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+
+        <foreach collection="includeList" item="kw">
+            AND (
+                pu.part_number LIKE CONCAT('%', #{kw}, '%')
+                OR pi.part_name LIKE CONCAT('%', #{kw}, '%')
+                OR pu.usage_location LIKE CONCAT('%', #{kw}, '%')
+            )
+        </foreach>
+
+        <foreach collection="excludeList" item="kw">
+            AND (
+                pu.part_number NOT LIKE CONCAT('%', #{kw}, '%')
+                AND pi.part_name NOT LIKE CONCAT('%', #{kw}, '%')
+                AND pu.usage_location NOT LIKE CONCAT('%', #{kw}, '%')
+            )
+        </foreach>
+
+        ORDER BY
+        <choose>
+            <when test="column != null and column != ''">
+                ${column} ${order}
+            </when>
+            <otherwise>
+                pu.used_date DESC, pu.created_at DESC
+            </otherwise>
+        </choose>
     </select>
 
 </mapper>

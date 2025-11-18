@@ -43,4 +43,7 @@ public interface PartUsageService {
 
     // 검색 정렬 조회
     List<PartUsageDTO> searchWithSort(String keyword, String column, String order);
+
+    // 고급 검??
+    List<PartUsageDTO> searchAdvanced(Map<String, Object> params);
 }

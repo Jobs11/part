@@ -185,6 +185,11 @@ public class PartIncomingServiceImpl implements PartIncomingService {
     }
 
     @Override
+    public List<Map<String, Object>> searchInventoryAdvanced(Map<String, Object> params) {
+        return partIncomingMapper.searchInventoryAdvanced(params);
+    }
+
+    @Override
     public List<Map<String, Object>> getLowStock(int threshold) {
         return partIncomingMapper.selectLowStock(threshold);
     }
@@ -210,5 +215,39 @@ public class PartIncomingServiceImpl implements PartIncomingService {
     @Override
     public List<PartIncomingDTO> searchWithSort(String keyword, String column, String order) {
         return partIncomingMapper.searchWithSort(keyword, column, order);
+    }
+
+    public List<PartIncomingDTO> searchAdvanced(Map<String, Object> params) {
+        // 컬럼명 매핑 (테이블 alias 추가)
+        if (params.get("column") != null && !params.get("column").toString().isEmpty()) {
+            String column = params.get("column").toString();
+            params.put("column", mapColumnName(column));
+        }
+        return partIncomingMapper.searchAdvanced(params);
+    }
+
+    private String mapColumnName(String column) {
+        switch (column) {
+            case "category_name":
+                return "c.category_name";
+            case "part_number":
+                return "pi.part_number";
+            case "part_name":
+                return "pi.part_name";
+            case "description":
+                return "pi.description";
+            case "note":
+                return "pi.note";
+            case "incoming_quantity":
+                return "pi.incoming_quantity";
+            case "purchase_price":
+                return "pi.purchase_price";
+            case "purchase_date":
+                return "pi.purchase_date";
+            case "created_at":
+                return "pi.created_at";
+            default:
+                return column;
+        }
     }
 }

@@ -39,3 +39,4 @@ src/main/resources/application-secret.properties
 
 ### Uploads ###
 uploads/
+nul

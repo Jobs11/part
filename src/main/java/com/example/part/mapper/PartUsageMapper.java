@@ -50,4 +50,6 @@ public interface PartUsageMapper {
     List<PartUsageDTO> searchWithSort(@Param("keyword") String keyword,
             @Param("column") String column,
             @Param("order") String order);
+
+    List<PartUsageDTO> searchAdvanced(Map<String, Object> params);
 }

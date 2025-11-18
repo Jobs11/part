@@ -1,6 +1,7 @@
 package com.example.part.controller;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -80,6 +81,61 @@ public class PartUsageController {
     public ResponseEntity<List<PartUsageDTO>> searchUsage(@RequestParam("keyword") String keyword) {
         List<PartUsageDTO> usageList = partUsageService.searchUsage(keyword);
         return ResponseEntity.ok(usageList);
+    }
+
+    /**
+     * 출고 고급 검색 (부품명/부품번호/사용처 + +포함/-제외 + 컬럼 검색)
+     * GET /livewalk/part-usage/search-advanced
+     */
+    @GetMapping("/search-advanced")
+    public ResponseEntity<List<PartUsageDTO>> searchAdvanced(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String column,
+            @RequestParam(required = false) String order) {
+
+        Map<String, Object> params = new HashMap<>();
+
+        List<String> includeList = new java.util.ArrayList<>();
+        List<String> excludeList = new java.util.ArrayList<>();
+        String cleanedKeyword = null;
+
+        if (keyword != null) {
+            String trimmedKeyword = keyword.trim();
+
+            if (!trimmedKeyword.isEmpty()) {
+                StringBuilder baseKeywordBuilder = new StringBuilder();
+                String[] tokens = trimmedKeyword.split("\\s+");
+
+                for (String token : tokens) {
+                    if (token.startsWith("+") && token.length() > 1) {
+                        includeList.add(token.substring(1));
+                    } else if (token.startsWith("-") && token.length() > 1) {
+                        excludeList.add(token.substring(1));
+                    } else if (!token.isEmpty()) {
+                        if (baseKeywordBuilder.length() > 0) {
+                            baseKeywordBuilder.append(" ");
+                        }
+                        baseKeywordBuilder.append(token);
+                    }
+                }
+
+                if (baseKeywordBuilder.length() > 0) {
+                    cleanedKeyword = baseKeywordBuilder.toString();
+                }
+            }
+        }
+
+        params.put("keyword", cleanedKeyword);
+        params.put("includeList", includeList);
+        params.put("excludeList", excludeList);
+        params.put("column", column);
+
+        if (order == null || (!order.equalsIgnoreCase("asc") && !order.equalsIgnoreCase("desc"))) {
+            order = "asc";
+        }
+        params.put("order", order.toLowerCase());
+
+        return ResponseEntity.ok(partUsageService.searchAdvanced(params));
     }
 
     /**

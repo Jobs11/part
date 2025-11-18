@@ -1,9 +1,129 @@
 const INCOMING_API = '/livewalk/incoming';
 const USAGE_API = '/livewalk/part-usage';
 const CATEGORY_API = '/livewalk/categories';
+const LOCATION_CODE_REGEX = /^(?:[A-Z]|AA)-(?:[1-9]|[12]\d|3[0-2])$/;
+
+function enableEnterKeySearch(inputId, callback) {
+    const inputEl = document.getElementById(inputId);
+    if (!inputEl || typeof callback !== 'function') return;
+
+    inputEl.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            callback();
+        }
+    });
+}
+
+function normalizeLocationCode(value = '') {
+    // 먼저 대문자 변환 및 허용된 문자만 남기기
+    let normalized = value
+        .toUpperCase()
+        .replace(/[^A-Z0-9-]/g, '');
+
+    // 하이픈이 없는 경우 자동으로 삽입 시도 (예: AA13 -> AA-13, A1 -> A-1)
+    if (normalized && !normalized.includes('-')) {
+        // A~AA 다음에 숫자가 오는 패턴 찾기
+        const match = normalized.match(/^(AA|[A-Z])(\d+)$/);
+        if (match) {
+            normalized = `${match[1]}-${match[2]}`;
+        }
+    }
+
+    // 중복 하이픈 제거
+    normalized = normalized.replace(/--+/g, '-');
+
+    return normalized;
+}
+
+function isValidLocationCode(value = '') {
+    return LOCATION_CODE_REGEX.test(value);
+}
+
+function attachLocationInputHandlers(inputEl) {
+    if (!inputEl) return;
+
+    // 툴팁 엘리먼트 생성
+    let tooltip = inputEl.parentElement.querySelector('.location-tooltip');
+    if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.className = 'location-tooltip';
+        tooltip.style.cssText = `
+            position: absolute;
+            background: #333;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            z-index: 10000;
+            display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            pointer-events: none;
+        `;
+        tooltip.innerHTML = '형식 오류: A~AA 구역과 1~32 행을 하이픈(-)으로 구분해주세요. 예: A-1, AA-32';
+
+        // 화살표 추가
+        const arrow = document.createElement('div');
+        arrow.style.cssText = `
+            position: absolute;
+            bottom: -4px;
+            left: 20px;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 5px solid #333;
+        `;
+        tooltip.appendChild(arrow);
+
+        document.body.appendChild(tooltip);
+    }
+
+    function showTooltip() {
+        const rect = inputEl.getBoundingClientRect();
+        tooltip.style.left = rect.left + 'px';
+        tooltip.style.top = (rect.top - tooltip.offsetHeight - 8) + 'px';
+        tooltip.style.display = 'block';
+    }
+
+    function hideTooltip() {
+        tooltip.style.display = 'none';
+    }
+
+    inputEl.addEventListener('input', function () {
+        this.value = normalizeLocationCode(this.value);
+        hideTooltip();
+    });
+
+    inputEl.addEventListener('blur', function () {
+        this.value = normalizeLocationCode(this.value);
+        if (this.value && !isValidLocationCode(this.value)) {
+            showTooltip();
+            this.style.borderColor = '#d32f2f';
+
+            // 2초 후 자동으로 값 초기화 및 툴팁 숨김
+            setTimeout(() => {
+                this.value = '';
+                this.style.borderColor = '';
+                hideTooltip();
+            }, 2000);
+        } else {
+            this.style.borderColor = '';
+            hideTooltip();
+        }
+    });
+
+    inputEl.addEventListener('focus', function () {
+        this.style.borderColor = '';
+        hideTooltip();
+    });
+}
 
 let categoriesData = [];
 let inventoryData = [];
+let currentInventorySearchKeyword = '';
+let currentInventorySearchColumn = '';
 let currentIncomingSortColumn = null;
 let currentIncomingSortOrder = 'asc';
 let currentUsageSortColumn = null;
@@ -74,6 +194,11 @@ document.addEventListener('DOMContentLoaded', function () {
     loadInventory();
     loadLowStock();
     loadAllUsage();
+
+    enableEnterKeySearch('incomingSearchInput', searchIncoming);
+    enableEnterKeySearch('usageSearchInput', searchUsage);
+    enableEnterKeySearch('inventorySearchInput', searchInventory);
+    enableEnterKeySearch('gridSearchInput', searchGrid);
 });
 
 // ==================== 카테고리 관련 ====================
@@ -186,6 +311,10 @@ function clearIncomingForm() {
 
 // ==================== 입고 리스트 조회 ====================
 async function loadAllIncoming() {
+    // 검색어만 초기화 (선택한 컬럼은 유지)
+    document.getElementById('incomingSearchInput').value = '';
+    currentIncomingSearchKeyword = '';
+
     try {
         const response = await fetch(INCOMING_API);
         if (!response.ok) throw new Error('데이터 조회 실패');
@@ -197,6 +326,79 @@ async function loadAllIncoming() {
     }
 }
 let currentIncomingSearchKeyword = ''; // 전역 변수 추가
+let currentIncomingSearchColumn = ''; // 선택된 컬럼
+
+// 입고 리스트 컬럼 선택
+function selectIncomingSearchColumn(column, element) {
+    currentIncomingSearchColumn = column;
+
+    // 모든 헤더의 선택 표시 제거
+    document.querySelectorAll('#incomingTable th').forEach(th => {
+        th.style.backgroundColor = '';
+        th.style.fontWeight = '';
+    });
+
+    // 선택된 컬럼 표시
+    if (element) {
+        element.style.backgroundColor = '#e3f2fd';
+        element.style.fontWeight = 'bold';
+    }
+
+    // 사용자에게 피드백
+    const columnNames = {
+        'category_name': '카테고리',
+        'part_number': '부품번호',
+        'part_name': '부품명',
+        'description': '설명',
+        'note': '비고',
+        'incoming_quantity': '입고수량',
+        'purchase_price': '구매금액',
+        'purchase_date': '구매일자',
+        'created_at': '등록일'
+    };
+    showMessage(`검색 컬럼: ${columnNames[column]} - 검색어를 입력하고 검색 버튼을 누르세요.`, 'info');
+}
+
+// 특정 컬럼으로 검색 (이전 방식 - 즉시 검색)
+async function searchIncomingByColumn(column) {
+    const searchTerm = document.getElementById('incomingSearchInput').value.trim();
+
+    currentIncomingSortColumn = column;
+    currentIncomingSortOrder = 'asc';
+
+    // 모든 헤더의 선택 표시 제거
+    document.querySelectorAll('#incomingTable th').forEach(th => {
+        th.style.backgroundColor = '';
+        th.style.fontWeight = '';
+    });
+
+    // 클릭된 컬럼 강조
+    const headers = document.querySelectorAll('#incomingTable th');
+    const columnIndex = {
+        'description': 3,
+        'note': 9
+    };
+    if (columnIndex[column] !== undefined && headers[columnIndex[column]]) {
+        headers[columnIndex[column]].style.backgroundColor = '#e3f2fd';
+        headers[columnIndex[column]].style.fontWeight = 'bold';
+    }
+
+    if (!searchTerm) {
+        showMessage('검색어를 입력하세요.', 'warning');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${INCOMING_API}/search-advanced?keyword=${encodeURIComponent(searchTerm)}&column=${column}`);
+        if (!response.ok) throw new Error('검색 실패');
+
+        const incomingList = await response.json();
+        await displayIncomingList(incomingList);
+        showMessage(`${column} 컬럼에서 ${incomingList.length}개 검색됨`, 'info');
+    } catch (error) {
+        showMessage('검색 오류: ' + error.message, 'error');
+    }
+}
 
 async function searchIncoming() {
     const searchTerm = document.getElementById('incomingSearchInput').value.trim();
@@ -208,7 +410,11 @@ async function searchIncoming() {
     }
 
     try {
-        const response = await fetch(`${INCOMING_API}/search?name=${encodeURIComponent(searchTerm)}`);
+        // 백엔드가 keyword에서 + - 를 자동으로 파싱하므로 원본 그대로 전달
+        const column = currentIncomingSearchColumn || '';
+        const url = `${INCOMING_API}/search-advanced?keyword=${encodeURIComponent(searchTerm)}&column=${column}`;
+
+        const response = await fetch(url);
         if (!response.ok) throw new Error('검색 실패');
 
         const incomingList = await response.json();
@@ -229,11 +435,40 @@ async function sortIncomingTable(column) {
         currentIncomingSortOrder = 'asc';
     }
 
+    // 모든 정렬 가능한 컬럼은 검색 컬럼으로도 등록
+    currentIncomingSearchColumn = column;
+
+    // 모든 헤더의 선택 표시 제거
+    document.querySelectorAll('#incomingTable th').forEach(th => {
+        th.style.backgroundColor = '';
+        th.style.fontWeight = '';
+    });
+
+    // 클릭된 컬럼 강조
+    const headers = document.querySelectorAll('#incomingTable th');
+    const columnIndex = {
+        'category_name': 0,
+        'part_number': 1,
+        'part_name': 2,
+        'description': 3,
+        'incoming_quantity': 4,
+        'purchase_price': 6,
+        'purchase_date': 7,
+        'created_at': 8,
+        'note': 9
+    };
+    if (columnIndex[column] !== undefined && headers[columnIndex[column]]) {
+        headers[columnIndex[column]].style.backgroundColor = '#e3f2fd';
+        headers[columnIndex[column]].style.fontWeight = 'bold';
+    }
+
     let endpoint;
 
     if (searchTerm) {
-        // 검색어 있으면 검색+정렬
-        endpoint = `${INCOMING_API}/search-sort?keyword=${encodeURIComponent(searchTerm)}&column=${column}&order=${currentIncomingSortOrder}`;
+        // 검색어 있으면 전체 검색 + 정렬 (column 파라미터는 정렬용이므로 빈 문자열로)
+        // currentIncomingSearchColumn이 설정되어 있으면 그 컬럼으로 검색, 아니면 전체 검색
+        const searchColumn = currentIncomingSearchColumn || '';
+        endpoint = `${INCOMING_API}/search-advanced?keyword=${encodeURIComponent(searchTerm)}&column=${searchColumn}&sortColumn=${column}&order=${currentIncomingSortOrder}`
     } else {
         // 검색어 없으면 전체 정렬
         endpoint = `${INCOMING_API}/sort?column=${column}&order=${currentIncomingSortOrder}`;
@@ -255,7 +490,7 @@ async function displayIncomingList(incomingList) {
     const tbody = document.getElementById('incomingTableBody');
 
     if (incomingList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="13" style="text-align: center;">입고 내역이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align: center;">입고 내역이 없습니다.</td></tr>';
         return;
     }
 
@@ -272,26 +507,20 @@ async function displayIncomingList(incomingList) {
             console.error('사진 개수 조회 오류:', error);
         }
 
-        const originalPrice = incoming.originalPrice ? formatNumber(incoming.originalPrice) : '-';
-        const originalPriceDisplay = incoming.currency !== 'KRW' && incoming.originalPrice ? originalPrice : '-';
-        const canEditOriginalPrice = incoming.currency !== 'KRW';
-        const canEditPurchasePrice = incoming.currency === 'KRW'; // KRW일 때만 구매금액 수정 가능
-
         return `
             <tr data-incoming-id="${incoming.incomingId}">
-                <td>${incoming.categoryName || '-'}</td>
-                <td>${incoming.partNumber || '-'}</td>
+                <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'categoryId', ${incoming.categoryId}, null, '${escapeHtml(incoming.categoryName || '')}')">${incoming.categoryName || '-'}</td>
+                <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'partNumber', '${escapeHtml(incoming.partNumber || '')}')">${incoming.partNumber || '-'}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'partName', '${escapeHtml(incoming.partName)}')">${incoming.partName || '-'}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'description', '${escapeHtml(incoming.description || '')}')">${incoming.description || '-'}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'incomingQuantity', ${incoming.incomingQuantity})">${incoming.incomingQuantity}</td>
                 <td>${incoming.unit || '-'}</td>
-                <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'currency', '${incoming.currency}')">${incoming.currency || '-'}</td>
-                <td class="${canEditOriginalPrice ? 'editable' : ''}" ${canEditOriginalPrice ? `ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'originalPrice', ${incoming.originalPrice || 0}, ${incoming.exchangeRate || 0})"` : ''}>${originalPriceDisplay}</td>
-                <td class="${canEditPurchasePrice ? 'editable' : ''}" ${canEditPurchasePrice ? `ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'purchasePrice', ${incoming.purchasePrice})"` : ''}>${formatNumber(incoming.purchasePrice)} 원</td>
+                <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'purchasePrice', ${incoming.purchasePrice})">${formatNumber(incoming.purchasePrice)} 원</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'purchaseDate', '${incoming.purchaseDate}')">${formatDate(incoming.purchaseDate)}</td>
                 <td>${formatDateTime(incoming.createdAt)}</td>
+                <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'note', '${escapeHtml(incoming.note || '')}')">${incoming.note || '-'}</td>
                 <td><button class="btn-small" onclick="openImageModal(${incoming.incomingId})">📷 ${imageCount > 0 ? imageCount + '장' : '사진'}</button></td>
-                <td><button class="btn-small" onclick="openLocationModal('${incoming.partNumber}')">📍 배치도</button></td>
+                <td><button class="btn-small" data-part-number="${escapeHtml(incoming.partNumber)}" onclick="openLocationModal(this.dataset.partNumber)">📍 배치도</button></td>
             </tr>
         `;
     });
@@ -301,17 +530,27 @@ async function displayIncomingList(incomingList) {
 }
 
 // 입고 셀 편집
-function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRate) {
+function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRate, displayValue) {
     event.stopPropagation();
     const cell = event.target;
     const originalValue = currentValue;
+    const originalDisplayValue = displayValue || currentValue;
     const storedExchangeRate = exchangeRate; // originalPrice 수정 시 필요한 환율
 
     if (cell.querySelector('input') || cell.querySelector('select')) return;
 
     let inputElement;
 
-    if (field === 'currency') {
+    if (field === 'categoryId') {
+        // 카테고리는 select
+        inputElement = document.createElement('select');
+        let options = '<option value="">선택하세요</option>';
+        categoriesData.forEach(category => {
+            const selected = category.categoryId === currentValue ? 'selected' : '';
+            options += `<option value="${category.categoryId}" ${selected}>${category.categoryName} (${category.categoryCode})</option>`;
+        });
+        inputElement.innerHTML = options;
+    } else if (field === 'currency') {
         // 통화는 select
         inputElement = document.createElement('select');
         inputElement.innerHTML = `
@@ -348,10 +587,12 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
     if (inputElement.select) inputElement.select();
 
     const saveEdit = async () => {
-        const newValue = inputElement.value.trim();
+        const newValue = field === 'categoryId' ? inputElement.value : inputElement.value.trim();
 
         if (newValue === String(originalValue) || (!newValue && !originalValue)) {
-            if (field === 'originalPrice') {
+            if (field === 'categoryId') {
+                cell.textContent = displayValue || '-';
+            } else if (field === 'originalPrice') {
                 cell.textContent = originalValue ? formatNumber(originalValue) : '-';
             } else {
                 cell.textContent = originalValue || '-';
@@ -369,7 +610,9 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
             // 수정할 필드만 업데이트
             const updatedData = { ...currentData };
 
-            if (field === 'incomingQuantity' || field === 'purchasePrice' || field === 'originalPrice') {
+            if (field === 'categoryId') {
+                updatedData[field] = parseInt(newValue);
+            } else if (field === 'incomingQuantity' || field === 'purchasePrice' || field === 'originalPrice') {
                 updatedData[field] = parseFloat(newValue);
 
                 // originalPrice 수정 시 purchasePrice도 자동 재계산
@@ -406,17 +649,8 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
             });
 
             if (response.ok) {
-                if (field === 'purchaseDate') {
-                    cell.textContent = formatDate(newValue);
-                } else if (field === 'purchasePrice') {
-                    cell.textContent = formatNumber(newValue) + ' 원';
-                } else if (field === 'originalPrice') {
-                    cell.textContent = formatNumber(newValue);
-                    // 전체 리스트 새로고침하여 purchasePrice도 업데이트된 값 표시
-                    await loadAllIncoming();
-                } else {
-                    cell.textContent = newValue || '-';
-                }
+                // 모든 수정 후 리스트 전체 새로고침 (ondblclick 속성 값 갱신 위해)
+                await loadAllIncoming();
                 showMessage('수정 완료', 'success');
                 loadInventory();
                 loadLowStock();
@@ -445,7 +679,9 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
     inputElement.addEventListener('blur', saveEdit);
     inputElement.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            if (field === 'purchaseDate') {
+            if (field === 'categoryId') {
+                cell.textContent = displayValue || '-';
+            } else if (field === 'purchaseDate') {
                 cell.textContent = formatDate(originalValue);
             } else if (field === 'purchasePrice') {
                 cell.textContent = formatNumber(originalValue) + ' 원';
@@ -460,6 +696,10 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
 
 // ==================== 재고 현황 조회 ====================
 async function loadInventory() {
+    // 검색어만 초기화 (선택한 컬럼은 유지)
+    document.getElementById('inventorySearchInput').value = '';
+    currentInventorySearchKeyword = '';
+
     try {
         const response = await fetch(`${INCOMING_API}/inventory`);
         if (!response.ok) throw new Error('재고 조회 실패');
@@ -471,12 +711,101 @@ async function loadInventory() {
     }
 }
 
+// 재고 검색 (백엔드 고급 검색 연동)
+async function searchInventory() {
+    const searchTerm = document.getElementById('inventorySearchInput').value.trim();
+
+    if (!searchTerm) {
+        await loadInventory();
+        return;
+    }
+
+    // currentInventorySearchColumn이 설정되어 있으면 그 컬럼으로 검색, 아니면 전체 검색
+    await requestInventorySearch(searchTerm, currentInventorySearchColumn);
+}
+
+// 특정 컬럼 선택 (검색 버튼을 누를 때까지 대기)
+function selectInventorySearchColumn(column, element) {
+    currentInventorySearchColumn = column;
+
+    // 모든 헤더의 선택 표시 제거
+    document.querySelectorAll('#inventoryTable th').forEach(th => {
+        th.style.backgroundColor = '';
+        th.style.fontWeight = '';
+    });
+
+    // 선택된 컬럼 표시
+    if (element) {
+        element.style.backgroundColor = '#e3f2fd';
+        element.style.fontWeight = 'bold';
+    }
+
+    // 사용자에게 피드백
+    const columnNames = {
+        'part_number': '부품번호',
+        'part_name': '부품명',
+        'category_name': '카테고리',
+        'current_stock': '현재재고',
+        'total_incoming': '총입고',
+        'total_used': '총출고',
+        'incoming_count': '입고횟수'
+    };
+    showMessage(`검색 컬럼: ${columnNames[column]} - 검색어를 입력하고 검색 버튼을 누르세요.`, 'info');
+}
+
+async function requestInventorySearch(searchTerm, column) {
+    try {
+        currentInventorySearchKeyword = searchTerm;
+        currentInventorySearchColumn = column || '';
+
+        const params = new URLSearchParams();
+        params.append('keyword', searchTerm);
+        if (column) {
+            params.append('column', column);
+        }
+
+        const response = await fetch(`${INCOMING_API}/inventory/search-advanced?${params.toString()}`);
+        if (!response.ok) throw new Error('검색 실패');
+
+        inventoryData = await response.json();
+        displayInventory(inventoryData);
+        showMessage(`${inventoryData.length}개 검색됨`, 'info');
+    } catch (error) {
+        showMessage('검색 오류: ' + error.message, 'error');
+    }
+}
+
 function sortInventoryTable(column) {
     if (currentInventorySortColumn === column) {
         currentInventorySortOrder = currentInventorySortOrder === 'asc' ? 'desc' : 'asc';
     } else {
         currentInventorySortColumn = column;
         currentInventorySortOrder = 'asc';
+    }
+
+    // 모든 정렬 가능한 컬럼은 검색 컬럼으로도 등록
+    currentInventorySearchColumn = column;
+
+    // 모든 헤더의 선택 표시 제거
+    document.querySelectorAll('#inventoryTable th').forEach(th => {
+        th.style.backgroundColor = '';
+        th.style.fontWeight = '';
+    });
+
+    // 클릭된 컬럼 강조
+    const headers = document.querySelectorAll('#inventoryTable th');
+    const columnIndex = {
+        'part_number': 0,
+        'part_name': 1,
+        'category_name': 2,
+        'current_stock': 3,
+        'total_incoming': 5,
+        'total_used': 6,
+        'incoming_count': 7
+    };
+    if (columnIndex[column] !== undefined && headers[columnIndex[column]]) {
+        headers[columnIndex[column]].style.backgroundColor = '#e3f2fd';
+        headers[columnIndex[column]].style.fontWeight = 'bold';
     }
 
     const sortedData = [...inventoryData].sort((a, b) => {
@@ -644,6 +973,10 @@ function clearUsageForm() {
 
 // ==================== 출고 내역 조회 ====================
 async function loadAllUsage() {
+    // 검색어만 초기화 (선택한 컬럼은 유지)
+    document.getElementById('usageSearchInput').value = '';
+    currentUsageSearchKeyword = '';
+
     try {
         const response = await fetch(USAGE_API);
         if (!response.ok) throw new Error('출고 내역 조회 실패');
@@ -656,6 +989,67 @@ async function loadAllUsage() {
 }
 
 let currentUsageSearchKeyword = ''; // 전역 변수 추가
+let currentUsageSearchColumn = ''; // 선택된 컬럼
+
+// 출고 내역 컬럼 선택
+function selectUsageSearchColumn(column, element) {
+    currentUsageSearchColumn = column;
+
+    // 모든 헤더의 선택 표시 제거
+    document.querySelectorAll('#usageTable th').forEach(th => {
+        th.style.backgroundColor = '';
+        th.style.fontWeight = '';
+    });
+
+    // 선택된 컬럼 표시
+    if (element) {
+        element.style.backgroundColor = '#e3f2fd';
+        element.style.fontWeight = 'bold';
+    }
+
+    // 사용자에게 피드백
+    const columnNames = {
+        'note': '비고'
+    };
+    showMessage(`검색 컬럼: ${columnNames[column]} - 검색어를 입력하고 검색 버튼을 누르세요.`, 'info');
+}
+
+// 출고 내역 컬럼으로 즉시 검색
+async function searchUsageByColumn(column) {
+    const searchTerm = document.getElementById('usageSearchInput').value.trim();
+
+    // 모든 헤더의 선택 표시 제거
+    document.querySelectorAll('#usageTable th').forEach(th => {
+        th.style.backgroundColor = '';
+        th.style.fontWeight = '';
+    });
+
+    // 클릭된 컬럼 강조
+    const headers = document.querySelectorAll('#usageTable th');
+    const columnIndex = {
+        'note': 6
+    };
+    if (columnIndex[column] !== undefined && headers[columnIndex[column]]) {
+        headers[columnIndex[column]].style.backgroundColor = '#e3f2fd';
+        headers[columnIndex[column]].style.fontWeight = 'bold';
+    }
+
+    if (!searchTerm) {
+        showMessage('검색어를 입력하세요.', 'warning');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${USAGE_API}/search-advanced?keyword=${encodeURIComponent(searchTerm)}&column=${column}&order=asc`);
+        if (!response.ok) throw new Error('검색 실패');
+
+        const usageList = await response.json();
+        displayUsageList(usageList);
+        showMessage(`${column} 컬럼에서 ${usageList.length}개 검색됨`, 'info');
+    } catch (error) {
+        showMessage('검색 오류: ' + error.message, 'error');
+    }
+}
 
 async function searchUsage() {
     const searchTerm = document.getElementById('usageSearchInput').value.trim();
@@ -667,7 +1061,9 @@ async function searchUsage() {
     }
 
     try {
-        const response = await fetch(`${USAGE_API}/search?keyword=${encodeURIComponent(searchTerm)}`);
+        // currentUsageSearchColumn이 설정되어 있으면 그 컬럼으로 검색, 아니면 전체 검색
+        const column = currentUsageSearchColumn || currentUsageSortColumn || '';
+        const response = await fetch(`${USAGE_API}/search-advanced?keyword=${encodeURIComponent(searchTerm)}&column=${column}&order=${currentUsageSortOrder}`);
         if (!response.ok) throw new Error('검색 실패');
 
         const usageList = await response.json();
@@ -688,11 +1084,38 @@ async function sortUsageTable(column) {
         currentUsageSortOrder = 'asc';
     }
 
+    // 모든 정렬 가능한 컬럼은 검색 컬럼으로도 등록
+    currentUsageSearchColumn = column;
+
+    // 모든 헤더의 선택 표시 제거
+    document.querySelectorAll('#usageTable th').forEach(th => {
+        th.style.backgroundColor = '';
+        th.style.fontWeight = '';
+    });
+
+    // 클릭된 컬럼 강조
+    const headers = document.querySelectorAll('#usageTable th');
+    const columnIndex = {
+        'used_date': 0,
+        'part_number': 1,
+        'part_name': 2,
+        'quantity_used': 3,
+        'usage_location': 5,
+        'note': 6,
+        'created_at': 7
+    };
+    if (columnIndex[column] !== undefined && headers[columnIndex[column]]) {
+        headers[columnIndex[column]].style.backgroundColor = '#e3f2fd';
+        headers[columnIndex[column]].style.fontWeight = 'bold';
+    }
+
     let endpoint;
 
     if (searchTerm) {
-        endpoint = `${USAGE_API}/search-sort?keyword=${encodeURIComponent(searchTerm)}&column=${column}&order=${currentUsageSortOrder}`;
+        // 검색어가 있으면 고급 검색 + 정렬
+        endpoint = `${USAGE_API}/search-advanced?keyword=${encodeURIComponent(searchTerm)}&column=${column}&order=${currentUsageSortOrder}`;
     } else {
+        // 검색어 없으면 전체 정렬
         endpoint = `${USAGE_API}/sort?column=${column}&order=${currentUsageSortOrder}`;
     }
 
@@ -814,14 +1237,12 @@ function makeUsageEditable(event, usageId, field, currentValue) {
 // ==================== 유틸리티 함수 ====================
 function formatDate(dateString) {
     if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ko-KR');
+    return dateString;
 }
 
 function formatDateTime(dateString) {
     if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleString('ko-KR');
+    return dateString;
 }
 
 function formatNumber(number) {
@@ -1260,15 +1681,16 @@ function addBulkRow() {
         </td>
         <td><input type="text" class="bulk-input bulk-part-number" placeholder="부품번호" required></td>
         <td><input type="text" class="bulk-input bulk-part-name" placeholder="부품명"></td>
-        <td><input type="text" class="bulk-input bulk-location" placeholder="위치"></td>
+        <td><input type="text" class="bulk-input bulk-location" placeholder="예: A-1" maxlength="5"></td>
         <td><input type="number" class="bulk-input bulk-quantity" placeholder="수량" min="1"></td>
         <td><input type="text" class="bulk-input bulk-unit" value="EA"></td>
         <td><input type="number" class="bulk-input bulk-price" placeholder="금액" min="0" step="0.01"></td>
         <td><input type="date" class="bulk-input bulk-date"></td>
         <td><input type="text" class="bulk-input bulk-description" placeholder="설명"></td>
-        <td><input type="text" class="bulk-input bulk-note" placeholder="비고(선택)"></td>
+        <td><input type="text" class="bulk-input bulk-note" placeholder="비고(실제 파트넘버)"></td>
     `;
     tbody.appendChild(tr);
+    attachLocationInputHandlers(tr.querySelector('.bulk-location'));
 
     // 날짜 기본값 설정
     tr.querySelector('.bulk-date').value = new Date().toISOString().split('T')[0];
@@ -1355,22 +1777,28 @@ function clearBulkTable() {
 async function submitBulkInsert() {
     const tbody = document.getElementById('bulkInsertTableBody');
     const rows = tbody.querySelectorAll('tr');
-
-
     const dataList = [];
+    let invalidLocationInput = null;
 
     // 입력된 행만 수집
-    rows.forEach((row) => {
+    for (const row of rows) {
         const partNumber = row.querySelector('.bulk-part-number').value.trim();
         const categoryId = row.querySelector('.bulk-category').value;
         const partName = row.querySelector('.bulk-part-name').value.trim();
-        const location = row.querySelector('.bulk-location').value.trim();
+        const locationInput = row.querySelector('.bulk-location');
+        const location = normalizeLocationCode(locationInput.value.trim());
+        locationInput.value = location;
         const quantity = row.querySelector('.bulk-quantity').value;
         const unit = row.querySelector('.bulk-unit').value.trim();
         const price = row.querySelector('.bulk-price').value;
         const date = row.querySelector('.bulk-date').value;
         const description = row.querySelector('.bulk-description').value.trim();
         const note = row.querySelector('.bulk-note').value.trim();
+
+        if (location && !isValidLocationCode(location)) {
+            invalidLocationInput = locationInput;
+            break;
+        }
 
         // 필수 항목: 부품번호, 카테고리, 부품명, 수량, 금액, 구매일자, 설명
         if (partNumber && categoryId && partName && quantity && price && date && description) {
@@ -1391,7 +1819,13 @@ async function submitBulkInsert() {
 
             dataList.push(data);
         }
-    });
+    }
+
+    if (invalidLocationInput) {
+        showMessage('부품 위치는 A~AA 영역과 1~32 행을 "-"로 구분한 형식(예: A-1)만 입력할 수 있습니다.', 'error');
+        invalidLocationInput.focus();
+        return;
+    }
 
     if (dataList.length === 0) {
         showMessage('등록할 데이터가 없습니다. 필수 항목을 입력하세요.', 'error');
@@ -1797,8 +2231,8 @@ async function downloadUsageCSV() {
  */
 async function openLocationModal(partNumber) {
     try {
-        // 부품 위치 정보 조회
-        const response = await fetch(`/livewalk/part-locations/part/${partNumber}`);
+        // 부품 위치 정보 조회 (쿼리 파라미터로 전달)
+        const response = await fetch(`/livewalk/part-locations/part?partNumber=${encodeURIComponent(partNumber)}`);
         if (!response.ok) {
             showMessage('부품 위치 정보를 찾을 수 없습니다.', 'error');
             return;
@@ -1808,6 +2242,15 @@ async function openLocationModal(partNumber) {
 
         // 모달 열기
         document.getElementById('locationModalPartNumber').textContent = partNumber;
+
+        // 부품명 표시 (location.partName이 있으면 표시)
+        const partNameEl = document.getElementById('locationModalPartName');
+        if (partNameEl && location.partName) {
+            partNameEl.textContent = `(${location.partName})`;
+        } else if (partNameEl) {
+            partNameEl.textContent = '';
+        }
+
         document.getElementById('locationGridModal').style.display = 'block';
 
         // 그리드 생성
@@ -1881,3 +2324,13 @@ function createLocationGrid(highlightLocation) {
 function closeLocationGridModal() {
     document.getElementById('locationGridModal').style.display = 'none';
 }
+
+// 배치도 모달 ESC 키로 닫기
+document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' || event.key === 'Esc') {
+        const modal = document.getElementById('locationGridModal');
+        if (modal && modal.style.display === 'block') {
+            closeLocationGridModal();
+        }
+    }
+});

@@ -34,6 +34,8 @@ public interface PartIncomingService {
     // 재고 부족 조회
     List<Map<String, Object>> getLowStock(int threshold);
 
+    List<Map<String, Object>> searchInventoryAdvanced(Map<String, Object> params);
+
     // 입고 정보 수정
     void updateIncoming(PartIncomingDTO partIncomingDTO);
 
@@ -42,4 +44,6 @@ public interface PartIncomingService {
 
     // 검색 정렬 조회
     List<PartIncomingDTO> searchWithSort(String keyword, String column, String order);
+
+    List<PartIncomingDTO> searchAdvanced(Map<String, Object> params);
 }

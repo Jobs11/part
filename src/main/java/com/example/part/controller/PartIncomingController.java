@@ -90,6 +90,71 @@ public class PartIncomingController {
     }
 
     /**
+     * 고급 검색 (컬럼 검색 + +포함, -제외 + 전체검색)
+     * GET /livewalk/incoming/search-advanced
+     */
+    @GetMapping("/search-advanced")
+    public ResponseEntity<List<PartIncomingDTO>> searchAdvanced(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String column,
+            @RequestParam(required = false) String sortColumn,
+            @RequestParam(required = false) String order) {
+
+        Map<String, Object> params = new HashMap<>();
+
+        // ===== 키워드 전처리 (기본 검색어 / +포함 / -제외 분리) =====
+        List<String> includeList = new java.util.ArrayList<>();
+        List<String> excludeList = new java.util.ArrayList<>();
+        String cleanedKeyword = null;
+
+        if (keyword != null) {
+            String trimmedKeyword = keyword.trim();
+
+            if (!trimmedKeyword.isEmpty()) {
+                StringBuilder baseKeywordBuilder = new StringBuilder();
+                String[] tokens = trimmedKeyword.split("\\s+");
+
+                for (String t : tokens) {
+                    if (t.startsWith("+") && t.length() > 1) {
+                        includeList.add(t.substring(1)); // +센서 → 센서
+                    } else if (t.startsWith("-") && t.length() > 1) {
+                        excludeList.add(t.substring(1)); // -불량 → 불량
+                    } else if (!t.isEmpty()) {
+                        if (baseKeywordBuilder.length() > 0) {
+                            baseKeywordBuilder.append(" ");
+                        }
+                        baseKeywordBuilder.append(t);
+                    }
+                }
+
+                if (baseKeywordBuilder.length() > 0) {
+                    cleanedKeyword = baseKeywordBuilder.toString();
+                }
+            }
+        }
+
+        params.put("keyword", cleanedKeyword);
+
+        params.put("includeList", includeList);
+        params.put("excludeList", excludeList);
+
+        // ===== 컬럼 클릭 검색 =====
+        params.put("column", column);
+
+        // ===== 정렬 컬럼 (sortColumn이 있으면 우선, 없으면 column 사용) =====
+        String orderColumn = (sortColumn != null && !sortColumn.trim().isEmpty()) ? sortColumn : column;
+        params.put("sortColumn", orderColumn);
+
+        // ===== 정렬 추가 =====
+        if (order == null || (!order.equals("asc") && !order.equals("desc"))) {
+            order = "asc"; // 기본값
+        }
+        params.put("order", order);
+
+        return ResponseEntity.ok(partIncomingService.searchAdvanced(params));
+    }
+
+    /**
      * 카테고리별 입고 내역
      * GET /livewalk/incoming/category/{categoryId}
      */
@@ -107,6 +172,67 @@ public class PartIncomingController {
     public ResponseEntity<List<Map<String, Object>>> getCurrentInventory() {
         List<Map<String, Object>> inventory = partIncomingService.getCurrentInventory();
         return ResponseEntity.ok(inventory);
+    }
+
+    /**
+     * 현재 재고 고급 검색
+     * GET /livewalk/incoming/inventory/search-advanced
+     */
+    @GetMapping("/inventory/search-advanced")
+    public ResponseEntity<List<Map<String, Object>>> searchInventoryAdvanced(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String column,
+            @RequestParam(required = false) String order) {
+
+        Map<String, Object> params = new HashMap<>();
+        String columnParam = (column != null && !column.trim().isEmpty()) ? column.trim() : null;
+
+        List<String> includeList = new java.util.ArrayList<>();
+        List<String> excludeList = new java.util.ArrayList<>();
+        String cleanedKeyword = null;
+
+        if (keyword != null) {
+            String trimmedKeyword = keyword.trim();
+
+            if (!trimmedKeyword.isEmpty()) {
+                StringBuilder baseKeywordBuilder = new StringBuilder();
+                String[] tokens = trimmedKeyword.split("\\s+");
+
+                for (String token : tokens) {
+                    if (token.startsWith("+") && token.length() > 1) {
+                        includeList.add(token.substring(1));
+                    } else if (token.startsWith("-") && token.length() > 1) {
+                        excludeList.add(token.substring(1));
+                    } else if (!token.isEmpty()) {
+                        if (baseKeywordBuilder.length() > 0) {
+                            baseKeywordBuilder.append(" ");
+                        }
+                        baseKeywordBuilder.append(token);
+                    }
+                }
+
+                if (baseKeywordBuilder.length() > 0) {
+                    cleanedKeyword = baseKeywordBuilder.toString();
+                }
+            }
+        }
+
+        params.put("keyword", cleanedKeyword);
+        params.put("includeList", includeList);
+        params.put("excludeList", excludeList);
+
+        String filterColumnKey = (columnParam != null && isInventoryTextColumn(columnParam)) ? columnParam : null;
+        params.put("columnKey", filterColumnKey);
+
+        String resolvedOrderColumn = resolveInventoryOrderColumn(columnParam);
+        params.put("orderColumn", resolvedOrderColumn);
+
+        if (order == null || (!order.equalsIgnoreCase("asc") && !order.equalsIgnoreCase("desc"))) {
+            order = "asc";
+        }
+        params.put("order", order.toLowerCase());
+
+        return ResponseEntity.ok(partIncomingService.searchInventoryAdvanced(params));
     }
 
     /**
@@ -173,6 +299,35 @@ public class PartIncomingController {
         result.put("fail", failCount);
 
         return ResponseEntity.ok(result);
+    }
+
+    private boolean isInventoryTextColumn(String column) {
+        return "part_number".equals(column)
+                || "part_name".equals(column)
+                || "category_name".equals(column)
+                || "current_stock".equals(column)
+                || "total_incoming".equals(column)
+                || "total_used".equals(column)
+                || "incoming_count".equals(column);
+    }
+
+    private String resolveInventoryOrderColumn(String column) {
+        if (column == null || column.isEmpty()) {
+            return null;
+        }
+
+        switch (column) {
+            case "part_number":
+            case "part_name":
+            case "category_name":
+            case "current_stock":
+            case "total_incoming":
+            case "total_used":
+            case "incoming_count":
+                return column;
+            default:
+                return null;
+        }
     }
 
 }

@@ -232,7 +232,7 @@
                 <h2>입고 리스트 (더블클릭으로 수정 가능)</h2>
             </div>
             <div class="form-inline" style="margin-bottom: 10px;">
-                <input type="text" id="incomingSearchInput" placeholder="부품명 또는 부품번호로 검색" style="min-width: 250px;">
+                <input type="text" id="incomingSearchInput" placeholder="검색할 단어를 입력하세요." style="min-width: 250px;">
                 <button onclick="searchIncoming()" class="btn">검색</button>
                 <button onclick="loadAllIncoming()" class="btn">전체 보기</button>
             </div>
@@ -245,21 +245,20 @@
                             <th onclick="sortIncomingTable('category_name')" style="cursor: pointer;">카테고리 ▲▼</th>
                             <th onclick="sortIncomingTable('part_number')" style="cursor: pointer;">부품번호 ▲▼</th>
                             <th onclick="sortIncomingTable('part_name')" style="cursor: pointer;">부품명 ▲▼</th>
-                            <th>설명</th>
+                            <th onclick="sortIncomingTable('description')" style="cursor: pointer;">설명 ▲▼</th>
                             <th onclick="sortIncomingTable('incoming_quantity')" style="cursor: pointer;">입고수량 ▲▼</th>
                             <th>단위</th>
-                            <th>통화</th>
-                            <th>외화금액</th>
                             <th onclick="sortIncomingTable('purchase_price')" style="cursor: pointer;">구매금액(원화) ▲▼</th>
                             <th onclick="sortIncomingTable('purchase_date')" style="cursor: pointer;">구매일자 ▲▼</th>
                             <th onclick="sortIncomingTable('created_at')" style="cursor: pointer;">등록일 ▲▼</th>
+                            <th onclick="sortIncomingTable('note')" style="cursor: pointer;">비고 ▲▼</th>
                             <th>사진</th>
                             <th>부품 위치</th>
                         </tr>
                     </thead>
                     <tbody id="incomingTableBody">
                         <tr>
-                            <td colspan="11" style="text-align: center;">로딩 중...</td>
+                            <td colspan="12" style="text-align: center;">로딩 중...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -291,6 +290,41 @@
                     <tbody id="lowStockTableBody">
                         <tr>
                             <td colspan="5" style="text-align: center;">로딩 중...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 현재 재고 현황 -->
+        <div class="section">
+            <div class="section-header">
+                <h2>현재 재고 현황</h2>
+            </div>
+            <div class="form-inline" style="margin-bottom: 10px;">
+                <input type="text" id="inventorySearchInput" placeholder="검색할 단어를 입력하세요." style="min-width: 250px;">
+                <button onclick="searchInventory()" class="btn">검색</button>
+                <button onclick="loadInventory()" class="btn">전체 보기</button>
+            </div>
+            <button onclick="loadInventory()" class="btn">새로고침</button>
+            <button onclick="downloadInventoryCSV()" class="btn">CSV 다운로드</button>
+            <div class="table-wrapper">
+                <table id="inventoryTable">
+                    <thead>
+                        <tr>
+                            <th onclick="sortInventoryTable('part_number')" style="cursor: pointer;">부품번호 ▲▼</th>
+                            <th onclick="sortInventoryTable('part_name')" style="cursor: pointer;">부품명 ▲▼</th>
+                            <th onclick="sortInventoryTable('category_name')" style="cursor: pointer;">카테고리 ▲▼</th>
+                            <th onclick="sortInventoryTable('current_stock')" style="cursor: pointer;">현재재고 ▲▼</th>
+                            <th>단위</th>
+                            <th onclick="sortInventoryTable('total_incoming')" style="cursor: pointer;">총입고 ▲▼</th>
+                            <th onclick="sortInventoryTable('total_used')" style="cursor: pointer;">총출고 ▲▼</th>
+                            <th onclick="sortInventoryTable('incoming_count')" style="cursor: pointer;">입고횟수 ▲▼</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody">
+                        <tr>
+                            <td colspan="8" style="text-align: center;">로딩 중...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -345,7 +379,7 @@
                 <h2>부품 출고 내역</h2>
             </div>
             <div class="form-inline" style="margin-bottom: 10px;">
-                <input type="text" id="usageSearchInput" placeholder="부품번호 또는 사용처로 검색">
+                <input type="text" id="usageSearchInput" placeholder="검색할 단어를 입력하세요.">
                 <button onclick="searchUsage()" class="btn">검색</button>
                 <button onclick="loadAllUsage()" class="btn">전체 보기</button>
                 <button onclick="downloadUsageCSV()" class="btn">CSV 다운로드</button>
@@ -360,7 +394,7 @@
                             <th onclick="sortUsageTable('quantity_used')" style="cursor: pointer;">출고수량 ▲▼</th>
                             <th>단위</th>
                             <th onclick="sortUsageTable('usage_location')" style="cursor: pointer;">사용처 ▲▼</th>
-                            <th>비고</th>
+                            <th onclick="sortUsageTable('note')" style="cursor: pointer;">비고 ▲▼</th>
                             <th onclick="sortUsageTable('created_at')" style="cursor: pointer;">등록일 ▲▼</th>
                         </tr>
                     </thead>
@@ -373,36 +407,6 @@
             </div>
         </div>
 
-        <!-- 현재 재고 현황 (맨 아래로 이동) -->
-        <div class="section">
-            <div class="section-header">
-                <h2>현재 재고 현황</h2>
-            </div>
-
-            <button onclick="loadInventory()" class="btn">새로고침</button>
-            <button onclick="downloadInventoryCSV()" class="btn">CSV 다운로드</button>
-            <div class="table-wrapper">
-                <table id="inventoryTable">
-                    <thead>
-                        <tr>
-                            <th onclick="sortInventoryTable('part_number')" style="cursor: pointer;">부품번호 ▲▼</th>
-                            <th onclick="sortInventoryTable('part_name')" style="cursor: pointer;">부품명 ▲▼</th>
-                            <th onclick="sortInventoryTable('category_name')" style="cursor: pointer;">카테고리 ▲▼</th>
-                            <th onclick="sortInventoryTable('current_stock')" style="cursor: pointer;">현재재고 ▲▼</th>
-                            <th>단위</th>
-                            <th onclick="sortInventoryTable('total_incoming')" style="cursor: pointer;">총입고 ▲▼</th>
-                            <th onclick="sortInventoryTable('total_used')" style="cursor: pointer;">총출고 ▲▼</th>
-                            <th onclick="sortInventoryTable('incoming_count')" style="cursor: pointer;">입고횟수 ▲▼</th>
-                        </tr>
-                    </thead>
-                    <tbody id="inventoryTableBody">
-                        <tr>
-                            <td colspan="8" style="text-align: center;">로딩 중...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
         <!-- 부품 배치도 섹션 (비활성화) -->
         <div class="section" style="display: none;">
             <div class="section-header">
@@ -432,9 +436,9 @@
         <div id="message" class="message"></div>
     </div>
 
-    <script src="js/main.js?v=1"></script>
+    <script src="js/main.js?v=25"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             // 통화 변경 시 환율/원화 필드 표시/숨김
             function handleCurrencyChange() {
                 const currency = document.getElementById('currency').value;
@@ -585,15 +589,23 @@
     <div id="locationGridModal"
         style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999;">
         <div
-            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 5px; width: 95%; max-width: 1400px; max-height: 90vh; overflow-y: auto;">
-            <h3 style="margin-bottom: 15px;">부품 배치도 - <span id="locationModalPartNumber"></span></h3>
-
-            <div id="locationGridContainer" style="overflow-x: auto;">
-                <!-- 27x32 그리드 생성 -->
+            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 5px; width: 95%; max-width: 1400px; max-height: 90vh; display: flex; flex-direction: column;">
+            <!-- 고정 헤더 -->
+            <div
+                style="position: sticky; top: 0; background: white; border-bottom: 2px solid #e0e0e0; padding: 15px 20px; border-radius: 5px 5px 0 0; z-index: 10;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
+                    <h3 style="margin: 0;">부품 배치도 - <span id="locationModalPartNumber"></span> <span
+                            id="locationModalPartName" style="color: #666; font-size: 14px;"></span></h3>
+                    <button type="button" class="btn btn-gray" onclick="closeLocationGridModal()"
+                        style="padding: 6px 12px; font-weight: bold;">닫기 ✕</button>
+                </div>
             </div>
 
-            <div style="margin-top: 20px; text-align: right;">
-                <button type="button" class="btn btn-gray" onclick="closeLocationGridModal()">닫기</button>
+            <!-- 스크롤 가능한 컨텐츠 영역 -->
+            <div style="overflow-y: auto; padding: 20px;">
+                <div id="locationGridContainer" style="overflow-x: auto;">
+                    <!-- 27x32 그리드 생성 -->
+                </div>
             </div>
         </div>
     </div>

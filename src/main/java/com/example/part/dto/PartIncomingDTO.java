@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import lombok.Data;
 
 @Data
@@ -27,6 +29,7 @@ public class PartIncomingDTO {
     private BigDecimal originalPrice;
 
     // 구매 정보
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate purchaseDate;
     private String supplier;
     private String invoiceNumber;
@@ -34,5 +37,6 @@ public class PartIncomingDTO {
     // 기타
     private String note;
     private String createdBy;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
 }

@@ -135,6 +135,92 @@
         ORDER BY pi.part_number
     </select>
 
+    <!-- 현재 재고 고급 검색 -->
+    <select id="searchInventoryAdvanced" resultType="map" parameterType="map">
+        SELECT
+            pi.part_number,
+            pi.part_name,
+            c.category_name,
+            pi.unit,
+            SUM(pi.incoming_quantity) AS total_incoming,
+            COALESCE(SUM(pu.quantity_used), 0) AS total_used,
+            (SUM(pi.incoming_quantity) - COALESCE(SUM(pu.quantity_used), 0)) AS current_stock,
+            COUNT(DISTINCT pi.incoming_id) AS incoming_count
+        FROM part_incoming pi
+        LEFT JOIN category c ON pi.category_id = c.category_id
+        LEFT JOIN part_usage pu ON pi.incoming_id = pu.incoming_id
+        WHERE 1 = 1
+
+        <choose>
+            <when test="columnKey != null and columnKey != '' and keyword != null and keyword != ''">
+                <choose>
+                    <when test="columnKey == 'part_number'">
+                        AND pi.part_number LIKE CONCAT('%', #{keyword}, '%')
+                    </when>
+                    <when test="columnKey == 'part_name'">
+                        AND pi.part_name LIKE CONCAT('%', #{keyword}, '%')
+                    </when>
+                    <when test="columnKey == 'category_name'">
+                        AND c.category_name LIKE CONCAT('%', #{keyword}, '%')
+                    </when>
+                </choose>
+            </when>
+            <otherwise>
+                <if test="keyword != null and keyword != ''">
+                    AND (
+                        pi.part_number LIKE CONCAT('%', #{keyword}, '%')
+                        OR pi.part_name LIKE CONCAT('%', #{keyword}, '%')
+                        OR c.category_name LIKE CONCAT('%', #{keyword}, '%')
+                    )
+                </if>
+            </otherwise>
+        </choose>
+
+        <foreach collection="includeList" item="kw">
+            AND (
+                pi.part_number LIKE CONCAT('%', #{kw}, '%')
+                OR pi.part_name LIKE CONCAT('%', #{kw}, '%')
+                OR c.category_name LIKE CONCAT('%', #{kw}, '%')
+            )
+        </foreach>
+
+        <foreach collection="excludeList" item="kw">
+            AND (
+                pi.part_number NOT LIKE CONCAT('%', #{kw}, '%')
+                AND pi.part_name NOT LIKE CONCAT('%', #{kw}, '%')
+                AND c.category_name NOT LIKE CONCAT('%', #{kw}, '%')
+            )
+        </foreach>
+
+        GROUP BY pi.part_number, pi.part_name, c.category_name, pi.unit
+
+        <!-- 숫자 컬럼 검색 (HAVING 절 사용, LIKE로 포함 검색) -->
+        <if test="columnKey != null and columnKey != '' and keyword != null and keyword != ''">
+            <choose>
+                <when test="columnKey == 'current_stock'">
+                    HAVING CAST(current_stock AS CHAR) LIKE CONCAT('%', #{keyword}, '%')
+                </when>
+                <when test="columnKey == 'total_incoming'">
+                    HAVING CAST(total_incoming AS CHAR) LIKE CONCAT('%', #{keyword}, '%')
+                </when>
+                <when test="columnKey == 'total_used'">
+                    HAVING CAST(total_used AS CHAR) LIKE CONCAT('%', #{keyword}, '%')
+                </when>
+                <when test="columnKey == 'incoming_count'">
+                    HAVING CAST(incoming_count AS CHAR) LIKE CONCAT('%', #{keyword}, '%')
+                </when>
+            </choose>
+        </if>
+        ORDER BY
+        <choose>
+            <when test="orderColumn != null and orderColumn != ''">
+                ${orderColumn} ${order}
+            </when>
+            <otherwise>
+                pi.part_number ASC
+            </otherwise>
+        </choose>
+    </select>
     <!-- ✅ 재고 부족 조회 (현재 재고 기준) -->
     <select id="selectLowStock" resultType="map" parameterType="int">
         SELECT
@@ -155,6 +241,8 @@
     <update id="updateIncoming" parameterType="com.example.part.dto.PartIncomingDTO">
         UPDATE part_incoming
         SET
+            part_number = #{partNumber},
+            category_id = #{categoryId},
             part_name = #{partName},
             description = #{description},
             unit = #{unit},
@@ -203,6 +291,82 @@
         WHERE pi.part_name LIKE CONCAT('%', #{keyword}, '%')
         OR pi.part_number LIKE CONCAT('%', #{keyword}, '%')
         ORDER BY ${column} ${order}
+    </select>
+
+    <!-- 🔍 고급 검색 (컬럼 검색 + +포함 + -제외 + 전체검색) -->
+    <select id="searchAdvanced" resultMap="incomingResultMap" parameterType="map">
+        SELECT
+            pi.*,
+            c.category_name
+        FROM part_incoming pi
+        LEFT JOIN category c ON pi.category_id = c.category_id
+        WHERE 1 = 1
+
+        <!-- ================================
+            1) 컬럼 검색 (column 지정된 경우)
+            ================================ -->
+        <if test="column != null and column != '' and keyword != null and keyword != ''">
+            <choose>
+                <!-- 숫자 컬럼도 LIKE로 포함 검색 -->
+                <when test="column == 'incoming_quantity' or column == 'purchase_price'">
+                    AND CAST(${column} AS CHAR) LIKE CONCAT('%', #{keyword}, '%')
+                </when>
+                <!-- 텍스트 컬럼은 LIKE 검색 -->
+                <otherwise>
+                    AND ${column} LIKE CONCAT('%', #{keyword}, '%')
+                </otherwise>
+            </choose>
+        </if>
+
+        <!-- ===================================
+            2) 전체 검색 (column이 없을 때만 실행)
+            =================================== -->
+        <if test="(column == null or column == '')
+                and keyword != null and keyword != ''">
+            AND (
+                pi.part_number LIKE CONCAT('%', #{keyword}, '%')
+                OR pi.part_name LIKE CONCAT('%', #{keyword}, '%')
+                OR c.category_name LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+
+        <!-- ================================
+            3) + 포함 검색
+            ================================ -->
+        <foreach collection="includeList" item="kw">
+            AND (
+                pi.part_number LIKE CONCAT('%', #{kw}, '%')
+                OR pi.part_name LIKE CONCAT('%', #{kw}, '%')
+                OR c.category_name LIKE CONCAT('%', #{kw}, '%')
+            )
+        </foreach>
+
+        <!-- ================================
+            4) - 제외 검색
+            ================================ -->
+        <foreach collection="excludeList" item="kw">
+            AND (
+                pi.part_number NOT LIKE CONCAT('%', #{kw}, '%')
+                AND pi.part_name NOT LIKE CONCAT('%', #{kw}, '%')
+                AND c.category_name NOT LIKE CONCAT('%', #{kw}, '%')
+            )
+        </foreach>
+
+        <!-- ================================
+            5) 정렬 (sortColumn이 있으면 그 컬럼으로, 없으면 column 사용)
+            ================================ -->
+        ORDER BY
+        <choose>
+            <when test="sortColumn != null and sortColumn != ''">
+                ${sortColumn} ${order}
+            </when>
+            <when test="column != null and column != ''">
+                ${column} ${order}
+            </when>
+            <otherwise>
+                pi.created_at DESC
+            </otherwise>
+        </choose>
     </select>
 
 

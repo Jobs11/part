@@ -67,9 +67,11 @@ public class PartUsageServiceImpl implements PartUsageService {
         // 기존 출고 내역 조회
         PartUsageDTO existing = getUsageById(partUsageDTO.getUsageId());
 
-        // 수량 변경 시 재고 확인
-        if (!existing.getQuantityUsed().equals(partUsageDTO.getQuantityUsed())) {
-            int difference = partUsageDTO.getQuantityUsed() - existing.getQuantityUsed();
+        Integer requestedQuantity = partUsageDTO.getQuantityUsed();
+        if (requestedQuantity == null) {
+            partUsageDTO.setQuantityUsed(existing.getQuantityUsed());
+        } else if (!existing.getQuantityUsed().equals(requestedQuantity)) {
+            int difference = requestedQuantity - existing.getQuantityUsed();
 
             if (difference > 0) {
                 // 수량 증가: 재고 확인 필요
@@ -84,6 +86,18 @@ public class PartUsageServiceImpl implements PartUsageService {
                     }
                 }
             }
+        }
+
+        if (partUsageDTO.getUsageLocation() == null || partUsageDTO.getUsageLocation().trim().isEmpty()) {
+            partUsageDTO.setUsageLocation(existing.getUsageLocation());
+        }
+
+        if (partUsageDTO.getUsedDate() == null) {
+            partUsageDTO.setUsedDate(existing.getUsedDate());
+        }
+
+        if (partUsageDTO.getNote() == null) {
+            partUsageDTO.setNote(existing.getNote());
         }
 
         int result = partUsageMapper.updatePartUsage(partUsageDTO);
@@ -135,7 +149,30 @@ public class PartUsageServiceImpl implements PartUsageService {
 
     @Override
     public List<PartUsageDTO> getUsageSorted(String column, String order) {
-        return partUsageMapper.sortUsage(column, order);
+        // 컬럼명에 테이블 alias 추가
+        String mappedColumn = mapColumnName(column);
+        return partUsageMapper.sortUsage(mappedColumn, order);
+    }
+
+    private String mapColumnName(String column) {
+        switch (column) {
+            case "part_number":
+                return "pu.part_number";
+            case "part_name":
+                return "pi.part_name";
+            case "category_name":
+                return "c.category_name";
+            case "quantity_used":
+                return "pu.quantity_used";
+            case "usage_location":
+                return "pu.usage_location";
+            case "used_date":
+                return "pu.used_date";
+            case "created_at":
+                return "pu.created_at";
+            default:
+                return column;
+        }
     }
 
     @Override
@@ -145,6 +182,17 @@ public class PartUsageServiceImpl implements PartUsageService {
 
     @Override
     public List<PartUsageDTO> searchWithSort(String keyword, String column, String order) {
-        return partUsageMapper.searchWithSort(keyword, column, order);
+        String mappedColumn = mapColumnName(column);
+        return partUsageMapper.searchWithSort(keyword, mappedColumn, order);
+    }
+
+    @Override
+    public List<PartUsageDTO> searchAdvanced(Map<String, Object> params) {
+        // 컬럼명 매핑
+        if (params.get("column") != null && !params.get("column").toString().isEmpty()) {
+            String column = params.get("column").toString();
+            params.put("column", mapColumnName(column));
+        }
+        return partUsageMapper.searchAdvanced(params);
     }
 }
