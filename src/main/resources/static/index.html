@@ -1,11 +1,13 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>부품 재고 관리 시스템</title>
+    <title>LiVEWALK - 부품 재고 관리</title>
     <link rel="stylesheet" href="css/excel-style.css">
+    <!-- PDF.js 라이브러리 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         .help-section {
             display: none;
@@ -91,96 +93,32 @@
 
 <body>
     <div class="container">
-        <h1>부품 재고 관리 시스템</h1>
-
-        <!-- 부품 입고 등록 (개별) - 숨김 -->
-        <!-- <div class="section" style="display: none;">
-            <div class="section-header">
-                <h2>부품 입고 등록 (개별)</h2>
+        <h1 style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <span>재고 관리 시스템</span>
+                <div style="display: flex; gap: 5px; border: 2px solid #007bff; border-radius: 5px; overflow: hidden;">
+                    <button id="categoryBtnParts" onclick="switchCategory('parts')"
+                        style="padding: 8px 20px; border: none; background: #007bff; color: white; cursor: pointer; font-weight: bold; transition: all 0.3s;">
+                        부품
+                    </button>
+                    <button id="categoryBtnDocs" onclick="switchCategory('docs')"
+                        style="padding: 8px 20px; border: none; background: white; color: #007bff; cursor: pointer; font-weight: bold; transition: all 0.3s;">
+                        문서
+                    </button>
+                </div>
             </div>
-            <form id="incomingForm">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="required">카테고리</label>
-                        <div style="display: flex; gap: 5px;">
-                            <select id="categoryId" required style="flex: 1;">
-                                <option value="">선택하세요</option>
-                            </select>
-                            <button type="button" class="btn" onclick="openCategoryModal()"
-                                style="white-space: nowrap; padding: 6px 12px;">+ 추가</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>부품번호</label>
-                        <input type="text" id="partNumber" placeholder="자동 생성" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label class="required">부품명</label>
-                        <input type="text" id="partName" placeholder="부품명" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="required">입고 수량</label>
-                        <input type="number" id="incomingQuantity" placeholder="수량" required min="1">
-                    </div>
-                    <div class="form-group">
-                        <label>단위</label>
-                        <input type="text" id="unit" placeholder="EA" value="EA">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="required">통화</label>
-                        <select id="currency" required>
-                            <option value="KRW">KRW (원)</option>
-                            <option value="USD">USD (달러)</option>
-                            <option value="JPY">JPY (엔)</option>
-                            <option value="EUR">EUR (유로)</option>
-                            <option value="CNY">CNY (위안)</option>
-                        </select>
-                    </div>
-                    <div class="form-group" id="originalPriceGroup" style="display: none;">
-                        <label class="required">외화 금액</label>
-                        <input type="number" id="originalPrice" placeholder="외화 금액" step="0.01" min="0">
-                    </div>
-                    <div class="form-group" id="exchangeRateGroup" style="display: none;">
-                        <label class="required">환율 (1외화당 원화)</label>
-                        <input type="number" id="exchangeRate" placeholder="예: USD=1400, JPY=9.5 (100엔=950원)"
-                            step="0.0001" min="0">
-                    </div>
-                    <div class="form-group">
-                        <label class="required">구매금액 (원화)</label>
-                        <input type="number" id="purchasePrice" placeholder="원화 금액" required min="0" step="0.01">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="required">구매일자</label>
-                        <input type="date" id="purchaseDate" required>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group" style="flex: 2;">
-                        <label class="required">설명</label>
-                        <textarea id="description" placeholder="부품 설명 (필수)" required></textarea>
-                    </div>
-                    <div class="form-group" style="flex: 2;">
-                        <label>비고</label>
-                        <textarea id="note" placeholder="비고"></textarea>
-                    </div>
-                </div>
-
-                <div style="margin-top: 10px;">
-                    <button type="submit" class="btn">입고 등록</button>
-                    <button type="button" onclick="clearIncomingForm()" class="btn btn-gray">초기화</button>
-                </div>
-            </form>
-        </div> -->
+            <div style="display: flex; gap: 10px;">
+                <button onclick="openLibraryModal()" class="btn">📁 자료실</button>
+                <button id="myProfileBtn" onclick="openMyProfileModal()" class="btn" style="display: none;">👤 내
+                    정보</button>
+                <button id="adminBtn" onclick="location.href='/admin.html'" class="btn" style="display: none;">관리자
+                    페이지</button>
+                <button onclick="logout()" class="btn btn-gray">로그아웃</button>
+            </div>
+        </h1>
 
         <!-- 부품 입고 등록 -->
-        <div class="section">
+        <div class="section parts-section">
             <div class="section-header">
                 <h2>부품 입고 등록</h2>
             </div>
@@ -209,6 +147,7 @@
                             <th style="width: 120px;">부품 위치</th>
                             <th style="width: 80px;"><span class="required">수량</span></th>
                             <th style="width: 80px;">단위</th>
+                            <th style="width: 130px;"><span class="required">결제수단</span></th>
                             <th style="width: 120px;"><span class="required">구매금액(원)</span></th>
                             <th style="width: 100px;"><span class="required">구매일자</span></th>
                             <th style="width: 200px;"><span class="required">설명</span></th>
@@ -227,7 +166,7 @@
         </div>
 
         <!-- 입고 리스트 -->
-        <div class="section">
+        <div class="section parts-section">
             <div class="section-header">
                 <h2>입고 리스트 (더블클릭으로 수정 가능)</h2>
             </div>
@@ -248,6 +187,7 @@
                             <th onclick="sortIncomingTable('description')" style="cursor: pointer;">설명 ▲▼</th>
                             <th onclick="sortIncomingTable('incoming_quantity')" style="cursor: pointer;">입고수량 ▲▼</th>
                             <th>단위</th>
+                            <th onclick="sortIncomingTable('payment_method_name')" style="cursor: pointer;">결제수단 ▼</th>
                             <th onclick="sortIncomingTable('purchase_price')" style="cursor: pointer;">구매금액(원화) ▲▼</th>
                             <th onclick="sortIncomingTable('purchase_date')" style="cursor: pointer;">구매일자 ▲▼</th>
                             <th onclick="sortIncomingTable('created_at')" style="cursor: pointer;">등록일 ▲▼</th>
@@ -258,7 +198,7 @@
                     </thead>
                     <tbody id="incomingTableBody">
                         <tr>
-                            <td colspan="12" style="text-align: center;">로딩 중...</td>
+                            <td colspan="13" style="text-align: center;">로딩 중...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -266,7 +206,7 @@
         </div>
 
         <!-- 재고 부족 부품 -->
-        <div class="section">
+        <div class="section parts-section">
             <div class="section-header">
                 <h2>재고 부족 부품</h2>
             </div>
@@ -297,7 +237,7 @@
         </div>
 
         <!-- 현재 재고 현황 -->
-        <div class="section">
+        <div class="section parts-section">
             <div class="section-header">
                 <h2>현재 재고 현황</h2>
             </div>
@@ -332,7 +272,7 @@
         </div>
 
         <!-- 부품 출고 등록 -->
-        <div class="section">
+        <div class="section parts-section">
             <div class="section-header">
                 <h2>부품 출고 등록</h2>
             </div>
@@ -374,7 +314,7 @@
         </div>
 
         <!-- 부품 출고 내역 -->
-        <div class="section">
+        <div class="section parts-section">
             <div class="section-header">
                 <h2>부품 출고 내역</h2>
             </div>
@@ -432,13 +372,46 @@
             </div>
         </div>
 
+        <!-- 문서 관리 섹션 -->
+        <div class="section docs-section" style="display: none;">
+            <div class="section-header">
+                <h2>문서 양식 생성</h2>
+                <button onclick="openDocumentCreateForm()" class="btn">📄 새 양식 생성</button>
+            </div>
+            <p style="color: #666; font-size: 14px;">이미지나 PDF를 업로드하여 문서 양식을 생성할 수 있습니다.</p>
+        </div>
+
+        <div class="section docs-section" style="display: none;">
+            <div class="section-header">
+                <h2>생성된 문서 목록</h2>
+            </div>
+            <div id="documentsListContainer">
+                <!-- JavaScript에서 동적으로 생성됨 -->
+            </div>
+        </div>
+
         <!-- 메시지 표시 -->
         <div id="message" class="message"></div>
     </div>
 
-    <script src="js/main.js?v=25"></script>
+    <script src="js/main.js?v=32"></script>
     <script>
+        // 관리자 권한 확인 및 관리자 페이지 버튼 표시
+        async function checkAdminRole() {
+            try {
+                const response = await fetch('/auth/current-user');
+                const userInfo = await response.json();
+                if (userInfo.isAdmin) {
+                    document.getElementById('adminBtn').style.display = 'inline-block';
+                }
+            } catch (error) {
+                console.error('Failed to check admin role:', error);
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
+            // 관리자 권한 확인
+            checkAdminRole();
             // 통화 변경 시 환율/원화 필드 표시/숨김
             function handleCurrencyChange() {
                 const currency = document.getElementById('currency').value;
@@ -606,6 +579,288 @@
                 <div id="locationGridContainer" style="overflow-x: auto;">
                     <!-- 27x32 그리드 생성 -->
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 문서 업로드 모달 -->
+    <div id="documentModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999;">
+        <div
+            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 5px; width: 90%; max-width: 600px; max-height: 90vh; display: flex; flex-direction: column;">
+            <!-- 고정 헤더 -->
+            <div
+                style="position: sticky; top: 0; background: white; border-bottom: 2px solid #e0e0e0; padding: 15px 20px; border-radius: 5px 5px 0 0; z-index: 10;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
+                    <h3 style="margin: 0;">문서 관리 - 입고 ID: <span id="documentModalIncomingId"></span></h3>
+                    <button type="button" class="btn btn-gray" onclick="closeDocumentModal()"
+                        style="padding: 6px 12px; font-weight: bold;">닫기 ✕</button>
+                </div>
+            </div>
+
+            <!-- 스크롤 가능한 컨텐츠 영역 -->
+            <div style="overflow-y: auto; padding: 20px;">
+                <!-- 문서 생성 -->
+                <div
+                    style="margin-bottom: 20px; padding: 15px; border: 2px solid #4CAF50; border-radius: 5px; background: #f9fff9;">
+                    <button type="button" class="btn" onclick="openDocumentCreateForm()" style="width: 100%;">📄 새 문서
+                        생성</button>
+                </div>
+
+                <!-- 문서 목록 -->
+                <div id="documentListContainer">
+                    <p style="text-align: center; color: #999;">문서가 없습니다.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 문서 생성 모달 -->
+    <div id="documentCreateModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000;">
+        <div
+            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 5px; width: 95%; max-width: 1400px; max-height: 90vh; display: flex; flex-direction: column;">
+            <!-- 고정 헤더 -->
+            <div
+                style="position: sticky; top: 0; background: white; border-bottom: 2px solid #e0e0e0; padding: 15px 20px; border-radius: 5px 5px 0 0; z-index: 10;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
+                    <h3 style="margin: 0;">📄 문서 양식 생성</h3>
+                    <button type="button" class="btn btn-gray" onclick="closeDocumentCreateModal()"
+                        style="padding: 6px 12px; font-weight: bold;">닫기 ✕</button>
+                </div>
+            </div>
+
+            <!-- 스크롤 가능한 컨텐츠 영역 -->
+            <div style="overflow-y: auto; padding: 20px;">
+                <form id="documentCreateForm">
+                    <!-- 문서 제목 -->
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">문서 제목 *</label>
+                        <input type="text" id="docTitle"
+                            style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
+                            placeholder="예: 2025년 1월 견적서">
+                    </div>
+
+                    <!-- 양식 선택 -->
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">문서 양식 선택 *</label>
+                        <select id="templateSelect" onchange="loadTemplateToCanvas()"
+                            style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="">-- 자료실에서 양식을 선택하세요 --</option>
+                        </select>
+                    </div>
+
+                    <!-- Canvas 기반 편집 영역 -->
+                    <div id="canvasEditorArea" style="margin-bottom: 15px;">
+                        <!-- Canvas 미리보기 및 편집 -->
+                        <div
+                            style="margin-bottom: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h4 style="margin: 0;">템플릿 에디터</h4>
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <!-- 좌표 표시 -->
+                                    <span id="canvasCoordDisplay" style="font-size: 12px; color: #666; min-width: 100px;">X: 0, Y: 0</span>
+                                    <!-- 줌 레벨 -->
+                                    <span id="zoomLevel" style="font-size: 12px; color: #666;">100%</span>
+                                    <!-- 스냅 토글 -->
+                                    <button type="button" id="snapToggleBtn" onclick="toggleSnap()" class="btn-small" style="padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer;">🧲 스냅: ON (1px)</button>
+                                    <!-- 드래그 모드 -->
+                                    <button type="button" id="dragModeBtn" onclick="toggleDragMode()" class="btn-small" style="padding: 5px 10px; background: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer;">📦 박스 모드: OFF</button>
+                                    <!-- 표 모드 -->
+                                    <button type="button" id="tableModeBtn" onclick="toggleTableMode()" class="btn-small" style="padding: 5px 10px; background: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer;">📊 표 모드: OFF</button>
+                                    <!-- 수정 모드 -->
+                                    <button type="button" id="editModeBtn" onclick="toggleEditMode()" class="btn-small" style="padding: 5px 10px; background: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer;">✏️ 수정 모드: OFF</button>
+                                </div>
+                            </div>
+                            <!-- 줌 컨트롤 -->
+                            <div style="margin-bottom: 10px; display: flex; gap: 10px; align-items: center;">
+                                <label style="font-size: 12px; color: #666;">확대/축소:</label>
+                                <button type="button" onclick="setEditorZoom(0.5)" class="btn-small" style="padding: 4px 8px;">50%</button>
+                                <button type="button" onclick="setEditorZoom(0.75)" class="btn-small" style="padding: 4px 8px;">75%</button>
+                                <button type="button" onclick="setEditorZoom(1.0)" class="btn-small" style="padding: 4px 8px;">100%</button>
+                                <button type="button" onclick="setEditorZoom(1.25)" class="btn-small" style="padding: 4px 8px;">125%</button>
+                                <button type="button" onclick="setEditorZoom(1.5)" class="btn-small" style="padding: 4px 8px;">150%</button>
+                                <button type="button" onclick="setEditorZoom(2.0)" class="btn-small" style="padding: 4px 8px;">200%</button>
+                            </div>
+                            <!-- 스냅 크기 조절 -->
+                            <div style="margin-bottom: 10px; display: flex; gap: 10px; align-items: center;">
+                                <label style="font-size: 12px; color: #666;">스냅 크기:</label>
+                                <button type="button" onclick="setSnapSize(1)" class="btn-small" style="padding: 4px 8px; background: #28a745; color: white;">1px</button>
+                                <button type="button" onclick="setSnapSize(5)" class="btn-small" style="padding: 4px 8px;">5px</button>
+                                <button type="button" onclick="setSnapSize(10)" class="btn-small" style="padding: 4px 8px;">10px</button>
+                                <button type="button" onclick="setSnapSize(25)" class="btn-small" style="padding: 4px 8px;">25px</button>
+                                <button type="button" onclick="setSnapSize(50)" class="btn-small" style="padding: 4px 8px;">50px</button>
+                                <span id="snapSizeDisplay" style="font-size: 12px; color: #666; margin-left: 5px;">1px</span>
+                            </div>
+                            <div style="font-size: 12px; color: #666; margin-bottom: 10px;">
+                                💡 <strong>클릭 모드:</strong> Canvas를 클릭하여 필드 추가 | <strong>박스 모드:</strong> 드래그로 영역 선택 후 중앙 좌표에 필드 추가
+                            </div>
+                            <div
+                                style="text-align: center; background: #fff; padding: 20px; border: 1px solid #ddd; border-radius: 4px; position: relative; overflow: auto; max-height: 800px;">
+                                <canvas id="documentCanvas"
+                                    onclick="addFieldAtPosition(event)"
+                                    onmousemove="handleCanvasMouseMove(event)"
+                                    onmousedown="handleCanvasMouseDown(event)"
+                                    onmouseup="handleCanvasMouseUp(event)"
+                                    style="max-width: 100%; border: 1px solid #ccc; cursor: crosshair;"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- 필드 입력 영역 -->
+                        <div
+                            style="margin-bottom: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h4 style="margin: 0;">필드 목록</h4>
+                                <div style="display: flex; gap: 10px;">
+                                    <button type="button" class="btn" onclick="saveTemplateCoordinates()"
+                                        style="padding: 5px 12px; font-size: 12px; background: #28a745;">💾 좌표 저장</button>
+                                    <button type="button" class="btn btn-gray" onclick="downloadTemplateJSON()"
+                                        style="padding: 5px 12px; font-size: 12px;">📥 JSON 백업</button>
+                                    <button type="button" class="btn" onclick="clearAllFields()"
+                                        style="padding: 5px 12px; font-size: 12px;">🗑 전체 삭제</button>
+                                </div>
+                            </div>
+                            <div style="font-size: 12px; color: #666; margin-bottom: 10px;">
+                                💡 Canvas를 클릭하거나 직접 입력하여 필드를 추가하세요.
+                            </div>
+
+                            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                                <thead>
+                                    <tr style="background: #e9ecef;">
+                                        <th style="border: 1px solid #dee2e6; padding: 8px; min-width: 120px;">필드명
+                                        </th>
+                                        <th style="border: 1px solid #dee2e6; padding: 8px; width: 70px;">X 좌표</th>
+                                        <th style="border: 1px solid #dee2e6; padding: 8px; width: 70px;">Y 좌표</th>
+                                        <th style="border: 1px solid #dee2e6; padding: 8px; width: 70px;">폰트</th>
+                                        <th style="border: 1px solid #dee2e6; padding: 8px; width: 70px;">선 너비</th>
+                                        <th style="border: 1px solid #dee2e6; padding: 8px; width: 50px;">삭제</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="canvasFieldsTableBody">
+                                    <!-- JavaScript에서 동적으로 생성됨 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+            </div>
+
+            <!-- 생성 버튼 -->
+            <div style="text-align: right; padding: 20px;">
+                <button type="button" class="btn btn-gray" onclick="closeDocumentCreateModal()"
+                    style="margin-right: 10px;">취소</button>
+                <button type="button" class="btn" onclick="generateDocument()">📄 문서 생성</button>
+            </div>
+            </form>
+        </div>
+    </div>
+    </div>
+
+    <!-- 자료실 모달 -->
+    <div id="libraryModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999;">
+        <div
+            style="position: relative; width: 90%; max-width: 1200px; height: 85%; margin: 50px auto; background: white; border-radius: 8px; display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <!-- 헤더 -->
+            <div
+                style="position: sticky; top: 0; background: white; border-bottom: 2px solid #e0e0e0; padding: 15px 20px; border-radius: 5px 5px 0 0; z-index: 10;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
+                    <h3 style="margin: 0;">📁 자료실 (문서 양식 / 도면)</h3>
+                    <button type="button" class="btn btn-gray" onclick="closeLibraryModal()"
+                        style="padding: 6px 12px; font-weight: bold;">닫기 ✕</button>
+                </div>
+            </div>
+
+            <!-- 스크롤 가능한 컨텐츠 영역 -->
+            <div style="overflow-y: auto; padding: 20px;">
+                <!-- 파일 업로드 -->
+                <div style="margin-bottom: 20px; padding: 15px; border: 2px dashed #ccc; border-radius: 5px;">
+                    <div style="margin-bottom: 10px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">제목 *</label>
+                        <input type="text" id="libraryTitle"
+                            style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
+                            placeholder="제목을 입력하세요">
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">설명</label>
+                        <textarea id="libraryDescription"
+                            style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-height: 60px;"
+                            placeholder="설명을 입력하세요"></textarea>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">파일 (이미지 또는 PDF) *</label>
+                        <input type="file" id="libraryFileInput" accept="image/*,application/pdf"
+                            style="margin-bottom: 10px;">
+                    </div>
+                    <button type="button" class="btn" onclick="uploadLibraryImage()">📤 업로드</button>
+                </div>
+
+                <!-- 자료 목록 -->
+                <div id="libraryListContainer">
+                    <p style="text-align: center; color: #999;">등록된 자료가 없습니다.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 내 정보 모달 -->
+    <div id="myProfileModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999;">
+        <div
+            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 5px; width: 90%; max-width: 500px; max-height: 90vh; display: flex; flex-direction: column;">
+            <!-- 고정 헤더 -->
+            <div
+                style="position: sticky; top: 0; background: white; border-bottom: 2px solid #e0e0e0; padding: 15px 20px; border-radius: 5px 5px 0 0; z-index: 10;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
+                    <h3 style="margin: 0;">👤 내 정보</h3>
+                    <button type="button" class="btn btn-gray" onclick="closeMyProfileModal()"
+                        style="padding: 6px 12px; font-weight: bold;">닫기 ✕</button>
+                </div>
+            </div>
+
+            <!-- 스크롤 가능한 컨텐츠 영역 -->
+            <div style="overflow-y: auto; padding: 20px;">
+                <form id="myProfileForm">
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">사용자 이름</label>
+                        <input type="text" id="myUsername" readonly
+                            style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5;">
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">이름</label>
+                        <input type="text" id="myFullName"
+                            style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">현재 비밀번호 (변경 시에만
+                            입력)</label>
+                        <input type="password" id="myCurrentPassword"
+                            style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
+                            placeholder="비밀번호를 변경하려면 입력하세요">
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">새 비밀번호 (변경 시에만 입력)</label>
+                        <input type="password" id="myNewPassword"
+                            style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
+                            placeholder="새 비밀번호">
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">새 비밀번호 확인</label>
+                        <input type="password" id="myNewPasswordConfirm"
+                            style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
+                            placeholder="새 비밀번호 확인">
+                    </div>
+
+                    <div style="text-align: right; margin-top: 20px;">
+                        <button type="button" class="btn btn-gray" onclick="closeMyProfileModal()"
+                            style="margin-right: 10px;">취소</button>
+                        <button type="button" class="btn" onclick="updateMyProfile()">저장</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.part.mapper.GeneratedDocumentMapper">
+
+    <resultMap id="documentResultMap" type="com.example.part.dto.GeneratedDocumentDTO">
+        <id property="documentId" column="document_id"/>
+        <result property="incomingId" column="incoming_id"/>
+        <result property="templateId" column="template_id"/>
+        <result property="title" column="title"/>
+        <result property="fileName" column="file_name"/>
+        <result property="filePath" column="file_path"/>
+        <result property="fileSize" column="file_size"/>
+        <result property="itemName" column="item_name"/>
+        <result property="spec" column="spec"/>
+        <result property="quantity" column="quantity"/>
+        <result property="unitPrice" column="unit_price"/>
+        <result property="supplyPrice" column="supply_price"/>
+        <result property="tax" column="tax"/>
+        <result property="notes" column="notes"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="isActive" column="is_active"/>
+    </resultMap>
+
+    <insert id="insertDocument" parameterType="com.example.part.dto.GeneratedDocumentDTO"
+            useGeneratedKeys="true" keyProperty="documentId">
+        INSERT INTO generated_documents (
+            incoming_id, template_id, title, file_name, file_path, file_size,
+            item_name, spec, quantity, unit_price, supply_price, tax, notes, created_by
+        ) VALUES (
+            #{incomingId}, #{templateId}, #{title}, #{fileName}, #{filePath}, #{fileSize},
+            #{itemName}, #{spec}, #{quantity}, #{unitPrice}, #{supplyPrice}, #{tax}, #{notes}, #{createdBy}
+        )
+    </insert>
+
+    <select id="selectDocumentsByIncomingId" resultMap="documentResultMap" parameterType="int">
+        SELECT * FROM generated_documents
+        WHERE incoming_id = #{incomingId}
+        AND is_active = 1
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="selectDocumentById" resultMap="documentResultMap" parameterType="long">
+        SELECT * FROM generated_documents
+        WHERE document_id = #{documentId}
+    </select>
+
+    <delete id="deleteDocument" parameterType="long">
+        DELETE FROM generated_documents
+        WHERE document_id = #{documentId}
+    </delete>
+
+</mapper>

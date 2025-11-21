@@ -18,6 +18,8 @@ public class PartIncomingDTO {
     private String location; // 부품 위치 (입력용, 저장되지 않음)
     private String description;
     private String unit;
+    private Integer paymentMethodId;
+    private String paymentMethodName;
 
     // 입고 수량
     private Integer incomingQuantity;

@@ -21,6 +21,7 @@
         SELECT *
         FROM category
         WHERE is_active = 1
+        AND description = '카테고리'
         ORDER BY category_name ASC
     </select>
 
@@ -44,6 +45,15 @@
         FROM category
         WHERE category_name = #{categoryName}
         AND is_active = 1
+    </select>
+
+    <!-- description �??�른 카테고리 조회 -->
+    <select id="findByDescription" resultMap="categoryResultMap" parameterType="string">
+        SELECT *
+        FROM category
+        WHERE description = #{description}
+        AND is_active = 1
+        ORDER BY category_name ASC
     </select>
 
     <!-- ✅ 카테고리 등록 -->

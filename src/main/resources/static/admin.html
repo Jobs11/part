@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 페이지 - LiVEWALK</title>
+    <link rel="stylesheet" href="css/excel-style.css">
+    <style>
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .user-table th,
+        .user-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .user-table th {
+            background-color: #2196F3;
+            color: white;
+            font-weight: bold;
+        }
+
+        .user-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .user-table tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 5px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .role-admin {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .role-user {
+            background-color: #4CAF50;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 style="display: flex; justify-content: space-between; align-items: center;">
+            <span>관리자 페이지</span>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="location.href='/index.html'" class="btn">메인으로</button>
+                <button onclick="logout()" class="btn btn-gray">로그아웃</button>
+            </div>
+        </h1>
+
+        <div class="section">
+            <div class="section-header">
+                <h2>회원 관리</h2>
+                <button onclick="openAddUserModal()" class="btn">회원 추가</button>
+            </div>
+
+            <table class="user-table" id="userTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>사용자명</th>
+                        <th>이름</th>
+                        <th>이메일</th>
+                        <th>권한</th>
+                        <th>가입일</th>
+                        <th>관리</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody">
+                    <tr>
+                        <td colspan="7" style="text-align: center;">로딩 중...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 접속 로그 -->
+        <div class="section">
+            <div class="section-header">
+                <h2>접속 로그</h2>
+                <button onclick="loadAccessLogs()" class="btn">새로고침</button>
+            </div>
+
+            <table class="user-table" id="accessLogTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>사용자명</th>
+                        <th>접속 시간</th>
+                        <th>로그아웃 시간</th>
+                        <th>접속 IP</th>
+                        <th>로그아웃 IP</th>
+                        <th>User Agent</th>
+                    </tr>
+                </thead>
+                <tbody id="accessLogTableBody">
+                    <tr>
+                        <td colspan="7" style="text-align: center;">로딩 중...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 메시지 표시 -->
+        <div id="message" class="message"></div>
+    </div>
+
+    <!-- 회원 추가/수정 모달 -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">회원 추가</h2>
+            <form id="userForm">
+                <input type="hidden" id="userId">
+
+                <div class="form-group">
+                    <label for="username">사용자명 *</label>
+                    <input type="text" id="username" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">비밀번호 <span id="passwordHint">(수정 시 변경할 경우에만 입력)</span></label>
+                    <input type="password" id="password">
+                </div>
+
+                <div class="form-group">
+                    <label for="fullName">이름 *</label>
+                    <input type="text" id="fullName" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">이메일 *</label>
+                    <input type="email" id="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="userRole">권한 *</label>
+                    <select id="userRole" required>
+                        <option value="USER">일반 사용자</option>
+                        <option value="ADMIN">관리자</option>
+                    </select>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" onclick="closeUserModal()" class="btn btn-gray">취소</button>
+                    <button type="submit" class="btn">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const USER_API = '/livewalk/users';
+        const ACCESS_LOG_API = '/livewalk/access-logs';
+
+        // 페이지 로드 시 회원 목록 및 접속 로그 조회
+        document.addEventListener('DOMContentLoaded', function () {
+            loadUsers();
+            loadAccessLogs();
+        });
+
+        // 회원 목록 조회
+        async function loadUsers() {
+            try {
+                const response = await fetch(USER_API);
+                if (!response.ok) {
+                    throw new Error('회원 목록을 불러올 수 없습니다.');
+                }
+                const users = await response.json();
+                displayUsers(users);
+            } catch (error) {
+                showMessage('회원 목록을 불러오는 중 오류가 발생했습니다: ' + error.message, 'error');
+            }
+        }
+
+        // 회원 목록 표시
+        function displayUsers(users) {
+            const tbody = document.getElementById('userTableBody');
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">등록된 회원이 없습니다.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = users.map(user => `
+                <tr>
+                    <td>${user.userId}</td>
+                    <td>${user.username}</td>
+                    <td>${user.fullName || '-'}</td>
+                    <td>${user.email || '-'}</td>
+                    <td><span class="role-badge role-${user.userRole.toLowerCase()}">${user.userRole}</span></td>
+                    <td>${formatDateTime(user.createdAt)}</td>
+                    <td>
+                        <button onclick="openEditUserModal(${user.userId})" class="btn btn-small">수정</button>
+                        <button onclick="deleteUser(${user.userId}, '${user.username}')" class="btn btn-gray btn-small">삭제</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // 날짜 포맷팅
+        function formatDateTime(dateTime) {
+            if (!dateTime) return '-';
+            return dateTime.replace('T', ' ').substring(0, 19);
+        }
+
+        // 회원 추가 모달 열기
+        function openAddUserModal() {
+            document.getElementById('modalTitle').textContent = '회원 추가';
+            document.getElementById('userId').value = '';
+            document.getElementById('userForm').reset();
+            document.getElementById('username').readOnly = false;
+            document.getElementById('password').required = true;
+            document.getElementById('passwordHint').style.display = 'none';
+            document.getElementById('userModal').style.display = 'block';
+        }
+
+        // 회원 수정 모달 열기
+        async function openEditUserModal(userId) {
+            try {
+                const response = await fetch(`${USER_API}/${userId}`);
+                if (!response.ok) {
+                    throw new Error('회원 정보를 불러올 수 없습니다.');
+                }
+                const user = await response.json();
+
+                document.getElementById('modalTitle').textContent = '회원 수정';
+                document.getElementById('userId').value = user.userId;
+                document.getElementById('username').value = user.username;
+                document.getElementById('username').readOnly = true;
+                document.getElementById('password').value = '';
+                document.getElementById('password').required = false;
+                document.getElementById('passwordHint').style.display = 'inline';
+                document.getElementById('fullName').value = user.fullName || '';
+                document.getElementById('email').value = user.email || '';
+                document.getElementById('userRole').value = user.userRole;
+
+                document.getElementById('userModal').style.display = 'block';
+            } catch (error) {
+                showMessage('회원 정보를 불러오는 중 오류가 발생했습니다: ' + error.message, 'error');
+            }
+        }
+
+        // 모달 닫기
+        function closeUserModal() {
+            document.getElementById('userModal').style.display = 'none';
+            document.getElementById('userForm').reset();
+        }
+
+        // 회원 저장 (추가/수정)
+        document.getElementById('userForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const userId = document.getElementById('userId').value;
+            const userData = {
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value,
+                fullName: document.getElementById('fullName').value,
+                email: document.getElementById('email').value,
+                userRole: document.getElementById('userRole').value
+            };
+
+            try {
+                let response;
+                if (userId) {
+                    // 수정
+                    if (!userData.password) {
+                        delete userData.password;
+                    }
+                    response = await fetch(`${USER_API}/${userId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(userData)
+                    });
+                } else {
+                    // 추가
+                    if (!userData.password) {
+                        showMessage('비밀번호를 입력해주세요.', 'error');
+                        return;
+                    }
+                    response = await fetch(USER_API, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(userData)
+                    });
+                }
+
+                const result = await response.json();
+                if (result.success) {
+                    showMessage(result.message, 'success');
+                    closeUserModal();
+                    loadUsers();
+                } else {
+                    showMessage(result.message, 'error');
+                }
+            } catch (error) {
+                showMessage('오류가 발생했습니다: ' + error.message, 'error');
+            }
+        });
+
+        // 회원 삭제
+        async function deleteUser(userId, username) {
+            if (!confirm(`정말로 "${username}" 회원을 삭제하시겠습니까?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${USER_API}/${userId}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showMessage(result.message, 'success');
+                    loadUsers();
+                } else {
+                    showMessage(result.message, 'error');
+                }
+            } catch (error) {
+                showMessage('회원 삭제 중 오류가 발생했습니다: ' + error.message, 'error');
+            }
+        }
+
+        // 메시지 표시
+        function showMessage(message, type = 'success') {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = 'message ' + type;
+            messageDiv.style.display = 'block';
+
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        // 접속 로그 조회
+        async function loadAccessLogs() {
+            try {
+                const response = await fetch(ACCESS_LOG_API);
+                if (!response.ok) {
+                    throw new Error('접속 로그를 불러올 수 없습니다.');
+                }
+                const logs = await response.json();
+                displayAccessLogs(logs);
+            } catch (error) {
+                showMessage('접속 로그를 불러오는 중 오류가 발생했습니다: ' + error.message, 'error');
+            }
+        }
+
+        // 접속 로그 표시
+        function displayAccessLogs(logs) {
+            const tbody = document.getElementById('accessLogTableBody');
+            if (logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">접속 로그가 없습니다.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = logs.map(log => `
+                <tr>
+                    <td>${log.logId}</td>
+                    <td>${log.username || '-'}</td>
+                    <td>${log.loginTime || '-'}</td>
+                    <td>${log.logoutTime || '<span style="color: #4CAF50; font-weight: bold;">접속 중</span>'}</td>
+                    <td>${log.ipAddress || '-'}</td>
+                    <td>${log.logoutIp || '-'}</td>
+                    <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                        title="${log.userAgent || '-'}">${log.userAgent || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        // 로그아웃
+        function logout() {
+            if (confirm('로그아웃 하시겠습니까?')) {
+                window.location.href = '/logout';
+            }
+        }
+
+        // 모달 외부 클릭 시 닫기
+        window.onclick = function (event) {
+            const modal = document.getElementById('userModal');
+            if (event.target === modal) {
+                closeUserModal();
+            }
+        }
+    </script>
+</body>
+
+</html>

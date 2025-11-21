@@ -57,6 +57,15 @@ public class CategoryController {
     }
 
     /**
+     * 결제수단 카테고리 조회
+     */
+    @GetMapping("/payment-methods")
+    public ResponseEntity<List<CategoryDTO>> getPaymentMethods() {
+        List<CategoryDTO> paymentMethods = categoryService.getCategoriesByDescription("결제수단");
+        return ResponseEntity.ok(paymentMethods);
+    }
+
+    /**
      * 카테고리 등록
      */
     @PostMapping

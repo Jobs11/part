@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(./gradlew build:*)"
+      "Bash(./gradlew build:*)",
+      "Bash(\"c:\\project\\livewalk\\part\\src\\main\\resources\\static\\js\\incoming.js\")",
+      "Bash(\"c:\\project\\livewalk\\part\\src\\main\\resources\\static\\js\\inventory.js\")"
     ],
     "deny": [],
     "ask": []

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.part.mapper.GeneralImageMapper">
+
+    <resultMap id="generalImageResultMap" type="com.example.part.dto.GeneralImageDTO">
+        <id property="imageId" column="image_id"/>
+        <result property="title" column="title"/>
+        <result property="description" column="description"/>
+        <result property="fileName" column="file_name"/>
+        <result property="originalName" column="original_name"/>
+        <result property="filePath" column="file_path"/>
+        <result property="fileSize" column="file_size"/>
+        <result property="fileType" column="file_type"/>
+        <result property="fieldCoordinates" column="field_coordinates"/>
+        <result property="uploadedBy" column="uploaded_by"/>
+        <result property="uploadedAt" column="uploaded_at"/>
+        <result property="isActive" column="is_active"/>
+    </resultMap>
+
+    <insert id="insertImage" parameterType="com.example.part.dto.GeneralImageDTO"
+            useGeneratedKeys="true" keyProperty="imageId">
+        INSERT INTO general_images (title, description, file_name, original_name, file_path, file_size, file_type, field_coordinates, uploaded_by)
+        VALUES (#{title}, #{description}, #{fileName}, #{originalName}, #{filePath}, #{fileSize}, #{fileType}, #{fieldCoordinates}, #{uploadedBy})
+    </insert>
+
+    <select id="selectAllImages" resultMap="generalImageResultMap">
+        SELECT * FROM general_images
+        WHERE is_active = 1
+        ORDER BY uploaded_at DESC
+    </select>
+
+    <select id="selectImageById" resultMap="generalImageResultMap" parameterType="long">
+        SELECT * FROM general_images
+        WHERE image_id = #{imageId}
+    </select>
+
+    <delete id="deleteImage" parameterType="long">
+        DELETE FROM general_images
+        WHERE image_id = #{imageId}
+    </delete>
+
+    <update id="updateFieldCoordinates">
+        UPDATE general_images
+        SET field_coordinates = #{fieldCoordinates}
+        WHERE image_id = #{imageId}
+    </update>
+
+</mapper>

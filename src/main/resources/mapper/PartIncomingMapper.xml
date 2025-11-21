@@ -13,6 +13,8 @@
         <result property="partName" column="part_name"/>
         <result property="description" column="description"/>
         <result property="unit" column="unit"/>
+        <result property="paymentMethodId" column="payment_method_id"/>
+        <result property="paymentMethodName" column="payment_method_name"/>
         <result property="incomingQuantity" column="incoming_quantity"/>
         <result property="purchasePrice" column="purchase_price"/>
         <result property="currency" column="currency"/>
@@ -34,6 +36,7 @@
             part_name,
             description,
             unit,
+            payment_method_id,
             incoming_quantity,
             purchase_price,
             currency,
@@ -50,6 +53,7 @@
             #{partName},
             #{description},
             #{unit},
+            #{paymentMethodId},
             #{incomingQuantity},
             #{purchasePrice},
             #{currency},
@@ -67,9 +71,11 @@
     <select id="selectAllIncoming" resultMap="incomingResultMap">
         SELECT
             pi.*,
-            c.category_name
+            c.category_name AS category_name,
+            pm.category_name AS payment_method_name
         FROM part_incoming pi
         LEFT JOIN category c ON pi.category_id = c.category_id
+        LEFT JOIN category pm ON pi.payment_method_id = pm.category_id
         ORDER BY pi.created_at ASC
     </select>
 
@@ -77,9 +83,11 @@
     <select id="findById" resultMap="incomingResultMap" parameterType="int">
         SELECT
             pi.*,
-            c.category_name
+            c.category_name AS category_name,
+            pm.category_name AS payment_method_name
         FROM part_incoming pi
         LEFT JOIN category c ON pi.category_id = c.category_id
+        LEFT JOIN category pm ON pi.payment_method_id = pm.category_id
         WHERE pi.incoming_id = #{incomingId}
     </select>
 
@@ -87,9 +95,11 @@
     <select id="findByPartNumber" resultMap="incomingResultMap" parameterType="string">
         SELECT
             pi.*,
-            c.category_name
+            c.category_name AS category_name,
+            pm.category_name AS payment_method_name
         FROM part_incoming pi
         LEFT JOIN category c ON pi.category_id = c.category_id
+        LEFT JOIN category pm ON pi.payment_method_id = pm.category_id
         WHERE pi.part_number = #{partNumber}
         ORDER BY pi.created_at DESC
     </select>
@@ -98,9 +108,11 @@
     <select id="searchByPartName" resultMap="incomingResultMap" parameterType="string">
         SELECT
             pi.*,
-            c.category_name
+            c.category_name AS category_name,
+            pm.category_name AS payment_method_name
         FROM part_incoming pi
         LEFT JOIN category c ON pi.category_id = c.category_id
+        LEFT JOIN category pm ON pi.payment_method_id = pm.category_id
         WHERE pi.part_name LIKE CONCAT('%', #{partName}, '%')
         OR pi.part_number LIKE CONCAT('%', #{partName}, '%')
         ORDER BY pi.created_at DESC
@@ -110,9 +122,11 @@
     <select id="selectIncomingByCategory" resultMap="incomingResultMap" parameterType="int">
         SELECT
             pi.*,
-            c.category_name
+            c.category_name AS category_name,
+            pm.category_name AS payment_method_name
         FROM part_incoming pi
         LEFT JOIN category c ON pi.category_id = c.category_id
+        LEFT JOIN category pm ON pi.payment_method_id = pm.category_id
         WHERE pi.category_id = #{categoryId}
         ORDER BY pi.created_at DESC
     </select>
@@ -246,6 +260,7 @@
             part_name = #{partName},
             description = #{description},
             unit = #{unit},
+            payment_method_id = #{paymentMethodId},
             incoming_quantity = #{incomingQuantity},
             purchase_price = #{purchasePrice},
             currency = #{currency},
@@ -262,9 +277,11 @@
     <select id="getIncomingOrderBy" resultMap="incomingResultMap">
         SELECT
             pi.*,
-            c.category_name
+            c.category_name AS category_name,
+            pm.category_name AS payment_method_name
         FROM part_incoming pi
         LEFT JOIN category c ON pi.category_id = c.category_id
+        LEFT JOIN category pm ON pi.payment_method_id = pm.category_id
         ORDER BY ${column} ${order}
     </select>
 
@@ -272,9 +289,11 @@
     <select id="findByPartNameAndCategory" resultMap="incomingResultMap">
         SELECT
             pi.*,
-            c.category_name
+            c.category_name AS category_name,
+            pm.category_name AS payment_method_name
         FROM part_incoming pi
         LEFT JOIN category c ON pi.category_id = c.category_id
+        LEFT JOIN category pm ON pi.payment_method_id = pm.category_id
         WHERE pi.category_id = #{categoryId}
         AND pi.part_name = #{partName}
         ORDER BY pi.created_at DESC
@@ -285,11 +304,14 @@
     <select id="searchWithSort" resultMap="incomingResultMap">
         SELECT
             pi.*,
-            c.category_name
+            c.category_name AS category_name,
+            pm.category_name AS payment_method_name
         FROM part_incoming pi
         LEFT JOIN category c ON pi.category_id = c.category_id
+        LEFT JOIN category pm ON pi.payment_method_id = pm.category_id
         WHERE pi.part_name LIKE CONCAT('%', #{keyword}, '%')
         OR pi.part_number LIKE CONCAT('%', #{keyword}, '%')
+        OR pm.category_name LIKE CONCAT('%', #{keyword}, '%')
         ORDER BY ${column} ${order}
     </select>
 
@@ -297,9 +319,11 @@
     <select id="searchAdvanced" resultMap="incomingResultMap" parameterType="map">
         SELECT
             pi.*,
-            c.category_name
+            c.category_name AS category_name,
+            pm.category_name AS payment_method_name
         FROM part_incoming pi
         LEFT JOIN category c ON pi.category_id = c.category_id
+        LEFT JOIN category pm ON pi.payment_method_id = pm.category_id
         WHERE 1 = 1
 
         <!-- ================================
@@ -327,6 +351,7 @@
                 pi.part_number LIKE CONCAT('%', #{keyword}, '%')
                 OR pi.part_name LIKE CONCAT('%', #{keyword}, '%')
                 OR c.category_name LIKE CONCAT('%', #{keyword}, '%')
+                OR pm.category_name LIKE CONCAT('%', #{keyword}, '%')
             )
         </if>
 
@@ -338,6 +363,7 @@
                 pi.part_number LIKE CONCAT('%', #{kw}, '%')
                 OR pi.part_name LIKE CONCAT('%', #{kw}, '%')
                 OR c.category_name LIKE CONCAT('%', #{kw}, '%')
+                OR pm.category_name LIKE CONCAT('%', #{kw}, '%')
             )
         </foreach>
 
@@ -346,9 +372,10 @@
             ================================ -->
         <foreach collection="excludeList" item="kw">
             AND (
-                pi.part_number NOT LIKE CONCAT('%', #{kw}, '%')
-                AND pi.part_name NOT LIKE CONCAT('%', #{kw}, '%')
-                AND c.category_name NOT LIKE CONCAT('%', #{kw}, '%')
+                COALESCE(pi.part_number, '') NOT LIKE CONCAT('%', #{kw}, '%')
+                AND COALESCE(pi.part_name, '') NOT LIKE CONCAT('%', #{kw}, '%')
+                AND COALESCE(c.category_name, '') NOT LIKE CONCAT('%', #{kw}, '%')
+                AND COALESCE(pm.category_name, '') NOT LIKE CONCAT('%', #{kw}, '%')
             )
         </foreach>
 

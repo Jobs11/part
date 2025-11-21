@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.part.mapper.UserMapper">
+
+    <resultMap id="userResultMap" type="com.example.part.dto.UserDTO">
+        <id property="userId" column="user_id"/>
+        <result property="username" column="username"/>
+        <result property="password" column="password"/>
+        <result property="userRole" column="user_role"/>
+        <result property="fullName" column="full_name"/>
+        <result property="email" column="email"/>
+        <result property="isActive" column="is_active"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findByUsername" resultMap="userResultMap" parameterType="string">
+        SELECT * FROM users
+        WHERE username = #{username}
+        AND is_active = 1
+    </select>
+
+    <select id="findById" resultMap="userResultMap" parameterType="int">
+        SELECT * FROM users WHERE user_id = #{userId}
+    </select>
+
+    <select id="selectAllUsers" resultMap="userResultMap">
+        SELECT * FROM users
+        WHERE is_active = 1
+        ORDER BY created_at DESC
+    </select>
+
+    <insert id="insertUser" parameterType="com.example.part.dto.UserDTO"
+            useGeneratedKeys="true" keyProperty="userId">
+        INSERT INTO users (username, password, user_role, full_name, email)
+        VALUES (#{username}, #{password}, #{userRole}, #{fullName}, #{email})
+    </insert>
+
+    <update id="updateUser" parameterType="com.example.part.dto.UserDTO">
+        UPDATE users
+        <set>
+            <if test="fullName != null">full_name = #{fullName},</if>
+            <if test="email != null">email = #{email},</if>
+            <if test="userRole != null">user_role = #{userRole},</if>
+            <if test="password != null">password = #{password},</if>
+        </set>
+        WHERE user_id = #{userId}
+    </update>
+
+    <delete id="deleteUser" parameterType="int">
+        DELETE FROM users WHERE user_id = #{userId}
+    </delete>
+
+</mapper>

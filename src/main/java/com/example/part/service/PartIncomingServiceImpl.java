@@ -238,6 +238,8 @@ public class PartIncomingServiceImpl implements PartIncomingService {
                 return "pi.description";
             case "note":
                 return "pi.note";
+            case "payment_method_name":
+                return "pm.category_name";
             case "incoming_quantity":
                 return "pi.incoming_quantity";
             case "purchase_price":

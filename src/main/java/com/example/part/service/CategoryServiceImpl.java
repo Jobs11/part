@@ -101,6 +101,11 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    public List<CategoryDTO> getCategoriesByDescription(String description) {
+        return categoryMapper.findByDescription(description);
+    }
+
+    @Override
     public CategoryDTO getCategoryByCode(String categoryCode) {
         CategoryDTO category = categoryMapper.findByCode(categoryCode);
         if (category == null) {

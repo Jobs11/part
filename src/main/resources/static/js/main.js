@@ -1,6 +1,7 @@
-const INCOMING_API = '/livewalk/incoming';
+﻿const INCOMING_API = '/livewalk/incoming';
 const USAGE_API = '/livewalk/part-usage';
 const CATEGORY_API = '/livewalk/categories';
+const PAYMENT_METHOD_API = '/livewalk/categories/payment-methods';
 const LOCATION_CODE_REGEX = /^(?:[A-Z]|AA)-(?:[1-9]|[12]\d|3[0-2])$/;
 
 function enableEnterKeySearch(inputId, callback) {
@@ -121,6 +122,7 @@ function attachLocationInputHandlers(inputEl) {
 }
 
 let categoriesData = [];
+let paymentMethodsData = [];
 let inventoryData = [];
 let currentInventorySearchKeyword = '';
 let currentInventorySearchColumn = '';
@@ -132,7 +134,7 @@ let currentInventorySortColumn = null;
 let currentInventorySortOrder = 'asc';
 
 // 페이지 로드 시 실행
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', async function () {
     const incomingForm = document.getElementById('incomingForm');
     const usageForm = document.getElementById('usageForm');
     const purchaseDateEl = document.getElementById('purchaseDate');
@@ -146,6 +148,30 @@ document.addEventListener('DOMContentLoaded', function () {
     if (usedDateEl) usedDateEl.value = new Date().toISOString().split('T')[0];
 
     if (categoryIdEl) categoryIdEl.addEventListener('change', onCategoryChange);
+
+    // 관리자/일반 유저 버튼 표시 여부 확인
+    try {
+        const response = await fetch('/livewalk/auth/current-user');
+        if (response.ok) {
+            const data = await response.json();
+            const adminBtn = document.getElementById('adminBtn');
+            const myProfileBtn = document.getElementById('myProfileBtn');
+
+            if (data.isAdmin) {
+                // 관리자: 관리자 페이지 버튼만 표시
+                if (adminBtn) {
+                    adminBtn.style.display = 'block';
+                }
+            } else {
+                // 일반 유저: 내 정보 버튼만 표시
+                if (myProfileBtn) {
+                    myProfileBtn.style.display = 'block';
+                }
+            }
+        }
+    } catch (error) {
+        console.error('사용자 정보 조회 오류:', error);
+    }
 
     // 환율 자동 계산 이벤트 리스너
     const originalPriceEl = document.getElementById('originalPrice');
@@ -186,10 +212,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // 데이터 로드
-    loadCategories().then(() => {
-        // 카테고리 로드 후 입고 등록 테이블 초기 행 생성
-        addBulkRow();
-    });
+    Promise.all([loadCategories(), loadPaymentMethods()])
+        .catch(() => {
+            // 데이터 로드 중 �??�류��??�시됨
+        })
+        .finally(() => {
+            addBulkRow();
+        });
     loadAllIncoming();
     loadInventory();
     loadLowStock();
@@ -199,6 +228,9 @@ document.addEventListener('DOMContentLoaded', function () {
     enableEnterKeySearch('usageSearchInput', searchUsage);
     enableEnterKeySearch('inventorySearchInput', searchInventory);
     enableEnterKeySearch('gridSearchInput', searchGrid);
+
+    // 초기 카테고리 설정
+    switchCategory('parts');
 });
 
 // ==================== 카테고리 관련 ====================
@@ -222,6 +254,34 @@ async function loadCategories() {
         }
     } catch (error) {
         showMessage('카테고리 조회 오류: ' + error.message, 'error');
+    }
+}
+
+async function loadPaymentMethods() {
+    try {
+        const response = await fetch(PAYMENT_METHOD_API);
+        if (!response.ok) throw new Error('결제수단 조회 ?�패');
+
+        paymentMethodsData = await response.json();
+
+        const select = document.getElementById('paymentMethodId');
+        if (select) {
+            const previousValue = select.value;
+            select.innerHTML = '<option value="">\uC120\uD0DD\uD574\uC8FC\uC138\uC694</option>';
+
+            paymentMethodsData.forEach(method => {
+                const option = document.createElement('option');
+                option.value = method.categoryId;
+                option.textContent = method.categoryName;
+                select.appendChild(option);
+            });
+
+            if (previousValue && select.querySelector(`option[value=\"${previousValue}\"]`)) {
+                select.value = previousValue;
+            }
+        }
+    } catch (error) {
+        showMessage('결제수단 조회 ?�류: ' + error.message, 'error');
     }
 }
 
@@ -257,6 +317,7 @@ async function registerIncoming(e) {
 
     const categoryId = parseInt(document.getElementById('categoryId').value);
     const currency = document.getElementById('currency').value;
+    const paymentMethodEl = document.getElementById('paymentMethodId');
 
     const incomingData = {
         categoryId: categoryId,
@@ -270,6 +331,10 @@ async function registerIncoming(e) {
         note: document.getElementById('note').value,
         createdBy: 'system'
     };
+
+    if (paymentMethodEl && paymentMethodEl.value) {
+        incomingData.paymentMethodId = parseInt(paymentMethodEl.value);
+    }
 
     if (currency !== 'KRW') {
         incomingData.exchangeRate = parseFloat(document.getElementById('exchangeRate').value);
@@ -303,6 +368,8 @@ function clearIncomingForm() {
     document.getElementById('incomingForm').reset();
     document.getElementById('partNumber').value = '';
     document.getElementById('unit').value = 'EA';
+    const paymentMethodEl = document.getElementById('paymentMethodId');
+    if (paymentMethodEl) paymentMethodEl.value = '';
     document.getElementById('currency').value = 'KRW';
     document.getElementById('purchaseDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('exchangeRateGroup').style.display = 'none';
@@ -346,15 +413,16 @@ function selectIncomingSearchColumn(column, element) {
 
     // 사용자에게 피드백
     const columnNames = {
-        'category_name': '카테고리',
-        'part_number': '부품번호',
-        'part_name': '부품명',
-        'description': '설명',
-        'note': '비고',
-        'incoming_quantity': '입고수량',
-        'purchase_price': '구매금액',
-        'purchase_date': '구매일자',
-        'created_at': '등록일'
+        'category_name': '\uCE74\uD14C\uACE0\uB9AC',
+        'part_number': '\uBD80\uD488\uBC88\uD638',
+        'part_name': '\uBD80\uD488\uBA85',
+        'description': '\uC124\uBA85',
+        'note': '\uBE44\uACE0',
+        'incoming_quantity': '\uC785\uACE0\uC218\uB7C9',
+        'payment_method_name': '\uACB0\uC81C\uC218\uB2E8',
+        'purchase_price': '\uAD6C\uB9E4\uAE08\uC561',
+        'purchase_date': '\uAD6C\uB9E4\uC77C\uC790',
+        'created_at': '\uB4F1\uB85D\uC77C'
     };
     showMessage(`검색 컬럼: ${columnNames[column]} - 검색어를 입력하고 검색 버튼을 누르세요.`, 'info');
 }
@@ -376,7 +444,7 @@ async function searchIncomingByColumn(column) {
     const headers = document.querySelectorAll('#incomingTable th');
     const columnIndex = {
         'description': 3,
-        'note': 9
+        'note': 10
     };
     if (columnIndex[column] !== undefined && headers[columnIndex[column]]) {
         headers[columnIndex[column]].style.backgroundColor = '#e3f2fd';
@@ -452,10 +520,11 @@ async function sortIncomingTable(column) {
         'part_name': 2,
         'description': 3,
         'incoming_quantity': 4,
-        'purchase_price': 6,
-        'purchase_date': 7,
-        'created_at': 8,
-        'note': 9
+        'payment_method_name': 6,
+        'purchase_price': 7,
+        'purchase_date': 8,
+        'created_at': 9,
+        'note': 10
     };
     if (columnIndex[column] !== undefined && headers[columnIndex[column]]) {
         headers[columnIndex[column]].style.backgroundColor = '#e3f2fd';
@@ -490,7 +559,7 @@ async function displayIncomingList(incomingList) {
     const tbody = document.getElementById('incomingTableBody');
 
     if (incomingList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="12" style="text-align: center;">입고 내역이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" style="text-align: center;">입고 내역이 없습니다.</td></tr>';
         return;
     }
 
@@ -515,11 +584,12 @@ async function displayIncomingList(incomingList) {
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'description', '${escapeHtml(incoming.description || '')}')">${incoming.description || '-'}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'incomingQuantity', ${incoming.incomingQuantity})">${incoming.incomingQuantity}</td>
                 <td>${incoming.unit || '-'}</td>
+                <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'paymentMethodId', ${incoming.paymentMethodId != null ? incoming.paymentMethodId : 'null'}, null, '${escapeHtml(incoming.paymentMethodName || '')}')">${incoming.paymentMethodName || '-'}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'purchasePrice', ${incoming.purchasePrice})">${formatNumber(incoming.purchasePrice)} 원</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'purchaseDate', '${incoming.purchaseDate}')">${formatDate(incoming.purchaseDate)}</td>
                 <td>${formatDateTime(incoming.createdAt)}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'note', '${escapeHtml(incoming.note || '')}')">${incoming.note || '-'}</td>
-                <td><button class="btn-small" onclick="openImageModal(${incoming.incomingId})">📷 ${imageCount > 0 ? imageCount + '장' : '사진'}</button></td>
+                <td><button class="btn-small" onclick="openImageModal(${incoming.incomingId})">🖼 이미지${imageCount > 0 ? ' ' + imageCount + '개' : ''}</button></td>
                 <td><button class="btn-small" data-part-number="${escapeHtml(incoming.partNumber)}" onclick="openLocationModal(this.dataset.partNumber)">📍 배치도</button></td>
             </tr>
         `;
@@ -548,6 +618,14 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
         categoriesData.forEach(category => {
             const selected = category.categoryId === currentValue ? 'selected' : '';
             options += `<option value="${category.categoryId}" ${selected}>${category.categoryName} (${category.categoryCode})</option>`;
+        });
+        inputElement.innerHTML = options;
+    } else if (field === 'paymentMethodId') {
+        inputElement = document.createElement('select');
+        let options = '<option value="">\uC120\uD0DD</option>';
+        paymentMethodsData.forEach(method => {
+            const selected = method.categoryId === currentValue ? 'selected' : '';
+            options += `<option value="${method.categoryId}" ${selected}>${method.categoryName}</option>`;
         });
         inputElement.innerHTML = options;
     } else if (field === 'currency') {
@@ -587,10 +665,10 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
     if (inputElement.select) inputElement.select();
 
     const saveEdit = async () => {
-        const newValue = field === 'categoryId' ? inputElement.value : inputElement.value.trim();
+        const newValue = (field === 'categoryId' || field === 'paymentMethodId') ? inputElement.value : inputElement.value.trim();
 
         if (newValue === String(originalValue) || (!newValue && !originalValue)) {
-            if (field === 'categoryId') {
+            if (field === 'categoryId' || field === 'paymentMethodId') {
                 cell.textContent = displayValue || '-';
             } else if (field === 'originalPrice') {
                 cell.textContent = originalValue ? formatNumber(originalValue) : '-';
@@ -610,8 +688,8 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
             // 수정할 필드만 업데이트
             const updatedData = { ...currentData };
 
-            if (field === 'categoryId') {
-                updatedData[field] = parseInt(newValue);
+            if (field === 'categoryId' || field === 'paymentMethodId') {
+                updatedData[field] = newValue ? parseInt(newValue) : null;
             } else if (field === 'incomingQuantity' || field === 'purchasePrice' || field === 'originalPrice') {
                 updatedData[field] = parseFloat(newValue);
 
@@ -679,7 +757,7 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
     inputElement.addEventListener('blur', saveEdit);
     inputElement.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            if (field === 'categoryId') {
+            if (field === 'categoryId' || field === 'paymentMethodId') {
                 cell.textContent = displayValue || '-';
             } else if (field === 'purchaseDate') {
                 cell.textContent = formatDate(originalValue);
@@ -1250,6 +1328,21 @@ function formatNumber(number) {
     return Number(number).toLocaleString('ko-KR');
 }
 
+function formatFileSize(bytes) {
+    if (bytes === null || bytes === undefined || isNaN(bytes)) return '-';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let size = Number(bytes);
+    let unitIndex = 0;
+
+    while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024;
+        unitIndex++;
+    }
+
+    const formatted = unitIndex === 0 ? size.toFixed(0) : size.toFixed(1);
+    return `${formatted} ${units[unitIndex]}`;
+}
+
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -1652,20 +1745,583 @@ async function deleteImage(imageId) {
     }
 }
 
-// 이미지 다운로드
-function downloadImage(url, fileName) {
+function downloadFile(url, fileName, fallbackName = 'file') {
     fetch(url)
-        .then(response => response.blob())
+        .then(response => {
+            if (!response.ok) throw new Error('파일을 다운로드할 수 없습니다.');
+            return response.blob();
+        })
         .then(blob => {
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = fileName || 'image.jpg';
+            link.download = fileName || `${fallbackName}.dat`;
             link.click();
             URL.revokeObjectURL(link.href);
         })
         .catch(error => {
             showMessage('다운로드 실패: ' + error.message, 'error');
         });
+}
+
+function downloadImage(url, fileName) {
+    downloadFile(url, fileName || 'image.jpg', 'image');
+}
+
+let currentIncomingIdForDocument = null;
+
+async function openDocumentModal(incomingId) {
+    currentIncomingIdForDocument = incomingId;
+    const modal = document.getElementById('documentModal');
+    const idSpan = document.getElementById('documentModalIncomingId');
+    if (idSpan) idSpan.textContent = incomingId;
+    if (modal) modal.style.display = 'block';
+
+    const fileInput = document.getElementById('documentFileInput');
+    if (fileInput) fileInput.value = '';
+
+    await loadDocuments(incomingId);
+}
+
+function closeDocumentModal() {
+    const modal = document.getElementById('documentModal');
+    if (modal) modal.style.display = 'none';
+
+    const fileInput = document.getElementById('documentFileInput');
+    if (fileInput) fileInput.value = '';
+
+    currentIncomingIdForDocument = null;
+}
+
+async function loadDocuments(incomingId = currentIncomingIdForDocument) {
+    if (!incomingId) return;
+
+    const container = document.getElementById('documentListContainer');
+    if (!container) return;
+    container.innerHTML = '<p style="text-align: center; color: #999;">문서를 불러오는 중...</p>';
+
+    try {
+        const response = await fetch(`/livewalk/documents/incoming/${incomingId}`);
+        if (!response.ok) throw new Error('문서 조회 실패');
+
+        const documents = await response.json();
+        if (!documents || documents.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: #999;">등록된 문서가 없습니다.</p>';
+            return;
+        }
+
+        container.innerHTML = documents.map(doc => `
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px;">
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        📄 ${escapeHtml(doc.title || '문서')}
+                    </div>
+                    <div style="font-size: 11px; color: #777; margin-top: 4px;">
+                        ${formatDateTime(doc.createdAt)} · ${formatFileSize(doc.fileSize)}
+                    </div>
+                </div>
+                <div style="display: flex; gap: 6px;">
+                    <button class="btn-small" onclick="viewPDF('${doc.fileName}', '${escapeHtml(doc.title || '문서')}')">보기</button>
+                    <button class="btn-small" onclick="downloadPDF('${doc.fileName}', '${escapeHtml(doc.title || '문서')}')">다운로드</button>
+                    <button class="btn-small" style="background-color: #dc3545; color: #fff;" onclick="deleteGeneratedDocument(${doc.documentId})">삭제</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        container.innerHTML = '<p style="text-align: center; color: #e74c3c;">문서를 불러오지 못했습니다.</p>';
+        showMessage('문서 조회 오류: ' + error.message, 'error');
+    }
+}
+
+async function uploadDocuments() {
+    if (!currentIncomingIdForDocument) {
+        showMessage('입고 정보를 먼저 선택해주세요.', 'error');
+        return;
+    }
+
+    const fileInput = document.getElementById('documentFileInput');
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        showMessage('업로드할 문서를 선택해주세요.', 'warning');
+        return;
+    }
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const file of fileInput.files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('incomingId', currentIncomingIdForDocument);
+        formData.append('imageType', 'document');
+
+        try {
+            const response = await fetch('/livewalk/part-images/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                successCount++;
+            } else {
+                failCount++;
+            }
+        } catch (error) {
+            failCount++;
+        }
+    }
+
+    showMessage(`문서 업로드 완료: ${successCount}건 성공, ${failCount}건 실패`, successCount > 0 ? 'success' : 'error');
+    fileInput.value = '';
+    await loadDocuments();
+}
+
+async function deleteDocument(documentId) {
+    if (!confirm('선택한 문서를 삭제할까요?')) return;
+
+    try {
+        const response = await fetch(`/livewalk/part-images/${documentId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showMessage('문서가 삭제되었습니다.', 'success');
+            await loadDocuments();
+        } else {
+            const message = await response.text();
+            showMessage('문서 삭제 실패: ' + message, 'error');
+        }
+    } catch (error) {
+        showMessage('문서 삭제 오류: ' + error.message, 'error');
+    }
+}
+
+// 문서 생성 모달 열기
+async function openDocumentCreateForm() {
+    // 자료실에서 양식 목록 불러오기 (이미지만)
+    try {
+        const response = await fetch('/livewalk/library');
+        if (response.ok) {
+            const templates = await response.json();
+            const templateSelect = document.getElementById('templateSelect');
+            templateSelect.innerHTML = '<option value="">-- 양식을 선택하세요 --</option>';
+
+            templates.forEach(template => {
+                // 이미지 파일만 추가
+                if (template.fileType !== 'pdf') {
+                    const option = document.createElement('option');
+                    option.value = template.imageId;
+                    option.textContent = template.title;
+                    option.dataset.fileName = template.fileName;
+                    option.dataset.fileType = template.fileType || 'image';
+                    templateSelect.appendChild(option);
+                }
+            });
+        }
+    } catch (error) {
+        console.error('양식 목록 로딩 오류:', error);
+    }
+
+    // 폼 초기화
+    document.getElementById('documentCreateForm').reset();
+    
+    // Canvas 초기화
+    const canvas = document.getElementById('documentCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    currentTemplateImage = null;
+
+    // 필드 테이블 초기화 (1개 행만 남기고 모두 제거)
+    const tbody = document.getElementById('canvasFieldsTableBody');
+    tbody.innerHTML = `
+        <tr>
+            <td style="border: 1px solid #dee2e6; padding: 4px;">
+                <input type="text" class="canvas-field-value" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;" placeholder="텍스트 입력">
+            </td>
+            <td style="border: 1px solid #dee2e6; padding: 4px;">
+                <input type="number" class="canvas-field-x" value="100" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+            </td>
+            <td style="border: 1px solid #dee2e6; padding: 4px;">
+                <input type="number" class="canvas-field-y" value="100" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+            </td>
+            <td style="border: 1px solid #dee2e6; padding: 4px;">
+                <input type="number" class="canvas-field-fontsize" value="20" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+            </td>
+            <td style="border: 1px solid #dee2e6; padding: 4px; text-align: center;">
+                <button type="button" onclick="removeCanvasField(this)" style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer;">×</button>
+            </td>
+        </tr>
+    `;
+
+    // 모달 표시
+    document.getElementById('documentCreateModal').style.display = 'block';
+}
+
+// 문서 생성 모달 닫기
+function closeDocumentCreateModal() {
+    document.getElementById('documentCreateModal').style.display = 'none';
+}
+
+// 전역 변수로 현재 PDF 정보 저장
+let currentTemplatePdf = null;
+let currentTemplateFileType = null;
+let currentTemplateFileName = null;
+
+// 템플릿 미리보기 로드
+async function loadTemplatePreview() {
+    const select = document.getElementById('templateSelect');
+    const selectedOption = select.options[select.selectedIndex];
+    const preview = document.getElementById('templatePreview');
+
+    if (selectedOption.value) {
+        const fileName = selectedOption.dataset.fileName;
+        const fileType = selectedOption.dataset.fileType;
+
+        currentTemplateFileName = fileName;
+        currentTemplateFileType = fileType;
+        // Canvas에 이미지 로드
+        loadTemplateToCanvas();
+
+        if (fileType === 'pdf') {
+            // PDF.js를 사용한 PDF 미리보기
+            preview.innerHTML = `
+                <canvas id="pdfCanvas" style="border: 1px solid #ddd; border-radius: 4px; max-width: 100%;"></canvas>
+            `;
+            preview.style.display = 'block';
+
+            // PDF.js로 PDF 렌더링
+            const pdfUrl = `/livewalk/library/image/${fileName}`;
+            try {
+                const pdfjsLib = window['pdfjs-dist/build/pdf'];
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+                const loadingTask = pdfjsLib.getDocument(pdfUrl);
+                currentTemplatePdf = await loadingTask.promise;
+                const page = await currentTemplatePdf.getPage(1); // 첫 페이지만 미리보기
+
+                const canvas = document.getElementById('pdfCanvas');
+                const context = canvas.getContext('2d');
+                const viewport = page.getViewport({ scale: 1.5 });
+
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                const renderContext = {
+                    canvasContext: context,
+                    viewport: viewport
+                };
+                await page.render(renderContext).promise;
+
+                // PDF 로드 성공 시 표 위치 미리보기 활성화
+                updateTablePositionPreview();
+            } catch (error) {
+                console.error('PDF 로딩 오류:', error);
+                currentTemplatePdf = null;
+                preview.innerHTML = `
+                    <div style="padding: 30px; text-align: center;">
+                        <div style="font-size: 48px; margin-bottom: 15px;">📄</div>
+                        <div style="font-size: 16px; font-weight: bold; margin-bottom: 10px;">PDF 미리보기 실패</div>
+                        <a href="${pdfUrl}" target="_blank"
+                           style="display: inline-block; padding: 10px 20px; background: #007bff; color: white;
+                                  text-decoration: none; border-radius: 4px; margin-top: 10px;">
+                            새 창에서 열기
+                        </a>
+                    </div>
+                `;
+            }
+        } else {
+            // 이미지 미리보기
+            currentTemplatePdf = null;
+            preview.innerHTML = `
+                <img src="/livewalk/library/image/${fileName}" alt="양식 미리보기"
+                     style="max-width: 100%; max-height: 300px; border-radius: 4px;">
+            `;
+            preview.style.display = 'block';
+            document.getElementById('tablePositionPreview').style.display = 'none';
+        }
+    } else {
+        preview.style.display = 'none';
+        currentTemplatePdf = null;
+        document.getElementById('tablePositionPreview').style.display = 'none';
+    }
+}
+
+// 표 위치 미리보기 업데이트
+async function updateTablePositionPreview() {
+    if (!currentTemplatePdf || currentTemplateFileType !== 'pdf') {
+        document.getElementById('tablePositionPreview').style.display = 'none';
+        return;
+    }
+
+    try {
+        const page = await currentTemplatePdf.getPage(1);
+        const canvas = document.getElementById('previewCanvas');
+        const context = canvas.getContext('2d');
+
+        // A4 크기 기준으로 스케일 조정
+        const scale = 1.0;
+        const viewport = page.getViewport({ scale: scale });
+
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        // PDF 렌더링
+        await page.render({
+            canvasContext: context,
+            viewport: viewport
+        }).promise;
+
+        // 표 위치 박스 그리기
+        const tableX = parseFloat(document.getElementById('tableX').value) || 50;
+        const tableY = parseFloat(document.getElementById('tableY').value) || 250;
+
+        // PDF 좌표계는 왼쪽 아래가 원점이므로 Canvas 좌표계로 변환
+        const canvasY = viewport.height - tableY;
+
+        // 표 크기 (대략적인 크기)
+        const tableWidth = viewport.width - (tableX * 2);
+        const tableHeight = 150; // 대략적인 표 높이
+
+        // 빨간색 반투명 박스 그리기
+        context.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+        context.lineWidth = 3;
+        context.strokeRect(tableX, canvasY - tableHeight, tableWidth, tableHeight);
+
+        // 내부를 연한 빨간색으로 채우기
+        context.fillStyle = 'rgba(255, 0, 0, 0.1)';
+        context.fillRect(tableX, canvasY - tableHeight, tableWidth, tableHeight);
+
+        document.getElementById('tablePositionPreview').style.display = 'block';
+    } catch (error) {
+        console.error('표 위치 미리보기 오류:', error);
+    }
+}
+
+// 문서 행 추가
+function addDocumentRow() {
+    const tbody = document.getElementById('documentItemsTableBody');
+    const newRow = document.createElement('tr');
+    newRow.innerHTML = `
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="text" class="doc-item-name" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="text" class="doc-spec" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="number" class="doc-quantity" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="number" class="doc-unit-price" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="number" class="doc-supply-price" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="number" class="doc-tax" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="text" class="doc-notes" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px; text-align: center;">
+            <button type="button" onclick="removeDocumentRow(this)" style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer;">×</button>
+        </td>
+    `;
+    tbody.appendChild(newRow);
+}
+
+// 문서 행 삭제
+function removeDocumentRow(button) {
+    const tbody = document.getElementById('documentItemsTableBody');
+    if (tbody.rows.length > 1) {
+        button.closest('tr').remove();
+    } else {
+        alert('최소 1개의 행은 필요합니다.');
+    }
+}
+
+// 입력 방식 전환
+function toggleInputMode() {
+    const mode = document.querySelector('input[name="inputMode"]:checked').value;
+    const tableInputArea = document.getElementById('tableInputArea');
+    const fieldsInputArea = document.getElementById('fieldsInputArea');
+    const tablePositionArea = document.querySelector('#tableX').closest('div').closest('div').closest('div');
+
+    if (mode === 'table') {
+        tableInputArea.style.display = 'block';
+        fieldsInputArea.style.display = 'none';
+        tablePositionArea.style.display = 'block';
+    } else {
+        tableInputArea.style.display = 'none';
+        fieldsInputArea.style.display = 'block';
+        tablePositionArea.style.display = 'none';
+    }
+}
+
+// 개별 필드 행 추가
+function addFieldRow() {
+    const tbody = document.getElementById('documentFieldsTableBody');
+    const newRow = document.createElement('tr');
+    newRow.innerHTML = `
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="text" class="field-name" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;" placeholder="예: 공급자명">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="text" class="field-value" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;" placeholder="값 입력">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="number" class="field-x" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;" placeholder="100">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="number" class="field-y" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;" placeholder="700">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="number" class="field-font-size" value="10" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px; text-align: center;">
+            <button type="button" onclick="removeFieldRow(this)" style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer;">×</button>
+        </td>
+    `;
+    tbody.appendChild(newRow);
+}
+
+// 개별 필드 행 삭제
+function removeFieldRow(button) {
+    const tbody = document.getElementById('documentFieldsTableBody');
+    if (tbody.rows.length > 1) {
+        button.closest('tr').remove();
+    } else {
+        alert('최소 1개의 필드는 필요합니다.');
+    }
+}
+
+// PDF 문서 생성
+async function generateDocument() {
+    const templateId = document.getElementById('templateSelect').value;
+    const title = document.getElementById('docTitle').value;
+
+    if (!templateId) {
+        alert('문서 양식을 선택해주세요.');
+        return;
+    }
+
+    if (!title) {
+        alert('문서 제목을 입력해주세요.');
+        return;
+    }
+
+    // 입력 방식 확인
+    const mode = document.querySelector('input[name="inputMode"]:checked').value;
+
+    let documentData = {
+        templateId: templateId,
+        incomingId: currentIncomingIdForDocument,
+        title: title
+    };
+
+    if (mode === 'table') {
+        // 표 형식: 테이블에서 모든 행의 데이터 수집
+        const tbody = document.getElementById('documentItemsTableBody');
+        const rows = tbody.querySelectorAll('tr');
+        const items = [];
+
+        rows.forEach(row => {
+            const item = {
+                itemName: row.querySelector('.doc-item-name').value,
+                spec: row.querySelector('.doc-spec').value,
+                quantity: row.querySelector('.doc-quantity').value,
+                unitPrice: row.querySelector('.doc-unit-price').value,
+                supplyPrice: row.querySelector('.doc-supply-price').value,
+                tax: row.querySelector('.doc-tax').value,
+                notes: row.querySelector('.doc-notes').value
+            };
+            items.push(item);
+        });
+
+        // 표 위치 좌표 가져오기
+        const tableX = parseFloat(document.getElementById('tableX').value) || null;
+        const tableY = parseFloat(document.getElementById('tableY').value) || null;
+
+        documentData.items = items;
+        documentData.tableX = tableX;
+        documentData.tableY = tableY;
+    } else {
+        // 개별 필드: 필드 테이블에서 데이터 수집
+        const tbody = document.getElementById('documentFieldsTableBody');
+        const rows = tbody.querySelectorAll('tr');
+        const fields = [];
+
+        rows.forEach(row => {
+            const field = {
+                fieldName: row.querySelector('.field-name').value,
+                fieldValue: row.querySelector('.field-value').value,
+                x: parseFloat(row.querySelector('.field-x').value),
+                y: parseFloat(row.querySelector('.field-y').value),
+                fontSize: parseInt(row.querySelector('.field-font-size').value) || 10
+            };
+            fields.push(field);
+        });
+
+        documentData.fields = fields;
+    }
+
+    try {
+        const response = await fetch('/livewalk/documents/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(documentData)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            showMessage('문서가 생성되었습니다.', 'success');
+            closeDocumentCreateModal();
+            await loadDocuments();
+        } else {
+            const error = await response.json();
+            showMessage('문서 생성 실패: ' + error.message, 'error');
+        }
+    } catch (error) {
+        showMessage('문서 생성 오류: ' + error.message, 'error');
+    }
+}
+
+// PDF 보기
+function viewPDF(fileName, title) {
+    const url = `/livewalk/documents/view/${fileName}`;
+    window.open(url, '_blank');
+}
+
+// PDF 다운로드
+function downloadPDF(fileName, title) {
+    const url = `/livewalk/documents/download/${fileName}`;
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = title + '.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// 생성된 문서 삭제
+async function deleteGeneratedDocument(documentId) {
+    if (!confirm('선택한 문서를 삭제할까요?')) return;
+
+    try {
+        const response = await fetch(`/livewalk/documents/${documentId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showMessage('문서가 삭제되었습니다.', 'success');
+            await loadDocuments();
+        } else {
+            const error = await response.json();
+            showMessage('문서 삭제 실패: ' + error.message, 'error');
+        }
+    } catch (error) {
+        showMessage('문서 삭제 오류: ' + error.message, 'error');
+    }
 }
 
 // 행 추가 (1개씩)
@@ -1684,6 +2340,11 @@ function addBulkRow() {
         <td><input type="text" class="bulk-input bulk-location" placeholder="예: A-1" maxlength="5"></td>
         <td><input type="number" class="bulk-input bulk-quantity" placeholder="수량" min="1"></td>
         <td><input type="text" class="bulk-input bulk-unit" value="EA"></td>
+        <td>
+            <select class="bulk-input bulk-payment-method">
+                <option value="">\uC120\uD0DD</option>
+            </select>
+        </td>
         <td><input type="number" class="bulk-input bulk-price" placeholder="금액" min="0" step="0.01"></td>
         <td><input type="date" class="bulk-input bulk-date"></td>
         <td><input type="text" class="bulk-input bulk-description" placeholder="설명"></td>
@@ -1697,6 +2358,7 @@ function addBulkRow() {
 
     // 카테고리 로드
     loadCategoriesForBulk();
+    loadPaymentMethodsForBulk();
 }
 
 // 행 삭제 (마지막 행)
@@ -1749,6 +2411,23 @@ async function loadCategoriesForBulk() {
     }
 }
 
+async function loadPaymentMethodsForBulk() {
+    if (paymentMethodsData.length === 0) {
+        await loadPaymentMethods();
+    }
+
+    document.querySelectorAll('.bulk-payment-method').forEach(select => {
+        if (select.children.length <= 1) {
+            paymentMethodsData.forEach(method => {
+                const option = document.createElement('option');
+                option.value = method.categoryId;
+                option.textContent = method.categoryName;
+                select.appendChild(option);
+            });
+        }
+    });
+}
+
 // 일괄 카테고리 적용
 function applyBulkCategory() {
     const bulkCategoryId = document.getElementById('bulkCategorySelect').value;
@@ -1790,6 +2469,7 @@ async function submitBulkInsert() {
         locationInput.value = location;
         const quantity = row.querySelector('.bulk-quantity').value;
         const unit = row.querySelector('.bulk-unit').value.trim();
+        const paymentMethodId = row.querySelector('.bulk-payment-method').value;
         const price = row.querySelector('.bulk-price').value;
         const date = row.querySelector('.bulk-date').value;
         const description = row.querySelector('.bulk-description').value.trim();
@@ -1801,7 +2481,7 @@ async function submitBulkInsert() {
         }
 
         // 필수 항목: 부품번호, 카테고리, 부품명, 수량, 금액, 구매일자, 설명
-        if (partNumber && categoryId && partName && quantity && price && date && description) {
+        if (partNumber && categoryId && paymentMethodId && partName && quantity && price && date && description) {
             const data = {
                 partNumber: partNumber,
                 categoryId: parseInt(categoryId),
@@ -1809,6 +2489,7 @@ async function submitBulkInsert() {
                 location: location || null,
                 incomingQuantity: parseInt(quantity),
                 unit: unit || 'EA',
+                paymentMethodId: parseInt(paymentMethodId),
                 purchasePrice: parseFloat(price),
                 currency: 'KRW',
                 purchaseDate: date,
@@ -2108,24 +2789,25 @@ async function downloadIncomingCSV() {
         const data = await response.json();
 
         const csvData = data.map(item => ({
-            '입고ID': item.incomingId,
-            '카테고리': item.categoryName,
-            '부품번호': item.partNumber,
-            '부품명': item.partName,
-            '설명': item.description,
-            '입고수량': item.incomingQuantity,
-            '단위': item.unit,
-            '통화': item.currency,
-            '외화단가': item.originalPrice,
-            '환율': item.exchangeRate,
-            '구매금액': item.purchasePrice,
-            '공급업체': item.supplier,
-            '입고일': item.incomingDate,
-            '등록일시': item.createdAt,
-            '비고': item.remarks
+            '\uC785\uACE0ID': item.incomingId,
+            '\uCE74\uD14C\uACE0\uB9AC': item.categoryName,
+            '\uBD80\uD488\uBC88\uD638': item.partNumber,
+            '\uBD80\uD488\uBA85': item.partName,
+            '\uC124\uBA85': item.description,
+            '\uC785\uACE0\uC218\uB7C9': item.incomingQuantity,
+            '\uB2E8\uC704': item.unit,
+            '\uACB0\uC81C\uC218\uB2E8': item.paymentMethodName || '',
+            '\uD1B5\uD654': item.currency,
+            '\uC678\uD654\uB2E8\uAC00': item.originalPrice,
+            '\uD658\uC728': item.exchangeRate,
+            '\uAD6C\uB9E4\uAE08\uC561': item.purchasePrice,
+            '\uACF5\uAE09\uC5C5\uCCB4': item.supplier,
+            '\uC785\uACE0\uC77C': item.incomingDate,
+            '\uB4F1\uB85D\uC77C\uC2DC': item.createdAt,
+            '\uBE44\uACE0': item.remarks
         }));
 
-        const headers = ['입고ID', '카테고리', '부품번호', '부품명', '설명', '입고수량', '단위', '통화', '외화단가', '환율', '구매금액', '공급업체', '입고일', '등록일시', '비고'];
+        const headers = ['\uC785\uACE0ID', '\uCE74\uD14C\uACE0\uB9AC', '\uBD80\uD488\uBC88\uD638', '\uBD80\uD488\uBA85', '\uC124\uBA85', '\uC785\uACE0\uC218\uB7C9', '\uB2E8\uC704', '\uACB0\uC81C\uC218\uB2E8', '\uD1B5\uD654', '\uC678\uD654\uB2E8\uAC00', '\uD658\uC728', '\uAD6C\uB9E4\uAE08\uC561', '\uACF5\uAE09\uC5C5\uCCB4', '\uC785\uACE0\uC77C', '\uB4F1\uB85D\uC77C\uC2DC', '\uBE44\uACE0'];
 
         // 컬럼 선택 모달 열기
         openCsvColumnModal('incoming', csvData, headers);
@@ -2334,3 +3016,1551 @@ document.addEventListener('keydown', function (event) {
         }
     }
 });
+
+function logout() {
+    if (confirm('로그아웃하시겠습니까?')) {
+        window.location.href = '/logout';
+    }
+}
+
+// ==================== 내 정보 ====================
+let currentUserInfo = null;
+
+async function openMyProfileModal() {
+    try {
+        // 현재 사용자 정보 조회
+        const response = await fetch('/livewalk/auth/current-user');
+        if (response.ok) {
+            const data = await response.json();
+            currentUserInfo = data;
+
+            // 폼에 현재 정보 설정
+            document.getElementById('myUsername').value = data.username || '';
+            document.getElementById('myFullName').value = data.fullName || '';
+
+            // 비밀번호 필드 초기화
+            document.getElementById('myCurrentPassword').value = '';
+            document.getElementById('myNewPassword').value = '';
+            document.getElementById('myNewPasswordConfirm').value = '';
+
+            // 모달 표시
+            document.getElementById('myProfileModal').style.display = 'block';
+        } else {
+            showMessage('사용자 정보를 불러올 수 없습니다.', 'error');
+        }
+    } catch (error) {
+        showMessage('사용자 정보 조회 오류: ' + error.message, 'error');
+    }
+}
+
+function closeMyProfileModal() {
+    document.getElementById('myProfileModal').style.display = 'none';
+}
+
+async function updateMyProfile() {
+    const fullName = document.getElementById('myFullName').value;
+    const currentPassword = document.getElementById('myCurrentPassword').value;
+    const newPassword = document.getElementById('myNewPassword').value;
+    const newPasswordConfirm = document.getElementById('myNewPasswordConfirm').value;
+
+    if (!fullName) {
+        alert('이름을 입력해주세요.');
+        return;
+    }
+
+    // 비밀번호 변경 검증
+    if (newPassword || newPasswordConfirm || currentPassword) {
+        if (!currentPassword) {
+            alert('비밀번호를 변경하려면 현재 비밀번호를 입력해주세요.');
+            return;
+        }
+        if (!newPassword) {
+            alert('새 비밀번호를 입력해주세요.');
+            return;
+        }
+        if (newPassword !== newPasswordConfirm) {
+            alert('새 비밀번호가 일치하지 않습니다.');
+            return;
+        }
+        if (newPassword.length < 4) {
+            alert('비밀번호는 최소 4자 이상이어야 합니다.');
+            return;
+        }
+    }
+
+    const updateData = {
+        userId: currentUserInfo.userId,
+        fullName: fullName
+    };
+
+    // 비밀번호 변경이 있는 경우에만 추가
+    if (currentPassword && newPassword) {
+        updateData.currentPassword = currentPassword;
+        updateData.password = newPassword;
+    }
+
+    try {
+        const response = await fetch(`/livewalk/users/${currentUserInfo.userId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updateData)
+        });
+
+        if (response.ok) {
+            showMessage('정보가 수정되었습니다.', 'success');
+            closeMyProfileModal();
+        } else {
+            const error = await response.json();
+            showMessage('정보 수정 실패: ' + error.message, 'error');
+        }
+    } catch (error) {
+        showMessage('정보 수정 오류: ' + error.message, 'error');
+    }
+}
+
+// ==================== 자료실 ====================
+const LIBRARY_API = '/livewalk/library';
+
+function openLibraryModal() {
+    document.getElementById('libraryModal').style.display = 'block';
+    loadLibraryImages();
+}
+
+function closeLibraryModal() {
+    document.getElementById('libraryModal').style.display = 'none';
+    document.getElementById('libraryTitle').value = '';
+    document.getElementById('libraryDescription').value = '';
+    document.getElementById('libraryFileInput').value = '';
+}
+
+async function loadLibraryImages() {
+    try {
+        const response = await fetch(LIBRARY_API);
+        if (!response.ok) throw new Error('자료 목록을 불러올 수 없습니다.');
+
+        const images = await response.json();
+        displayLibraryImages(images);
+    } catch (error) {
+        showMessage('자료 목록 조회 실패: ' + error.message, 'error');
+    }
+}
+
+function displayLibraryImages(images) {
+    const container = document.getElementById('libraryListContainer');
+
+    if (!images || images.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #999;">등록된 자료가 없습니다.</p>';
+        return;
+    }
+
+    container.innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;">
+            ${images.map(img => {
+                const isPdf = img.fileType === 'pdf';
+                const previewHtml = isPdf
+                    ? `<canvas id="libraryPdfCanvas_${img.imageId}"
+                              style="width: 100%; height: 200px; border-radius: 4px; cursor: pointer; background: #f5f5f5;"
+                              onclick="window.open('/uploads/images/${img.fileName}', '_blank')"></canvas>`
+                    : `<img src="/uploads/images/${img.fileName}"
+                           alt="${img.title}"
+                           style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; cursor: pointer;"
+                           onclick="window.open('/uploads/images/${img.fileName}', '_blank')">`;
+
+                return `
+                    <div style="border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f9f9f9;">
+                        ${previewHtml}
+                        <h4 style="margin: 10px 0 5px 0; font-size: 14px;">${img.title} ${isPdf ? '[PDF]' : ''}</h4>
+                        <p style="margin: 0 0 10px 0; font-size: 12px; color: #666;">${img.description || ''}</p>
+                        <div style="font-size: 11px; color: #999; margin-bottom: 10px;">
+                            업로드: ${formatDateTime(img.uploadedAt)}
+                        </div>
+                        <button onclick="deleteLibraryImage(${img.imageId}, '${img.title}')" class="btn btn-gray" style="width: 100%; padding: 5px; font-size: 12px;">삭제</button>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+
+    // PDF 미리보기 렌더링
+    images.forEach(img => {
+        if (img.fileType === 'pdf') {
+            renderLibraryPdfPreview(img.imageId, img.fileName);
+        }
+    });
+}
+
+// 자료실 PDF 미리보기 렌더링
+async function renderLibraryPdfPreview(imageId, fileName) {
+    try {
+        const pdfjsLib = window['pdfjs-dist/build/pdf'];
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        const pdfUrl = `/uploads/images/${fileName}`;
+        const loadingTask = pdfjsLib.getDocument(pdfUrl);
+        const pdf = await loadingTask.promise;
+        const page = await pdf.getPage(1);
+
+        const canvas = document.getElementById(`libraryPdfCanvas_${imageId}`);
+        if (!canvas) return;
+
+        const context = canvas.getContext('2d');
+
+        // Canvas를 200px 높이에 맞춰 스케일 조정
+        const desiredHeight = 200;
+        const viewport = page.getViewport({ scale: 1.0 });
+        const scale = desiredHeight / viewport.height;
+        const scaledViewport = page.getViewport({ scale: scale });
+
+        canvas.height = scaledViewport.height;
+        canvas.width = scaledViewport.width;
+
+        const renderContext = {
+            canvasContext: context,
+            viewport: scaledViewport
+        };
+        await page.render(renderContext).promise;
+    } catch (error) {
+        console.error(`PDF 미리보기 렌더링 오류 (${fileName}):`, error);
+        // 오류 시 PDF 아이콘 표시
+        const canvas = document.getElementById(`libraryPdfCanvas_${imageId}`);
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            ctx.font = '48px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('📄', canvas.width / 2, canvas.height / 2);
+        }
+    }
+}
+
+async function uploadLibraryImage() {
+    const title = document.getElementById('libraryTitle').value.trim();
+    const description = document.getElementById('libraryDescription').value.trim();
+    const fileInput = document.getElementById('libraryFileInput');
+
+    if (!title) {
+        showMessage('제목을 입력해주세요.', 'error');
+        return;
+    }
+
+    if (!fileInput.files || fileInput.files.length === 0) {
+        showMessage('사진 파일을 선택해주세요.', 'error');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('description', description);
+    formData.append('file', fileInput.files[0]);
+
+    try {
+        const response = await fetch(LIBRARY_API, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) throw new Error('업로드 실패');
+
+        showMessage('자료가 등록되었습니다.', 'success');
+        document.getElementById('libraryTitle').value = '';
+        document.getElementById('libraryDescription').value = '';
+        document.getElementById('libraryFileInput').value = '';
+        loadLibraryImages();
+    } catch (error) {
+        showMessage('업로드 실패: ' + error.message, 'error');
+    }
+}
+
+async function deleteLibraryImage(imageId, title) {
+    if (!confirm(`"${title}" 자료를 삭제하시겠습니까?`)) return;
+
+    try {
+        const response = await fetch(`${LIBRARY_API}/${imageId}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('삭제 실패');
+
+        showMessage('자료가 삭제되었습니다.', 'success');
+        loadLibraryImages();
+    } catch (error) {
+        showMessage('삭제 실패: ' + error.message, 'error');
+    }
+}
+
+function formatDateTime(dateTime) {
+    if (!dateTime) return '';
+    return dateTime.replace('T', ' ').substring(0, 19);
+}
+
+
+
+
+
+
+
+
+
+
+
+// ==================== Canvas 기반 문서 편집 ====================
+
+let currentTemplateImage = null;
+
+// 템플릿 선택 시 Canvas에 이미지 로드
+// 템플릿 선택 시 Canvas에 이미지 로드 (A4 크기 고정)
+async function loadTemplateToCanvas() {
+    const templateSelect = document.getElementById('templateSelect');
+    const selectedOption = templateSelect.options[templateSelect.selectedIndex];
+    
+    if (!selectedOption.value) {
+        return;
+    }
+
+    const fileName = selectedOption.dataset.fileName;
+    const fileType = selectedOption.dataset.fileType;
+    
+    // 이미지 파일만 지원
+    if (fileType === 'pdf') {
+        alert('Canvas 편집은 이미지 파일만 지원합니다. PDF 파일은 선택할 수 없습니다.');
+        templateSelect.selectedIndex = 0;
+        return;
+    }
+
+    const canvas = document.getElementById('documentCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // A4 크기 설정 (72 DPI 기준: 210mm x 297mm)
+    // 픽셀로 변환: 794 x 1123 (at 96 DPI)
+    const A4_WIDTH = 794;
+    const A4_HEIGHT = 1123;
+    
+    canvas.width = A4_WIDTH;
+    canvas.height = A4_HEIGHT;
+
+    // 배경 흰색으로 채우기
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, A4_WIDTH, A4_HEIGHT);
+
+    const img = new Image();
+    img.onload = function() {
+        currentTemplateImage = img;
+        
+        // 이미지를 상단에 배치 (A4 너비에 맞춤)
+        const imgWidth = A4_WIDTH;
+        const imgHeight = (img.height / img.width) * A4_WIDTH;
+        
+        // 이미지가 너무 크면 높이를 A4의 절반으로 제한
+        const maxImgHeight = A4_HEIGHT / 2;
+        let finalImgHeight = imgHeight;
+        let finalImgWidth = imgWidth;
+        
+        if (imgHeight > maxImgHeight) {
+            finalImgHeight = maxImgHeight;
+            finalImgWidth = (img.width / img.height) * maxImgHeight;
+        }
+        
+        // 이미지를 상단 중앙에 배치
+        const imgX = (A4_WIDTH - finalImgWidth) / 2;
+        const imgY = 20; // 상단 여백
+        
+        ctx.drawImage(img, imgX, imgY, finalImgWidth, finalImgHeight);
+        
+        // 이미지 영역 표시 (선택사항 - 디버깅용)
+        // ctx.strokeStyle = '#ccc';
+        // ctx.strokeRect(imgX, imgY, finalImgWidth, finalImgHeight);
+        
+        redrawCanvas();
+    };
+    img.src = `/livewalk/library/image/${fileName}`;
+}
+
+// 필드 행 추가
+function addCanvasField() {
+    const tbody = document.getElementById('canvasFieldsTableBody');
+    const newRow = document.createElement('tr');
+    newRow.innerHTML = `
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="text" class="canvas-field-value" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;" placeholder="텍스트 입력">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="number" class="canvas-field-x" value="100" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="number" class="canvas-field-y" value="100" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="number" class="canvas-field-fontsize" value="20" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px; text-align: center;">
+            <button type="button" onclick="removeCanvasField(this)" style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer;">×</button>
+        </td>
+    `;
+    tbody.appendChild(newRow);
+}
+
+// 필드 행 삭제
+function removeCanvasField(button) {
+    const tbody = document.getElementById('canvasFieldsTableBody');
+    if (tbody.rows.length > 1) {
+        button.closest('tr').remove();
+        redrawCanvas();
+    } else {
+        alert('최소 1개의 필드는 필요합니다.');
+    }
+}
+
+
+// Canvas 다시 그리기 (A4 크기 고정)
+function redrawCanvas() {
+    const canvas = document.getElementById('documentCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const A4_WIDTH = 794;
+    const A4_HEIGHT = 1123;
+
+    // Canvas 초기화
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, A4_WIDTH, A4_HEIGHT);
+
+    // 눈금선 그리기 (50px 간격)
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.lineWidth = 0.5;
+
+    // 세로 눈금선
+    for (let x = 0; x <= A4_WIDTH; x += 50) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, A4_HEIGHT);
+        ctx.stroke();
+    }
+
+    // 가로 눈금선
+    for (let y = 0; y <= A4_HEIGHT; y += 50) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(A4_WIDTH, y);
+        ctx.stroke();
+    }
+
+    // 100px 간격 눈금선 (진하게)
+    ctx.strokeStyle = '#c0c0c0';
+    ctx.lineWidth = 1;
+
+    // 세로 눈금선 (100px)
+    for (let x = 0; x <= A4_WIDTH; x += 100) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, A4_HEIGHT);
+        ctx.stroke();
+    }
+
+    // 가로 눈금선 (100px)
+    for (let y = 0; y <= A4_HEIGHT; y += 100) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(A4_WIDTH, y);
+        ctx.stroke();
+    }
+
+    // 이미지가 있으면 상단에 그리기
+    if (currentTemplateImage) {
+        const imgWidth = A4_WIDTH;
+        const imgHeight = (currentTemplateImage.height / currentTemplateImage.width) * A4_WIDTH;
+
+        const maxImgHeight = A4_HEIGHT / 2;
+        let finalImgHeight = imgHeight;
+        let finalImgWidth = imgWidth;
+
+        if (imgHeight > maxImgHeight) {
+            finalImgHeight = maxImgHeight;
+            finalImgWidth = (currentTemplateImage.width / currentTemplateImage.height) * maxImgHeight;
+        }
+
+        const imgX = (A4_WIDTH - finalImgWidth) / 2;
+        const imgY = 20;
+
+        ctx.drawImage(currentTemplateImage, imgX, imgY, finalImgWidth, finalImgHeight);
+    }
+
+    // 모든 텍스트 필드 그리기
+    const tbody = document.getElementById('canvasFieldsTableBody');
+    if (tbody) {
+        const rows = tbody.querySelectorAll('tr');
+
+        rows.forEach(row => {
+            // 필드명 또는 텍스트 값 확인
+            const labelInput = row.querySelector('.canvas-field-label');
+            const valueInput = row.querySelector('.canvas-field-value');
+            const value = labelInput ? labelInput.value : (valueInput ? valueInput.value : '');
+
+            const x = parseFloat(row.querySelector('.canvas-field-x').value) || 0;
+            const y = parseFloat(row.querySelector('.canvas-field-y').value) || 0;
+            const fontSize = parseInt(row.querySelector('.canvas-field-fontsize').value) || 14;
+
+            // 필드 타입 확인
+            const fieldType = row.dataset.fieldType;
+
+            if (fieldType === 'table') {
+                // 표 타입 필드 처리
+                const tableDataInput = row.querySelector('.canvas-field-tabledata');
+                if (tableDataInput && tableDataInput.value) {
+                    try {
+                        const tableData = JSON.parse(tableDataInput.value);
+                        const { columns, widths, height } = tableData;
+
+                        console.log('표 그리기:', { x, y, columns, widths, height });
+
+                        // 표 배경 먼저 그리기 (더 잘 보이게)
+                        ctx.fillStyle = 'rgba(23, 162, 184, 0.1)';
+                        let currentX = x;
+                        for (let i = 0; i < columns; i++) {
+                            const cellWidth = widths[i];
+                            ctx.fillRect(currentX, y, cellWidth, height);
+                            currentX += cellWidth;
+                        }
+
+                        // 표 테두리 그리기 (더 굵게)
+                        ctx.strokeStyle = '#17a2b8';
+                        ctx.lineWidth = 3;
+                        currentX = x;
+                        // 각 칸 그리기
+                        for (let i = 0; i < columns; i++) {
+                            const cellWidth = widths[i];
+                            ctx.strokeRect(currentX, y, cellWidth, height);
+                            currentX += cellWidth;
+                        }
+                    } catch (e) {
+                        console.error('표 데이터 파싱 오류:', e);
+                    }
+                }
+            } else if (fieldType === 'box') {
+                // 박스 타입 필드 처리
+                const boxSizeInput = row.querySelector('.canvas-field-boxsize');
+                if (boxSizeInput && boxSizeInput.value) {
+                    const sizeMatch = boxSizeInput.value.match(/(\d+)x(\d+)/);
+                    if (sizeMatch) {
+                        const boxWidth = parseInt(sizeMatch[1]);
+                        const boxHeight = parseInt(sizeMatch[2]);
+
+                        // 박스 테두리 그리기
+                        ctx.strokeStyle = '#007bff';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(x, y, boxWidth, boxHeight);
+
+                        // 박스 내부 반투명 채우기
+                        ctx.fillStyle = 'rgba(0, 123, 255, 0.05)';
+                        ctx.fillRect(x, y, boxWidth, boxHeight);
+
+                        // 텍스트가 있으면 좌측중앙에 그리기
+                        if (value) {
+                            ctx.font = `${fontSize}px Arial`;
+                            ctx.fillStyle = 'red';
+                            ctx.textBaseline = 'middle'; // 세로 중앙 정렬
+                            ctx.fillText(value, x + 10, y + boxHeight / 2); // 좌측에서 10px 여백, 세로 중앙
+                            ctx.textBaseline = 'alphabetic'; // 기본값으로 복원
+                        }
+                    }
+                }
+            } else {
+                // 일반 포인트 타입 필드 처리
+                const lineWidthInput = row.querySelector('.canvas-field-linewidth');
+                const lineWidth = lineWidthInput ? parseInt(lineWidthInput.value) || 0 : 0;
+
+                if (value) {
+                    ctx.font = `${fontSize}px Arial`;
+                    ctx.fillStyle = 'red'; // 필드 위치 표시용 (빨간색)
+                    ctx.fillText(value, x, y);
+
+                    // 선 그리기 (lineWidth가 0보다 크면)
+                    if (lineWidth > 0) {
+                        ctx.strokeStyle = 'black';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(x, y + 2); // 텍스트 바로 아래
+                        ctx.lineTo(x + lineWidth, y + 2);
+                        ctx.stroke();
+                    }
+
+                    // 필드 위치에 작은 마커 표시
+                    ctx.fillStyle = 'blue';
+                    ctx.beginPath();
+                    ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            }
+        });
+    }
+
+    // 드래그 박스/표 프리뷰 그리기
+    if ((editorDragMode || editorTableMode) && editorDragStart && editorDragEnd) {
+        const startX = Math.min(editorDragStart.x, editorDragEnd.x);
+        const startY = Math.min(editorDragStart.y, editorDragEnd.y);
+        const width = Math.abs(editorDragEnd.x - editorDragStart.x);
+        const height = Math.abs(editorDragEnd.y - editorDragStart.y);
+
+        if (editorTableMode) {
+            // 표 프리뷰
+            ctx.strokeStyle = 'rgba(23, 162, 184, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+
+            // 각 칸 그리기
+            const cellWidth = width / editorTableColumns;
+            for (let i = 0; i < editorTableColumns; i++) {
+                ctx.strokeRect(startX + (i * cellWidth), startY, cellWidth, height);
+            }
+            ctx.setLineDash([]);
+
+            // 표 내부 반투명 채우기
+            ctx.fillStyle = 'rgba(23, 162, 184, 0.1)';
+            ctx.fillRect(startX, startY, width, height);
+
+            // 크기 표시
+            ctx.fillStyle = 'black';
+            ctx.font = '12px Arial';
+            ctx.fillText(`${editorTableColumns}칸: ${Math.round(width)}x${Math.round(height)}`, startX + 10, startY - 10);
+        } else {
+            // 박스 프리뷰
+            ctx.strokeStyle = 'rgba(0, 123, 255, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.strokeRect(startX, startY, width, height);
+            ctx.setLineDash([]);
+
+            // 박스 내부 반투명 채우기
+            ctx.fillStyle = 'rgba(0, 123, 255, 0.1)';
+            ctx.fillRect(startX, startY, width, height);
+
+            // 중앙 좌표 표시
+            const centerX = Math.round((editorDragStart.x + editorDragEnd.x) / 2);
+            const centerY = Math.round((editorDragStart.y + editorDragEnd.y) / 2);
+
+            ctx.fillStyle = 'red';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 5, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // 좌표 텍스트
+            ctx.fillStyle = 'black';
+            ctx.font = '12px Arial';
+            ctx.fillText(`(${centerX}, ${centerY})`, centerX + 10, centerY - 10);
+        }
+    }
+
+    // 선택된 필드 강조 표시
+    if (editorEditMode && editorSelectedField) {
+        const fieldType = editorSelectedField.dataset.fieldType;
+        const x = parseInt(editorSelectedField.querySelector('.canvas-field-x').value);
+        const y = parseInt(editorSelectedField.querySelector('.canvas-field-y').value);
+
+        if (fieldType === 'box') {
+            const boxSizeInput = editorSelectedField.querySelector('.canvas-field-boxsize');
+            if (boxSizeInput && boxSizeInput.value) {
+                const sizeMatch = boxSizeInput.value.match(/(\d+)x(\d+)/);
+                if (sizeMatch) {
+                    const width = parseInt(sizeMatch[1]);
+                    const height = parseInt(sizeMatch[2]);
+
+                    // 선택 테두리 (점선)
+                    ctx.strokeStyle = '#ffc107';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([10, 5]);
+                    ctx.strokeRect(x, y, width, height);
+                    ctx.setLineDash([]);
+
+                    // 크기 조절 핸들 (우하단)
+                    ctx.fillStyle = '#ffc107';
+                    ctx.fillRect(x + width - 8, y + height - 8, 16, 16);
+                }
+            }
+        } else if (fieldType === 'table') {
+            const tableDataInput = editorSelectedField.querySelector('.canvas-field-tabledata');
+            if (tableDataInput && tableDataInput.value) {
+                try {
+                    const tableData = JSON.parse(tableDataInput.value);
+                    const totalWidth = tableData.widths.reduce((sum, w) => sum + w, 0);
+                    const height = tableData.height;
+
+                    // 선택 테두리 (점선)
+                    ctx.strokeStyle = '#ffc107';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([10, 5]);
+                    ctx.strokeRect(x, y, totalWidth, height);
+                    ctx.setLineDash([]);
+
+                    // 크기 조절 핸들 (우하단)
+                    ctx.fillStyle = '#ffc107';
+                    ctx.fillRect(x + totalWidth - 8, y + height - 8, 16, 16);
+                } catch (e) {}
+            }
+        }
+    }
+}
+
+// ==================== 카테고리 전환 ====================
+
+let currentCategory = 'parts'; // 기본값: 부품
+
+// 카테고리 전환
+function switchCategory(category) {
+    currentCategory = category;
+    
+    const partsSections = document.querySelectorAll('.parts-section');
+    const docsSections = document.querySelectorAll('.docs-section');
+    const partsBtn = document.getElementById('categoryBtnParts');
+    const docsBtn = document.getElementById('categoryBtnDocs');
+    
+    if (category === 'parts') {
+        // 부품 섹션 보이기
+        partsSections.forEach(section => section.style.display = 'block');
+        docsSections.forEach(section => section.style.display = 'none');
+        
+        // 버튼 스타일 변경
+        partsBtn.style.background = '#007bff';
+        partsBtn.style.color = 'white';
+        docsBtn.style.background = 'white';
+        docsBtn.style.color = '#007bff';
+    } else {
+        // 문서 섹션 보이기
+        partsSections.forEach(section => section.style.display = 'none');
+        docsSections.forEach(section => section.style.display = 'block');
+        
+        // 버튼 스타일 변경
+        docsBtn.style.background = '#007bff';
+        docsBtn.style.color = 'white';
+        partsBtn.style.background = 'white';
+        partsBtn.style.color = '#007bff';
+        
+        // 문서 목록 로드
+        loadAllDocuments();
+    }
+}
+
+// 모든 문서 목록 로드 (입고 ID 없이)
+async function loadAllDocuments() {
+    try {
+        // 서버에서 모든 문서 가져오는 API가 필요함
+        // 임시로 빈 목록 표시
+        const container = document.getElementById('documentsListContainer');
+        container.innerHTML = '<p style="color: #999;">문서 목록을 불러오는 중...</p>';
+
+        // TODO: 서버에서 모든 문서 목록 가져오기
+        // const response = await fetch('/livewalk/documents/all');
+        // if (response.ok) {
+        //     const documents = await response.json();
+        //     displayDocumentsList(documents);
+        // }
+    } catch (error) {
+        console.error('문서 목록 로딩 오류:', error);
+    }
+}
+
+// ==================== 템플릿 에디터 ====================
+
+// 에디터 상태 관리
+let editorZoom = 1.0;
+let editorSnapEnabled = true;
+let editorSnapSize = 1; // 기본값 1px (세밀한 조정)
+let editorDragMode = false;
+let editorDragStart = null;
+let editorDragEnd = null;
+
+// 표 모드
+let editorTableMode = false;
+let editorTableColumns = 3; // 기본 칸 수
+
+// 수정 모드
+let editorEditMode = false;
+let editorSelectedField = null; // 선택된 필드의 행 (tr 요소)
+let editorResizeHandle = null; // 'se' (southeast corner)
+
+// 스냅 기능 (좌표를 격자에 붙임)
+function snapToGrid(value, gridSize = editorSnapSize) {
+    return Math.round(value / gridSize) * gridSize;
+}
+
+// Canvas 마우스 이동 이벤트 (가이드라인 표시)
+function handleCanvasMouseMove(event) {
+    if ((editorDragMode || editorTableMode) && editorDragStart) {
+        // 드래그/표 모드에서는 영역 표시
+        const canvas = document.getElementById('documentCanvas');
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        editorDragEnd = {
+            x: Math.round((event.clientX - rect.left) * scaleX),
+            y: Math.round((event.clientY - rect.top) * scaleY)
+        };
+
+        redrawCanvas();
+        return;
+    }
+
+    const canvas = document.getElementById('documentCanvas');
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    let mouseX = Math.round((event.clientX - rect.left) * scaleX);
+    let mouseY = Math.round((event.clientY - rect.top) * scaleY);
+
+    // 스냅 적용
+    if (editorSnapEnabled) {
+        mouseX = snapToGrid(mouseX);
+        mouseY = snapToGrid(mouseY);
+    }
+
+    // 좌표 표시 업데이트
+    const coordDisplay = document.getElementById('canvasCoordDisplay');
+    if (coordDisplay) {
+        coordDisplay.textContent = `X: ${mouseX}, Y: ${mouseY}`;
+    }
+
+    // 가이드라인 그리기
+    redrawCanvas();
+    const ctx = canvas.getContext('2d');
+
+    // 십자 가이드라인
+    ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
+
+    // 세로선
+    ctx.beginPath();
+    ctx.moveTo(mouseX, 0);
+    ctx.lineTo(mouseX, canvas.height);
+    ctx.stroke();
+
+    // 가로선
+    ctx.beginPath();
+    ctx.moveTo(0, mouseY);
+    ctx.lineTo(canvas.width, mouseY);
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+}
+
+// Canvas 마우스 다운 (드래그 시작)
+function handleCanvasMouseDown(event) {
+    if (!editorDragMode && !editorTableMode && !editorEditMode) return;
+
+    const canvas = document.getElementById('documentCanvas');
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    editorDragStart = {
+        x: Math.round((event.clientX - rect.left) * scaleX),
+        y: Math.round((event.clientY - rect.top) * scaleY)
+    };
+
+    // 수정 모드: 크기 조절 핸들 확인
+    if (editorEditMode && editorSelectedField) {
+        editorResizeHandle = checkResizeHandle(editorDragStart.x, editorDragStart.y);
+    }
+
+    editorDragEnd = null;
+}
+
+// 크기 조절 핸들 확인
+function checkResizeHandle(clickX, clickY) {
+    if (!editorSelectedField) return null;
+
+    const fieldType = editorSelectedField.dataset.fieldType;
+    const x = parseInt(editorSelectedField.querySelector('.canvas-field-x').value);
+    const y = parseInt(editorSelectedField.querySelector('.canvas-field-y').value);
+
+    let width = 0, height = 0;
+
+    if (fieldType === 'box') {
+        const boxSizeInput = editorSelectedField.querySelector('.canvas-field-boxsize');
+        if (boxSizeInput && boxSizeInput.value) {
+            const sizeMatch = boxSizeInput.value.match(/(\d+)x(\d+)/);
+            if (sizeMatch) {
+                width = parseInt(sizeMatch[1]);
+                height = parseInt(sizeMatch[2]);
+            }
+        }
+    } else if (fieldType === 'table') {
+        const tableDataInput = editorSelectedField.querySelector('.canvas-field-tabledata');
+        if (tableDataInput && tableDataInput.value) {
+            try {
+                const tableData = JSON.parse(tableDataInput.value);
+                width = tableData.widths.reduce((sum, w) => sum + w, 0);
+                height = tableData.height;
+            } catch (e) {}
+        }
+    }
+
+    // 우하단 모서리 근처인지 확인 (10px 범위)
+    const cornerX = x + width;
+    const cornerY = y + height;
+    if (Math.abs(clickX - cornerX) < 10 && Math.abs(clickY - cornerY) < 10) {
+        return 'se'; // southeast corner
+    }
+
+    return null;
+}
+
+// Canvas 마우스 업 (드래그 종료)
+function handleCanvasMouseUp(event) {
+    if ((!editorDragMode && !editorTableMode && !editorEditMode) || !editorDragStart) return;
+
+    const canvas = document.getElementById('documentCanvas');
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    editorDragEnd = {
+        x: Math.round((event.clientX - rect.left) * scaleX),
+        y: Math.round((event.clientY - rect.top) * scaleY)
+    };
+
+    // 수정 모드: 이동 또는 크기 조절
+    if (editorEditMode && editorSelectedField && editorDragStart && editorDragEnd) {
+        const deltaX = editorDragEnd.x - editorDragStart.x;
+        const deltaY = editorDragEnd.y - editorDragStart.y;
+
+        if (editorResizeHandle === 'se') {
+            // 크기 조절
+            resizeSelectedField(deltaX, deltaY);
+        } else if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+            // 이동 (최소 2px 이상 이동했을 때만)
+            moveSelectedField(deltaX, deltaY);
+        }
+
+        editorResizeHandle = null;
+        editorDragStart = null;
+        editorDragEnd = null;
+        redrawCanvas();
+        return;
+    }
+
+    // 박스의 시작점과 크기 계산
+    const boxX = Math.min(editorDragStart.x, editorDragEnd.x);
+    const boxY = Math.min(editorDragStart.y, editorDragEnd.y);
+    const boxWidth = Math.abs(editorDragEnd.x - editorDragStart.x);
+    const boxHeight = Math.abs(editorDragEnd.y - editorDragStart.y);
+
+    if (editorTableMode) {
+        // 표 모드: 표 추가
+        addTableToCanvas(boxX, boxY, boxWidth, boxHeight, editorTableColumns);
+    } else if (editorDragMode) {
+        // 박스 모드: 박스 필드 추가
+        const fieldName = prompt(`박스 영역: ${boxWidth}x${boxHeight}\n필드명을 입력하세요 (빈칸: 박스만 그리기):`);
+        if (fieldName !== null) { // 취소가 아니면
+            addBoxToTable(fieldName.trim(), boxX, boxY, boxWidth, boxHeight);
+        }
+    }
+
+    // 드래그 상태 초기화
+    editorDragStart = null;
+    editorDragEnd = null;
+    redrawCanvas();
+}
+
+// 선택된 필드 이동
+function moveSelectedField(deltaX, deltaY) {
+    if (!editorSelectedField) return;
+
+    const xInput = editorSelectedField.querySelector('.canvas-field-x');
+    const yInput = editorSelectedField.querySelector('.canvas-field-y');
+
+    xInput.value = parseInt(xInput.value) + deltaX;
+    yInput.value = parseInt(yInput.value) + deltaY;
+
+    showMessage('필드 이동됨', 'success');
+}
+
+// 선택된 필드 크기 조절
+function resizeSelectedField(deltaX, deltaY) {
+    if (!editorSelectedField) return;
+
+    const fieldType = editorSelectedField.dataset.fieldType;
+
+    if (fieldType === 'box') {
+        const boxSizeInput = editorSelectedField.querySelector('.canvas-field-boxsize');
+        if (boxSizeInput && boxSizeInput.value) {
+            const sizeMatch = boxSizeInput.value.match(/(\d+)x(\d+)/);
+            if (sizeMatch) {
+                const newWidth = Math.max(10, parseInt(sizeMatch[1]) + deltaX);
+                const newHeight = Math.max(10, parseInt(sizeMatch[2]) + deltaY);
+                boxSizeInput.value = `${newWidth}x${newHeight}`;
+                showMessage(`박스 크기 조절: ${newWidth}x${newHeight}`, 'success');
+            }
+        }
+    } else if (fieldType === 'table') {
+        const tableDataInput = editorSelectedField.querySelector('.canvas-field-tabledata');
+        if (tableDataInput && tableDataInput.value) {
+            try {
+                const tableData = JSON.parse(tableDataInput.value);
+                const oldTotalWidth = tableData.widths.reduce((sum, w) => sum + w, 0);
+                const newTotalWidth = Math.max(50, oldTotalWidth + deltaX);
+                const newHeight = Math.max(20, tableData.height + deltaY);
+
+                // 각 칸의 너비를 비율에 따라 조정
+                const ratio = newTotalWidth / oldTotalWidth;
+                tableData.widths = tableData.widths.map(w => Math.floor(w * ratio));
+                tableData.height = newHeight;
+
+                tableDataInput.value = JSON.stringify(tableData);
+                showMessage(`표 크기 조절: ${newTotalWidth}x${newHeight}`, 'success');
+            } catch (e) {}
+        }
+    }
+}
+
+// Canvas 클릭 시 필드 추가
+function addFieldAtPosition(event) {
+    // 드래그 모드나 표 모드에서는 클릭 무시
+    if (editorDragMode || editorTableMode) return;
+
+    const canvas = document.getElementById('documentCanvas');
+    const rect = canvas.getBoundingClientRect();
+
+    // Canvas 내 클릭 위치 계산
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    let x = Math.round((event.clientX - rect.left) * scaleX);
+    let y = Math.round((event.clientY - rect.top) * scaleY);
+
+    // 수정 모드: 필드 선택
+    if (editorEditMode) {
+        selectFieldAtPosition(x, y);
+        return;
+    }
+
+    // 스냅 적용
+    if (editorSnapEnabled) {
+        x = snapToGrid(x);
+        y = snapToGrid(y);
+    }
+
+    // 필드명 입력 받기
+    const fieldName = prompt('필드명을 입력하세요 (예: 날짜, 금액, 공급자명):');
+    if (!fieldName || fieldName.trim() === '') {
+        return;
+    }
+
+    addFieldToTable(fieldName.trim(), x, y);
+}
+
+// 특정 위치의 필드 선택
+function selectFieldAtPosition(clickX, clickY) {
+    const tbody = document.getElementById('canvasFieldsTableBody');
+    const rows = tbody.querySelectorAll('tr');
+
+    editorSelectedField = null;
+
+    rows.forEach(row => {
+        const fieldType = row.dataset.fieldType;
+        const x = parseInt(row.querySelector('.canvas-field-x').value);
+        const y = parseInt(row.querySelector('.canvas-field-y').value);
+
+        if (fieldType === 'box') {
+            const boxSizeInput = row.querySelector('.canvas-field-boxsize');
+            if (boxSizeInput && boxSizeInput.value) {
+                const sizeMatch = boxSizeInput.value.match(/(\d+)x(\d+)/);
+                if (sizeMatch) {
+                    const width = parseInt(sizeMatch[1]);
+                    const height = parseInt(sizeMatch[2]);
+
+                    // 박스 영역 안인지 확인
+                    if (clickX >= x && clickX <= x + width && clickY >= y && clickY <= y + height) {
+                        editorSelectedField = row;
+                    }
+                }
+            }
+        } else if (fieldType === 'table') {
+            const tableDataInput = row.querySelector('.canvas-field-tabledata');
+            if (tableDataInput && tableDataInput.value) {
+                try {
+                    const tableData = JSON.parse(tableDataInput.value);
+                    const totalWidth = tableData.widths.reduce((sum, w) => sum + w, 0);
+                    const height = tableData.height;
+
+                    // 표 영역 안인지 확인
+                    if (clickX >= x && clickX <= x + totalWidth && clickY >= y && clickY <= y + height) {
+                        editorSelectedField = row;
+                    }
+                } catch (e) {}
+            }
+        }
+    });
+
+    if (editorSelectedField) {
+        showMessage('필드 선택됨 - 드래그로 이동 또는 모서리로 크기 조절', 'info');
+    }
+
+    redrawCanvas();
+}
+
+// 필드를 테이블에 추가하는 공통 함수
+function addFieldToTable(fieldName, x, y) {
+    const tbody = document.getElementById('canvasFieldsTableBody');
+    const newRow = document.createElement('tr');
+    newRow.innerHTML = `
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="text" class="canvas-field-label" value="${escapeHtml(fieldName)}" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="number" class="canvas-field-x" value="${x}" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="number" class="canvas-field-y" value="${y}" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="number" class="canvas-field-fontsize" value="14" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="number" class="canvas-field-linewidth" value="0" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;" placeholder="0" title="0이면 선 없음, 숫자 입력 시 밑줄 표시">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px; text-align: center;">
+            <button type="button" onclick="removeCanvasField(this)" style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer;">×</button>
+        </td>
+    `;
+    tbody.appendChild(newRow);
+
+    // Canvas 다시 그리기
+    redrawCanvas();
+
+    showMessage(`필드 "${fieldName}" 추가됨 (X: ${x}, Y: ${y})`, 'success');
+}
+
+// 박스를 테이블에 추가하는 함수
+function addBoxToTable(fieldName, x, y, width, height) {
+    const tbody = document.getElementById('canvasFieldsTableBody');
+    const newRow = document.createElement('tr');
+    newRow.dataset.fieldType = 'box'; // 박스 타입 표시
+
+    newRow.innerHTML = `
+        <td style="border: 1px solid #dee2e6; padding: 4px; background: #fffbf0;">
+            <input type="text" class="canvas-field-label" value="${escapeHtml(fieldName)}" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;" placeholder="(박스)">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="number" class="canvas-field-x" value="${x}" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;" title="박스 시작 X">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="number" class="canvas-field-y" value="${y}" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;" title="박스 시작 Y">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="number" class="canvas-field-fontsize" value="14" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;" title="폰트 크기">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="text" class="canvas-field-boxsize" value="${width}x${height}" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;" placeholder="너비x높이" title="박스 크기 (너비x높이)">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px; text-align: center;">
+            <button type="button" onclick="removeCanvasField(this)" style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer;">×</button>
+        </td>
+    `;
+    tbody.appendChild(newRow);
+
+    // Canvas 다시 그리기
+    redrawCanvas();
+
+    if (fieldName) {
+        showMessage(`박스 "${fieldName}" 추가됨 (${width}x${height})`, 'success');
+    } else {
+        showMessage(`박스 추가됨 (${width}x${height})`, 'success');
+    }
+}
+
+// 표 추가
+function addTableToCanvas(x, y, totalWidth, height, columns) {
+    const tbody = document.getElementById('canvasFieldsTableBody');
+    const newRow = document.createElement('tr');
+    newRow.dataset.fieldType = 'table'; // 표 타입 표시
+
+    // 칸 너비 계산 (균등 분할)
+    const columnWidths = [];
+    const cellWidth = Math.floor(totalWidth / columns);
+    for (let i = 0; i < columns; i++) {
+        columnWidths.push(cellWidth);
+    }
+
+    const tableDataJson = JSON.stringify({columns: columns, widths: columnWidths, height: height});
+
+    console.log('표 추가:', {x, y, totalWidth, height, columns, tableDataJson});
+
+    newRow.innerHTML = `
+        <td style="border: 1px solid #dee2e6; padding: 4px; background: #f0f8ff;">
+            <input type="text" class="canvas-field-label" value="" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;" placeholder="(표)">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="number" class="canvas-field-x" value="${x}" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;" title="표 시작 X">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="number" class="canvas-field-y" value="${y}" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;" title="표 시작 Y">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="number" class="canvas-field-fontsize" value="14" oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px;" title="폰트 크기">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px;">
+            <input type="text" class="canvas-field-tabledata" value='${tableDataJson}' oninput="redrawCanvas()" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px; font-size: 11px;" placeholder="표 데이터" title="표 데이터 (JSON)">
+        </td>
+        <td style="border: 1px solid #dee2e6; padding: 4px; text-align: center;">
+            <button type="button" onclick="removeCanvasField(this)" style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer;">×</button>
+        </td>
+    `;
+    tbody.appendChild(newRow);
+
+    redrawCanvas();
+    showMessage(`${columns}칸 표 추가됨 (${totalWidth}x${height})`, 'success');
+}
+
+// 줌 조절
+function setEditorZoom(zoom) {
+    editorZoom = parseFloat(zoom);
+    const canvas = document.getElementById('documentCanvas');
+    const container = canvas.parentElement;
+
+    canvas.style.transform = `scale(${editorZoom})`;
+    canvas.style.transformOrigin = 'top left';
+
+    // 컨테이너 높이 조정
+    const scaledHeight = canvas.offsetHeight * editorZoom;
+    container.style.minHeight = scaledHeight + 'px';
+
+    document.getElementById('zoomLevel').textContent = Math.round(editorZoom * 100) + '%';
+}
+
+// 스냅 크기 변경
+function setSnapSize(size) {
+    editorSnapSize = parseInt(size);
+    document.getElementById('snapSizeDisplay').textContent = `${editorSnapSize}px`;
+    showMessage(`스냅 크기: ${editorSnapSize}px`, 'info');
+}
+
+// 스냅 토글
+function toggleSnap() {
+    editorSnapEnabled = !editorSnapEnabled;
+    const btn = document.getElementById('snapToggleBtn');
+    if (btn) {
+        btn.textContent = editorSnapEnabled ? `🧲 스냅: ON (${editorSnapSize}px)` : '🧲 스냅: OFF';
+        btn.style.background = editorSnapEnabled ? '#28a745' : '#6c757d';
+    }
+    showMessage(`스냅 기능 ${editorSnapEnabled ? '켜짐' : '꺼짐'}`, 'info');
+}
+
+// 드래그 모드 토글
+function toggleDragMode() {
+    editorDragMode = !editorDragMode;
+    editorTableMode = false; // 표 모드 끄기
+
+    const canvas = document.getElementById('documentCanvas');
+    const btn = document.getElementById('dragModeBtn');
+    const tableBtn = document.getElementById('tableModeBtn');
+
+    if (editorDragMode) {
+        canvas.style.cursor = 'crosshair';
+        if (btn) {
+            btn.textContent = '📦 박스 모드: ON';
+            btn.style.background = '#28a745';
+        }
+        if (tableBtn) {
+            tableBtn.textContent = '📊 표 모드: OFF';
+            tableBtn.style.background = '#6c757d';
+        }
+        showMessage('드래그로 영역을 선택하면 박스 필드가 추가됩니다.', 'info');
+    } else {
+        canvas.style.cursor = 'crosshair';
+        if (btn) {
+            btn.textContent = '📦 박스 모드: OFF';
+            btn.style.background = '#6c757d';
+        }
+        editorDragStart = null;
+        editorDragEnd = null;
+        redrawCanvas();
+    }
+}
+
+// 표 모드 토글
+function toggleTableMode() {
+    // 칸 수 입력받기
+    if (!editorTableMode) {
+        const columns = prompt('표의 칸 수를 입력하세요 (2-10):', editorTableColumns);
+        if (columns === null) return; // 취소
+
+        const colNum = parseInt(columns);
+        if (isNaN(colNum) || colNum < 2 || colNum > 10) {
+            alert('칸 수는 2~10 사이의 숫자여야 합니다.');
+            return;
+        }
+
+        editorTableColumns = colNum;
+    }
+
+    editorTableMode = !editorTableMode;
+    editorDragMode = false; // 박스 모드 끄기
+
+    const canvas = document.getElementById('documentCanvas');
+    const btn = document.getElementById('tableModeBtn');
+    const dragBtn = document.getElementById('dragModeBtn');
+
+    if (editorTableMode) {
+        canvas.style.cursor = 'crosshair';
+        if (btn) {
+            btn.textContent = `📊 표 모드: ON (${editorTableColumns}칸)`;
+            btn.style.background = '#17a2b8';
+        }
+        if (dragBtn) {
+            dragBtn.textContent = '📦 박스 모드: OFF';
+            dragBtn.style.background = '#6c757d';
+        }
+        showMessage(`드래그로 ${editorTableColumns}칸 표를 추가합니다.`, 'info');
+    } else {
+        canvas.style.cursor = 'crosshair';
+        if (btn) {
+            btn.textContent = '📊 표 모드: OFF';
+            btn.style.background = '#6c757d';
+        }
+        editorDragStart = null;
+        editorDragEnd = null;
+        redrawCanvas();
+    }
+}
+
+// 수정 모드 토글
+function toggleEditMode() {
+    editorEditMode = !editorEditMode;
+    editorDragMode = false;
+    editorTableMode = false;
+
+    const canvas = document.getElementById('documentCanvas');
+    const btn = document.getElementById('editModeBtn');
+    const dragBtn = document.getElementById('dragModeBtn');
+    const tableBtn = document.getElementById('tableModeBtn');
+
+    if (editorEditMode) {
+        canvas.style.cursor = 'pointer';
+        if (btn) {
+            btn.textContent = '✏️ 수정 모드: ON';
+            btn.style.background = '#ffc107';
+        }
+        if (dragBtn) {
+            dragBtn.textContent = '📦 박스 모드: OFF';
+            dragBtn.style.background = '#6c757d';
+        }
+        if (tableBtn) {
+            tableBtn.textContent = '📊 표 모드: OFF';
+            tableBtn.style.background = '#6c757d';
+        }
+        showMessage('박스나 표를 클릭하여 선택하고 드래그하여 이동/크기 조절', 'info');
+    } else {
+        canvas.style.cursor = 'crosshair';
+        if (btn) {
+            btn.textContent = '✏️ 수정 모드: OFF';
+            btn.style.background = '#6c757d';
+        }
+        editorSelectedField = null;
+        editorDragStart = null;
+        editorDragEnd = null;
+        editorResizeHandle = null;
+        redrawCanvas();
+    }
+}
+
+// 모든 필드 삭제
+function clearAllFields() {
+    if (!confirm('모든 필드를 삭제하시겠습니까?')) {
+        return;
+    }
+
+    const tbody = document.getElementById('canvasFieldsTableBody');
+    tbody.innerHTML = '';
+    redrawCanvas();
+    showMessage('모든 필드가 삭제되었습니다.', 'info');
+}
+
+// 템플릿 좌표 저장 (DB에 저장)
+async function saveTemplateCoordinates() {
+    const tbody = document.getElementById('canvasFieldsTableBody');
+    const rows = tbody.querySelectorAll('tr');
+
+    if (rows.length === 0) {
+        alert('저장할 필드가 없습니다.');
+        return;
+    }
+
+    // 템플릿 정보 수집
+    const templateSelect = document.getElementById('templateSelect');
+    const selectedOption = templateSelect.options[templateSelect.selectedIndex];
+
+    if (!selectedOption.value) {
+        alert('양식을 먼저 선택하세요.');
+        return;
+    }
+
+    const fields = [];
+    rows.forEach(row => {
+        const label = row.querySelector('.canvas-field-label').value.trim();
+        const x = parseInt(row.querySelector('.canvas-field-x').value);
+        const y = parseInt(row.querySelector('.canvas-field-y').value);
+        const fontSize = parseInt(row.querySelector('.canvas-field-fontsize').value);
+        const fieldType = row.dataset.fieldType;
+
+        const fieldData = {
+            label: label,
+            x: x,
+            y: y,
+            fontSize: fontSize
+        };
+
+        if (fieldType === 'table') {
+            // 표 타입이면 표 데이터 저장
+            const tableDataInput = row.querySelector('.canvas-field-tabledata');
+            if (tableDataInput && tableDataInput.value) {
+                try {
+                    const tableData = JSON.parse(tableDataInput.value);
+                    fieldData.type = 'table';
+                    fieldData.tableData = tableData;
+                } catch (e) {
+                    console.error('표 데이터 파싱 오류:', e);
+                }
+            }
+        } else if (fieldType === 'box') {
+            // 박스 타입이면 크기 정보 저장
+            const boxSizeInput = row.querySelector('.canvas-field-boxsize');
+            if (boxSizeInput && boxSizeInput.value) {
+                const sizeMatch = boxSizeInput.value.match(/(\d+)x(\d+)/);
+                if (sizeMatch) {
+                    fieldData.type = 'box';
+                    fieldData.width = parseInt(sizeMatch[1]);
+                    fieldData.height = parseInt(sizeMatch[2]);
+                }
+            }
+        } else {
+            // 일반 포인트 타입이면 선 너비 저장
+            const lineWidthInput = row.querySelector('.canvas-field-linewidth');
+            const lineWidth = lineWidthInput ? parseInt(lineWidthInput.value) || 0 : 0;
+            if (lineWidth > 0) {
+                fieldData.lineWidth = lineWidth;
+            }
+        }
+
+        fields.push(fieldData);
+    });
+
+    const templateData = {
+        canvasWidth: 794,
+        canvasHeight: 1123,
+        fields: fields
+    };
+
+    try {
+        // DB에 저장
+        const formData = new FormData();
+        formData.append('coordinates', JSON.stringify(templateData));
+
+        const response = await fetch(`/livewalk/library/${selectedOption.value}/coordinates`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (response.ok) {
+            showMessage('템플릿 좌표가 저장되었습니다.', 'success');
+        } else {
+            const error = await response.json();
+            showMessage('저장 실패: ' + error.message, 'error');
+        }
+    } catch (error) {
+        showMessage('저장 오류: ' + error.message, 'error');
+    }
+}
+
+// JSON 파일 다운로드 (백업용)
+function downloadTemplateJSON() {
+    const tbody = document.getElementById('canvasFieldsTableBody');
+    const rows = tbody.querySelectorAll('tr');
+
+    if (rows.length === 0) {
+        alert('저장할 필드가 없습니다.');
+        return;
+    }
+
+    // 템플릿 정보 수집
+    const templateSelect = document.getElementById('templateSelect');
+    const selectedOption = templateSelect.options[templateSelect.selectedIndex];
+
+    if (!selectedOption.value) {
+        alert('양식을 먼저 선택하세요.');
+        return;
+    }
+
+    const fields = [];
+    rows.forEach(row => {
+        const label = row.querySelector('.canvas-field-label').value.trim();
+        const x = parseInt(row.querySelector('.canvas-field-x').value);
+        const y = parseInt(row.querySelector('.canvas-field-y').value);
+        const fontSize = parseInt(row.querySelector('.canvas-field-fontsize').value);
+        const fieldType = row.dataset.fieldType;
+
+        const fieldData = {
+            label: label,
+            x: x,
+            y: y,
+            fontSize: fontSize
+        };
+
+        if (fieldType === 'table') {
+            // 표 타입이면 표 데이터 저장
+            const tableDataInput = row.querySelector('.canvas-field-tabledata');
+            if (tableDataInput && tableDataInput.value) {
+                try {
+                    const tableData = JSON.parse(tableDataInput.value);
+                    fieldData.type = 'table';
+                    fieldData.tableData = tableData;
+                } catch (e) {
+                    console.error('표 데이터 파싱 오류:', e);
+                }
+            }
+        } else if (fieldType === 'box') {
+            // 박스 타입이면 크기 정보 저장
+            const boxSizeInput = row.querySelector('.canvas-field-boxsize');
+            if (boxSizeInput && boxSizeInput.value) {
+                const sizeMatch = boxSizeInput.value.match(/(\d+)x(\d+)/);
+                if (sizeMatch) {
+                    fieldData.type = 'box';
+                    fieldData.width = parseInt(sizeMatch[1]);
+                    fieldData.height = parseInt(sizeMatch[2]);
+                }
+            }
+        } else {
+            // 일반 포인트 타입이면 선 너비 저장
+            const lineWidthInput = row.querySelector('.canvas-field-linewidth');
+            const lineWidth = lineWidthInput ? parseInt(lineWidthInput.value) || 0 : 0;
+            if (lineWidth > 0) {
+                fieldData.lineWidth = lineWidth;
+            }
+        }
+
+        fields.push(fieldData);
+    });
+
+    const templateData = {
+        templateId: selectedOption.value,
+        templateName: selectedOption.text,
+        fileName: selectedOption.dataset.fileName,
+        fileType: selectedOption.dataset.fileType,
+        canvasWidth: 794,
+        canvasHeight: 1123,
+        fields: fields
+    };
+
+    // JSON 파일로 다운로드
+    const jsonStr = JSON.stringify(templateData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `template_${selectedOption.value}_fields.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showMessage('JSON 파일이 다운로드되었습니다.', 'success');
+}

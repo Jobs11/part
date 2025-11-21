@@ -22,6 +22,9 @@ public interface CategoryMapper {
     // 카테고리 이름으로 조회
     CategoryDTO findByName(@Param("categoryName") String categoryName);
 
+    // description �??�른 카테고리 조회
+    List<CategoryDTO> findByDescription(@Param("description") String description);
+
     // 카테고리 등록
     int insertCategory(CategoryDTO categoryDTO);
 
