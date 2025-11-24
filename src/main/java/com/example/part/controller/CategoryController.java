@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.part.dto.CategoryDTO;
 import com.example.part.service.CategoryService;
-import com.example.part.service.CategoryServiceImpl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +26,6 @@ import lombok.extern.slf4j.Slf4j;
 public class CategoryController {
 
     private final CategoryService categoryService;
-    private final CategoryServiceImpl categoryServiceImpl; // 동기화용
 
     /**
      * 전체 카테고리 조회
@@ -46,6 +44,8 @@ public class CategoryController {
         CategoryDTO category = categoryService.getCategoryById(categoryId);
         return ResponseEntity.ok(category);
     }
+
+    // 카테고리 코드로 조회 엔드포인트 제거됨 - 더 이상 카테고리 코드를 사용하지 않음
 
     /**
      * 결제수단 카테고리 조회
@@ -77,25 +77,7 @@ public class CategoryController {
         return ResponseEntity.ok("카테고리 수정 완료");
     }
 
-    /**
-     * 부품번호 자동 생성
-     */
-    @PostMapping("/{id}/generate-part-number")
-    public ResponseEntity<String> generatePartNumber(@PathVariable("id") int categoryId) {
-        String partNumber = categoryService.generatePartNumber(categoryId);
-        return ResponseEntity.ok(partNumber);
-    }
-
-    /**
-     * 카테고리 last_number 수동 동기화 ✅ NEW!
-     * POST /livewalk/categories/sync-last-numbers
-     */
-    @PostMapping("/sync-last-numbers")
-    public ResponseEntity<String> syncLastNumbers() {
-        log.info("수동 동기화 요청 받음");
-        categoryServiceImpl.syncLastNumbers();
-        return ResponseEntity.ok("카테고리 last_number 동기화 완료");
-    }
+    // 부품번호 자동 생성 및 last_number 동기화 엔드포인트 제거됨 - 부품번호를 사용자가 직접 입력함
 
     /**
      * 카테고리 비활성화

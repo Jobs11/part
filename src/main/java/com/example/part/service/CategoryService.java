@@ -12,6 +12,7 @@ public interface CategoryService {
     // 단일 카테고리 조회
     CategoryDTO getCategoryById(int categoryId);
 
+    // description으로 카테고리 조회
     List<CategoryDTO> getCategoriesByDescription(String description);
 
     // 카테고리 이름으로 조회 또는 생성
@@ -22,9 +23,6 @@ public interface CategoryService {
 
     // 카테고리 수정
     void updateCategory(CategoryDTO categoryDTO);
-
-    // 부품번호 자동 생성 (카테고리별)
-    String generatePartNumber(int categoryId);
 
     // 카테고리 비활성화
     void deactivateCategory(int categoryId);

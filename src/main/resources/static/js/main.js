@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     // 데이터 로드
     Promise.all([loadCategories(), loadPaymentMethods()])
         .catch(() => {
-            // 데이터 로드 중 오류 무시됨
+            // 데이터 로드 중 �??�류��??�시됨
         })
         .finally(() => {
             addBulkRow();
@@ -285,32 +285,7 @@ async function loadPaymentMethods() {
     }
 }
 
-async function onCategoryChange() {
-    const categoryIdEl = document.getElementById('categoryId');
-    const partNumberEl = document.getElementById('partNumber');
-
-    if (!categoryIdEl) return;
-
-    const categoryId = categoryIdEl.value;
-    if (!categoryId) {
-        if (partNumberEl) partNumberEl.value = '';
-        return;
-    }
-
-    try {
-        const response = await fetch(`${CATEGORY_API}/${categoryId}`);
-        if (!response.ok) throw new Error('카테고리 조회 실패');
-
-        const category = await response.json();
-        const nextNumber = category.lastNumber + 1;
-        const categoryPrefix = category.categoryName.substring(0, 1).toUpperCase();
-        const previewPartNumber = `${categoryPrefix}-${String(nextNumber).padStart(4, '0')}`;
-
-        if (partNumberEl) partNumberEl.value = previewPartNumber + ' (미리보기)';
-    } catch (error) {
-        showMessage('부품번호 미리보기 오류: ' + error.message, 'error');
-    }
-}
+// onCategoryChange 함수 제거됨 - 부품번호를 사용자가 직접 입력함
 
 // ==================== 입고 등록 ====================
 async function registerIncoming(e) {
@@ -590,7 +565,7 @@ async function displayIncomingList(incomingList) {
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'purchaseDate', '${incoming.purchaseDate}')">${formatDate(incoming.purchaseDate)}</td>
                 <td>${formatDateTime(incoming.createdAt)}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'note', '${escapeHtml(incoming.note || '')}')">${incoming.note || '-'}</td>
-                <td><button class="btn-small" onclick="openImageModal(${incoming.incomingId})">🖼 이미지${imageCount > 0 ? ' ' + imageCount + '개' : ''}</button></td>
+                <td><button class="btn-small" onclick="openImageModal(${incoming.incomingId})">🖼 사진${imageCount > 0 ? ' ' + imageCount + '개' : ''}</button></td>
                 <td><button class="btn-small" data-part-number="${escapeHtml(incoming.partNumber)}" onclick="openLocationModal(this.dataset.partNumber)">📍 배치도</button></td>
             </tr>
         `;
@@ -2326,39 +2301,6 @@ async function deleteGeneratedDocument(documentId) {
 }
 
 // 행 추가 (1개씩)
-// ??? ?? ???/??
-const CABINET_LOC_REGEX = /^[A-Z]{1,2}-\d{1,2}$/;
-function normalizeCabinetLocationValue(value) {
-    if (!value) return '';
-    const trimmed = value.trim().toUpperCase();
-    if (CABINET_LOC_REGEX.test(trimmed)) return trimmed;
-    const match = /^([A-Z]{1,2})(\d{1,2})$/.exec(trimmed);
-    if (match) return `${match[1]}-${match[2]}`;
-    return trimmed;
-}
-function isCabinetLocationValid(value) {
-    if (!value) return true; // ? ?? ??
-    const normalized = normalizeCabinetLocationValue(value);
-    if (!CABINET_LOC_REGEX.test(normalized)) return false;
-    const parts = normalized.split('-');
-    const row = parseInt(parts[1], 10);
-    return row >= 1 && row <= 32;
-}
-function attachCabinetNormalizer(inputEl) {
-    if (!inputEl) return;
-    const handler = () => {
-        const normalized = normalizeCabinetLocationValue(inputEl.value);
-        if (inputEl.value !== normalized) {
-            inputEl.value = normalized;
-            if (inputEl === document.activeElement) {
-                inputEl.selectionStart = inputEl.selectionEnd = normalized.length;
-            }
-        }
-    };
-    inputEl.addEventListener('blur', handler);
-    inputEl.addEventListener('input', handler);
-}
-
 function addBulkRow() {
     const tbody = document.getElementById('bulkInsertTableBody');
 
@@ -2372,10 +2314,10 @@ function addBulkRow() {
         <td><input type="text" class="bulk-input bulk-part-number" placeholder="부품번호" required></td>
         <td><input type="text" class="bulk-input bulk-part-name" placeholder="부품명"></td>
         <td><input type="text" class="bulk-input bulk-cabinet-location" placeholder="예: A-1" maxlength="10"></td>
-        <td>
-            <div style="display: flex; gap: 5px; align-items: center;">
-                <input type="text" class="bulk-input bulk-map-location" placeholder="예: 8-A" maxlength="10" style="flex: 1;">
-                <button type="button" class="btn btn-small" onclick="openLocationPicker(this)" style="padding: 4px 8px; font-size: 12px; white-space: nowrap;">배치</button>
+        <td style="padding: 2px;">
+            <div style="display: flex; gap: 3px; align-items: center;">
+                <input type="text" class="bulk-input bulk-map-location" placeholder="예: 8-A" maxlength="10" style="flex: 1; min-width: 50px;">
+                <button type="button" onclick="openLocationPicker(this)" class="btn-small" style="padding: 3px 8px; font-size: 11px; white-space: nowrap;">배치</button>
             </div>
         </td>
         <td><input type="number" class="bulk-input bulk-quantity" placeholder="수량" min="1"></td>
@@ -2395,7 +2337,7 @@ function addBulkRow() {
     // 날짜 기본값 설정
     tr.querySelector('.bulk-date').value = new Date().toISOString().split('T')[0];
 
-    // ??? ?? ?? ?? ??
+    // 캐비닷 위치 입력 정규화 (blur 시 A2 -> A-2)
     attachCabinetNormalizer(tr.querySelector('.bulk-cabinet-location'));
 
 
@@ -2444,7 +2386,7 @@ async function loadCategoriesForBulk() {
         categoriesData.forEach(category => {
             const option = document.createElement('option');
             option.value = category.categoryId;
-            option.textContent = `${category.categoryName} (${category.categoryCode})`;
+            option.textContent = category.categoryName;
             bulkSelect.appendChild(option);
         });
         // 이전 선택 값이 있으면 복원
@@ -2496,6 +2438,30 @@ function clearBulkTable() {
 }
 
 // 일괄 등록 실행
+
+function normalizeCabinetLocationValue(value) {
+    if (!value) return '';
+    const trimmed = value.trim().toUpperCase();
+    if (/^[A-Z]{1,2}-\d+$/.test(trimmed)) return trimmed;
+    const match = /^([A-Z]{1,2})(\d+)$/.exec(trimmed);
+    if (match) return `${match[1]}-${match[2]}`;
+    return trimmed;
+}
+
+function attachCabinetNormalizer(inputEl) {
+    if (!inputEl) return;
+    const handler = () => {
+        const normalized = normalizeCabinetLocationValue(inputEl.value);
+        if (inputEl.value !== normalized) {
+            const pos = inputEl.selectionStart;
+            inputEl.value = normalized;
+            inputEl.selectionStart = inputEl.selectionEnd = normalized.length;
+        }
+    };
+    inputEl.addEventListener('blur', handler);
+    inputEl.addEventListener('input', handler);
+}
+
 async function submitBulkInsert() {
     const tbody = document.getElementById('bulkInsertTableBody');
     const rows = tbody.querySelectorAll('tr');
@@ -2506,15 +2472,8 @@ async function submitBulkInsert() {
         const partNumber = row.querySelector('.bulk-part-number').value.trim();
         const categoryId = row.querySelector('.bulk-category').value;
         const partName = row.querySelector('.bulk-part-name').value.trim();
-        const cabinetLocationRaw = row.querySelector('.bulk-cabinet-location').value;
-        const cabinetLocation = normalizeCabinetLocationValue(cabinetLocationRaw);
+        const cabinetLocation = normalizeCabinetLocationValue(row.querySelector('.bulk-cabinet-location').value);
         const mapLocation = row.querySelector('.bulk-map-location').value.trim();
-
-        // ??? ?? ?? ?? (??? ??? ??)
-        if (cabinetLocation && !isCabinetLocationValid(cabinetLocation)) {
-            showMessage(`??? ??? A~AA ?, 1~32 ?? A-1 ??? ?? ?????. (${cabinetLocationRaw})`, 'error');
-            return;
-        }
         const quantity = row.querySelector('.bulk-quantity').value;
         const unit = row.querySelector('.bulk-unit').value.trim();
         const paymentMethodId = row.querySelector('.bulk-payment-method').value;
@@ -2949,7 +2908,7 @@ async function downloadUsageCSV() {
  */
 async function openLocationModal(partNumber) {
     try {
-        // 부품 위치 정보 조회 (쿼리 파라미터로 전달)
+        // 부품 위치 정보 조회
         const response = await fetch(`/livewalk/part-locations/part?partNumber=${encodeURIComponent(partNumber)}`);
         if (!response.ok) {
             showMessage('부품 위치 정보를 찾을 수 없습니다.', 'error');
@@ -2957,22 +2916,62 @@ async function openLocationModal(partNumber) {
         }
 
         const location = await response.json();
+        const locationCode = location.locationCode;
 
-        // 모달 열기
-        document.getElementById('locationModalPartNumber').textContent = partNumber;
-
-        // 부품명 표시 (location.partName이 있으면 표시)
-        const partNameEl = document.getElementById('locationModalPartName');
-        if (partNameEl && location.partName) {
-            partNameEl.textContent = `(${location.partName})`;
-        } else if (partNameEl) {
-            partNameEl.textContent = '';
+        if (!locationCode) {
+            showMessage('등록된 위치 정보가 없습니다.', 'info');
+            return;
         }
 
-        document.getElementById('locationGridModal').style.display = 'block';
+        // locationCode 파싱 (예: "8-A" -> 층: 8, 구역: A)
+        if (!locationCode.includes('-')) {
+            showMessage('위치 코드 형식이 올바르지 않습니다.', 'error');
+            return;
+        }
 
-        // 그리드 생성
-        createLocationGrid(location.locationCode);
+        const parts = locationCode.split('-');
+        const floor = parts[0].trim();
+        const zone = parts[1].trim();
+
+        // 배치도 모달 열기 (mapSpotModal 재사용)
+        const modal = document.getElementById('mapSpotModal');
+        modal.style.display = 'block';
+        setupMapSpotCanvasClick();
+
+        // 모달 제목 변경 (배치 위치와 부품명을 다른 색상으로 구분)
+        const titleEl = modal.querySelector('h3');
+        if (titleEl) {
+            titleEl.innerHTML = `부품 위치: <span style="color: #007bff; font-weight: bold;">${locationCode}</span> <span style="color: #666;">(${location.partName || partNumber})</span>`;
+        }
+
+        // 배치도 선택 드롭다운 및 설명 숨기기
+        const selectContainer = modal.querySelector('[for="mapSpotSelect"]')?.parentElement;
+        if (selectContainer) {
+            selectContainer.style.display = 'none';
+        }
+        const descriptionDiv = modal.querySelector('div[style*="margin-bottom: 12px"]');
+        if (descriptionDiv && descriptionDiv.textContent.includes('배치도를 선택')) {
+            descriptionDiv.style.display = 'none';
+        }
+
+        // 배치도 목록 로드 후 해당 층 선택
+        await loadMapSpotImages();
+
+        // 층 번호가 포함된 이미지 찾기
+        const floorImage = mapSpotImagesCache.find(img =>
+            img.title && img.title.includes(floor + '층')
+        );
+
+        if (floorImage) {
+            // 해당 층 이미지 선택 (UI 업데이트 없이)
+            await handleMapSpotSelect(floorImage.imageId);
+
+            // 구역에 해당하는 마커 강조 표시
+            highlightZoneMarker(zone);
+        } else {
+            showMessage(`${floor}층 배치도를 찾을 수 없습니다.`, 'error');
+        }
+
     } catch (error) {
         showMessage('배치도 조회 오류: ' + error.message, 'error');
     }
@@ -3330,6 +3329,757 @@ function formatDateTime(dateTime) {
     return dateTime.replace('T', ' ').substring(0, 19);
 }
 
+// ==================== 도면 좌표 마킹 (UI 준비) ====================
+let mapSpotImagesCache = [];
+let mapSpotMarkers = [];
+let mapSpotBaseImageData = null;
+let mapSpotSelectedImage = null;
+let mapSpotRegisterEnabled = false;
+let mapSpotTargetInputElement = null; // 배치 선택 시 값을 넣을 input 요소
+
+function openMapSpotModal() {
+    document.getElementById('mapSpotModal').style.display = 'block';
+    setupMapSpotCanvasClick();
+    mapSpotRegisterEnabled = false;
+    updateMapSpotRegisterToggleUI();
+    loadMapSpotImages();
+}
+
+// 일괄 등록 행에서 배치 버튼 클릭 시 호출
+function openMapSpotForBulkRow(buttonElement) {
+    // 클릭한 버튼이 속한 행의 도면 location input 요소 찾기
+    const row = buttonElement.closest('tr');
+    const locationInput = row.querySelector('.bulk-map-location');
+
+    // 전역 변수에 저장
+    mapSpotTargetInputElement = locationInput;
+
+    // 배치도 모달 열기
+    openMapSpotModal();
+}
+
+function closeMapSpotModal() {
+    const modal = document.getElementById('mapSpotModal');
+    modal.style.display = 'none';
+
+    // 제목 복원
+    const titleEl = modal.querySelector('h3');
+    if (titleEl) {
+        titleEl.textContent = '배치도 - 위치 선택';
+    }
+
+    // 배치도 선택 드롭다운 및 설명 다시 표시
+    const selectContainer = modal.querySelector('[for="mapSpotSelect"]')?.parentElement;
+    if (selectContainer) {
+        selectContainer.style.display = '';
+    }
+    const descriptionDiv = modal.querySelector('div[style*="margin-bottom: 12px"]');
+    if (descriptionDiv) {
+        descriptionDiv.style.display = '';
+    }
+
+    mapSpotMarkers = [];
+    mapSpotBaseImageData = null;
+    mapSpotSelectedImage = null;
+    mapSpotTargetInputElement = null;
+    updateMapSpotList();
+    mapSpotRegisterEnabled = false;
+    updateMapSpotRegisterToggleUI();
+
+    const canvas = document.getElementById('mapSpotCanvas');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+}
+
+async function loadMapSpotImages() {
+    const statusEl = document.getElementById('mapSpotStatus');
+    const selectEl = document.getElementById('mapSpotSelect');
+    statusEl.textContent = '목록을 불러오는 중...';
+
+    try {
+        const response = await fetch(LIBRARY_API);
+        if (!response.ok) throw new Error('자료실 목록 조회 실패');
+
+        const images = await response.json();
+        const filtered = (images || []).filter(img => (img.description || '').includes('도면'));
+        mapSpotImagesCache = filtered;
+        mapSpotMarkers = [];
+        updateMapSpotList();
+
+        if (!filtered.length) {
+            selectEl.innerHTML = '<option value=\"\">-- 자료가 없습니다 --</option>';
+            statusEl.textContent = '설명에 "도면"이 포함된 자료가 없습니다.';
+            renderMapSpotPreview(null);
+            return;
+        }
+
+        selectEl.innerHTML = filtered.map(img => {
+            const typeLabel = (img.fileType || 'img').toString().toUpperCase();
+            return `<option value=\"${img.imageId}\">${img.title} (${typeLabel})</option>`;
+        }).join('');
+
+        // 8층 배치도 찾아서 자동 선택, 없으면 첫 번째 선택
+        if (filtered.length > 0) {
+            const floor8Image = filtered.find(img => img.title && img.title.includes('8층'));
+            const defaultImage = floor8Image || filtered[0];
+
+            selectEl.value = defaultImage.imageId;
+            statusEl.textContent = `${filtered.length}건 로드됨 (설명에 "도면" 포함)`;
+            // 선택된 이미지 자동 로드
+            await handleMapSpotSelect(defaultImage.imageId);
+        }
+    } catch (error) {
+        console.error(error);
+        statusEl.textContent = '목록을 불러오지 못했습니다.';
+        showMessage('도면 좌표 마킹용 자료 불러오기 실패: ' + error.message, 'error');
+    }
+}
+
+async function handleMapSpotSelect(imageId) {
+    const img = mapSpotImagesCache.find(i => String(i.imageId) === String(imageId));
+    if (!img) {
+        renderMapSpotPreview(null);
+        return;
+    }
+    mapSpotMarkers = [];
+    updateMapSpotList();
+    await renderMapSpotPreview(img);
+    await loadExistingMapSpots(img.imageId);
+}
+
+async function renderMapSpotPreview(image) {
+    const canvas = document.getElementById('mapSpotCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    mapSpotBaseImageData = null;
+    mapSpotSelectedImage = image;
+
+    if (!image) {
+        ctx.font = '14px Arial';
+        ctx.fillStyle = '#666';
+        ctx.fillText('불러올 이미지를 선택하세요.', 20, 30);
+        return;
+    }
+
+    if (image.fileType && image.fileType.toLowerCase() === 'pdf') {
+        await renderMapSpotPdf(image.fileName, canvas);
+        return;
+    }
+
+    await renderMapSpotImage(image.fileName, canvas);
+}
+
+async function loadExistingMapSpots(imageId) {
+    if (!imageId) return;
+    try {
+        const response = await fetch(`/livewalk/map-spot/image/${imageId}`);
+        if (!response.ok) throw new Error('좌표 조회 실패');
+        const spots = await response.json();
+        mapSpotMarkers = (spots || []).map(s => ({
+            x: s.posX,
+            y: s.posY,
+            name: s.spotName || '',
+            radius: s.radius || 20,
+            desc: s.description || ''
+        }));
+        redrawMapSpotCanvas();
+        updateMapSpotList();
+    } catch (error) {
+        console.error(error);
+        showMessage('저장된 좌표 불러오기 실패: ' + error.message, 'error');
+    }
+}
+
+function renderMapSpotImage(fileName, canvas) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            mapSpotBaseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            redrawMapSpotCanvas();
+            resolve();
+        };
+        img.onerror = (err) => {
+            const ctx = canvas.getContext('2d');
+            ctx.font = '14px Arial';
+            ctx.fillStyle = 'red';
+            ctx.fillText('이미지를 불러오지 못했습니다.', 20, 30);
+            reject(err);
+        };
+        img.src = `/uploads/images/${fileName}`;
+    });
+}
+
+async function renderMapSpotPdf(fileName, canvas) {
+    try {
+        const pdfjsLib = window['pdfjs-dist/build/pdf'];
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        const pdfUrl = `/uploads/images/${fileName}`;
+        const loadingTask = pdfjsLib.getDocument(pdfUrl);
+        const pdf = await loadingTask.promise;
+        const page = await pdf.getPage(1);
+
+        const desiredHeight = 700;
+        const viewport = page.getViewport({ scale: 1.0 });
+        const scale = desiredHeight / viewport.height;
+        const scaledViewport = page.getViewport({ scale });
+
+        canvas.height = scaledViewport.height;
+        canvas.width = scaledViewport.width;
+
+        const renderContext = {
+            canvasContext: canvas.getContext('2d'),
+            viewport: scaledViewport
+        };
+        await page.render(renderContext).promise;
+        mapSpotBaseImageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+        redrawMapSpotCanvas();
+    } catch (error) {
+        console.error('PDF 미리보기 실패', error);
+        const ctx = canvas.getContext('2d');
+        ctx.font = '14px Arial';
+        ctx.fillStyle = 'red';
+        ctx.fillText('PDF 미리보기에 실패했습니다.', 20, 30);
+    }
+}
+
+function setupMapSpotCanvasClick() {
+    const canvas = document.getElementById('mapSpotCanvas');
+    if (!canvas) return;
+    canvas.onclick = handleMapSpotCanvasClick;
+    // 배치 선택 모드일 때는 일반 포인터, 등록 모드일 때는 십자 커서
+    canvas.style.cursor = mapSpotTargetInputElement ? 'pointer' : 'crosshair';
+}
+
+function handleMapSpotCanvasClick(event) {
+    const canvas = document.getElementById('mapSpotCanvas');
+    if (!canvas || !mapSpotBaseImageData) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = Math.round((event.clientX - rect.left) * scaleX);
+    const y = Math.round((event.clientY - rect.top) * scaleY);
+
+    // 일괄 등록에서 배치 선택 모드인 경우
+    if (mapSpotTargetInputElement) {
+        // 클릭한 위치에 가장 가까운 마커 찾기
+        let closestMarker = null;
+        let minDistance = Infinity;
+
+        mapSpotMarkers.forEach(marker => {
+            const distance = Math.sqrt(Math.pow(marker.x - x, 2) + Math.pow(marker.y - y, 2));
+            if (distance < minDistance && distance <= (marker.radius || 20)) {
+                minDistance = distance;
+                closestMarker = marker;
+            }
+        });
+
+        if (closestMarker) {
+            // 층 정보 추출 (이미지 제목에서)
+            let floorInfo = '';
+            if (mapSpotSelectedImage && mapSpotSelectedImage.title) {
+                // 제목에서 숫자 추출 (예: "8층 도면" -> "8")
+                const match = mapSpotSelectedImage.title.match(/(\d+)/);
+                if (match) {
+                    floorInfo = match[1];
+                }
+            }
+
+            // 구역명 추출 (name 필드만 사용, desc는 설명용)
+            const zoneName = closestMarker.name || '';
+
+            // "층-구역명" 형식으로 조합 (예: "8-A", "9-B")
+            let locationText = zoneName;
+            if (floorInfo && zoneName) {
+                locationText = `${floorInfo}-${zoneName}`;
+            }
+
+            mapSpotTargetInputElement.value = locationText;
+            showMessage(`위치 선택됨: ${locationText}`, 'success');
+            closeMapSpotModal();
+        } else {
+            showMessage('등록된 위치를 클릭해주세요.', 'info');
+        }
+        return;
+    }
+
+    // 좌표 등록 모드인 경우
+    if (!mapSpotRegisterEnabled) return;
+
+    const name = `구역${mapSpotMarkers.length + 1}`;
+    mapSpotMarkers.push({ x, y, name, radius: 20, desc: '' });
+    redrawMapSpotCanvas();
+    updateMapSpotList();
+}
+
+function toggleMapSpotRegisterMode() {
+    mapSpotRegisterEnabled = !mapSpotRegisterEnabled;
+    updateMapSpotRegisterToggleUI();
+}
+
+function updateMapSpotRegisterToggleUI() {
+    const btn = document.getElementById('mapSpotRegisterToggleBtn');
+    if (!btn) return;
+    if (mapSpotRegisterEnabled) {
+        btn.textContent = '좌표등록 모드: ON';
+        btn.classList.remove('btn-gray');
+    } else {
+        btn.textContent = '좌표등록 모드: OFF';
+        if (!btn.classList.contains('btn-gray')) {
+            btn.classList.add('btn-gray');
+        }
+    }
+}
+
+function redrawMapSpotCanvas() {
+    const canvas = document.getElementById('mapSpotCanvas');
+    if (!canvas || !mapSpotBaseImageData) return;
+    const ctx = canvas.getContext('2d');
+    ctx.putImageData(mapSpotBaseImageData, 0, 0);
+
+    ctx.strokeStyle = 'red';
+    ctx.lineWidth = 2;
+    mapSpotMarkers.forEach(marker => {
+        const radius = marker.radius && marker.radius > 0 ? marker.radius : 20;
+        ctx.beginPath();
+        ctx.arc(marker.x, marker.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.stroke();
+
+        // 구역명 / 설명 텍스트 표시 (중앙 정렬)
+        ctx.fillStyle = '#c2191f';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const nameText = marker.name || '';
+        const descText = marker.desc || '';
+        if (descText) {
+            ctx.font = 'bold 12px Arial';
+            ctx.fillText(nameText, marker.x, marker.y - 6);
+            ctx.font = '11px Arial';
+            ctx.fillText(descText, marker.x, marker.y + 8);
+        } else {
+            ctx.font = 'bold 12px Arial';
+            ctx.fillText(nameText, marker.x, marker.y);
+        }
+    });
+}
+
+/**
+ * 특정 구역 마커만 표시
+ */
+function highlightZoneMarker(zoneName) {
+    const canvas = document.getElementById('mapSpotCanvas');
+    if (!canvas || !mapSpotBaseImageData) return;
+    const ctx = canvas.getContext('2d');
+
+    // 기본 캔버스 다시 그리기
+    ctx.putImageData(mapSpotBaseImageData, 0, 0);
+
+    // 해당 구역 마커 찾기
+    const targetMarker = mapSpotMarkers.find(m => m.name === zoneName);
+
+    if (!targetMarker) {
+        showMessage(`구역 "${zoneName}"을 찾을 수 없습니다.`, 'warning');
+        return;
+    }
+
+    // 해당 구역 마커만 그리기 (빨간 테두리 + 흰색 배경)
+    const radius = targetMarker.radius && targetMarker.radius > 0 ? targetMarker.radius : 20;
+
+    ctx.strokeStyle = 'red';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(targetMarker.x, targetMarker.y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    ctx.stroke();
+
+    // 구역명 / 설명 텍스트 표시 (중앙 정렬)
+    ctx.fillStyle = '#c2191f';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const nameText = targetMarker.name || '';
+    const descText = targetMarker.desc || '';
+
+    if (descText) {
+        ctx.font = 'bold 12px Arial';
+        ctx.fillText(nameText, targetMarker.x, targetMarker.y - 6);
+        ctx.font = '11px Arial';
+        ctx.fillText(descText, targetMarker.x, targetMarker.y + 8);
+    } else {
+        ctx.font = 'bold 12px Arial';
+        ctx.fillText(nameText, targetMarker.x, targetMarker.y);
+    }
+
+    showMessage(`위치: ${zoneName}`, 'info');
+}
+
+function updateMapSpotList() {
+    const tbody = document.getElementById('mapSpotListBody');
+    if (!tbody) return;
+
+    if (!mapSpotMarkers.length) {
+        tbody.innerHTML = '<tr><td colspan=\"7\" style=\"text-align: center; color: #888; padding: 8px;\">좌표를 클릭해 추가하고, 구역명/크기/설명을 설정하세요.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = mapSpotMarkers.map((m, idx) => `
+        <tr>
+            <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${idx + 1}</td>
+            <td style="border: 1px solid #ddd; padding: 6px;">
+                <input type="text" value="${m.name || ''}" oninput="updateMapSpotMarkerField(${idx}, 'name', this.value)" style="width: 100%; padding: 4px; border: 1px solid #ccc; font-size: 12px;" placeholder="구역명">
+            </td>
+            <td style="border: 1px solid #ddd; padding: 6px; text-align: right;">
+                <input type="number" value="${m.x}" oninput="updateMapSpotMarkerField(${idx}, 'x', this.value)" style="width: 100%; padding: 4px; border: 1px solid #ccc; font-size: 12px;">
+            </td>
+            <td style="border: 1px solid #ddd; padding: 6px; text-align: right;">
+                <input type="number" value="${m.y}" oninput="updateMapSpotMarkerField(${idx}, 'y', this.value)" style="width: 100%; padding: 4px; border: 1px solid #ccc; font-size: 12px;">
+            </td>
+            <td style="border: 1px solid #ddd; padding: 6px; text-align: right;">
+                <input type="number" min="1" value="${m.radius || 20}" oninput="updateMapSpotMarkerField(${idx}, 'radius', this.value)" style="width: 100%; padding: 4px; border: 1px solid #ccc; font-size: 12px;">
+            </td>
+            <td style="border: 1px solid #ddd; padding: 6px;">
+                <input type="text" value="${m.desc || ''}" oninput="updateMapSpotMarkerField(${idx}, 'desc', this.value)" style="width: 100%; padding: 4px; border: 1px solid #ccc; font-size: 12px;" placeholder="설명">
+            </td>
+            <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+                <button type="button" class="btn btn-gray" style="padding: 4px 8px; font-size: 12px;" onclick="deleteMapSpotMarker(${idx})">삭제</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function updateMapSpotMarkerField(index, field, value) {
+    if (index < 0 || index >= mapSpotMarkers.length) return;
+
+    if (field === 'radius') {
+        const r = parseInt(value, 10);
+        mapSpotMarkers[index].radius = Number.isFinite(r) && r > 0 ? r : 20;
+    } else if (field === 'name') {
+        mapSpotMarkers[index].name = value;
+    } else if (field === 'desc') {
+        mapSpotMarkers[index].desc = value;
+    } else if (field === 'x') {
+        const xVal = parseInt(value, 10);
+        if (Number.isFinite(xVal)) {
+            mapSpotMarkers[index].x = xVal;
+        }
+    } else if (field === 'y') {
+        const yVal = parseInt(value, 10);
+        if (Number.isFinite(yVal)) {
+            mapSpotMarkers[index].y = yVal;
+        }
+    }
+
+    redrawMapSpotCanvas();
+}
+
+function deleteMapSpotMarker(index) {
+    if (index < 0 || index >= mapSpotMarkers.length) return;
+    mapSpotMarkers.splice(index, 1);
+    redrawMapSpotCanvas();
+    updateMapSpotList();
+}
+
+function clearMapSpotMarkers() {
+    mapSpotMarkers = [];
+    redrawMapSpotCanvas();
+    updateMapSpotList();
+}
+
+function submitMapSpotMarkers() {
+    if (!mapSpotSelectedImage) {
+        showMessage('이미지를 먼저 선택하세요.', 'warning');
+        return;
+    }
+    if (mapSpotMarkers.length === 0) {
+        showMessage('등록할 좌표가 없습니다. 이미지를 클릭해 좌표를 추가하세요.', 'warning');
+        return;
+    }
+
+    const payload = mapSpotMarkers.map(marker => ({
+        imageId: mapSpotSelectedImage.imageId,
+        spotName: marker.name || '',
+        posX: marker.x,
+        posY: marker.y,
+        radius: marker.radius || 20,
+        description: marker.desc || ''
+    }));
+
+    fetch('/livewalk/map-spot/bulk', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    })
+        .then(response => {
+            if (!response.ok) throw new Error('등록 실패');
+            showMessage('좌표가 등록되었습니다.', 'success');
+        })
+        .catch(err => {
+            showMessage('좌표 등록 실패: ' + err.message, 'error');
+        });
+}
+
+
+// ==================== 도면 위치 선택 (Location Picker) ====================
+let locationPickerImagesCache = [];
+let locationPickerSelectedImage = null;
+let locationPickerBaseImageData = null;
+let locationPickerMarkers = [];
+let locationPickerTargetInput = null;
+
+function openLocationPicker(buttonElement) {
+    // 버튼의 행에서 도면 위치 입력 필드 찾기
+    const row = buttonElement.closest('tr');
+    locationPickerTargetInput = row.querySelector('.bulk-map-location');
+
+    document.getElementById('locationPickerModal').style.display = 'block';
+    loadLocationPickerImages();
+}
+
+function closeLocationPicker() {
+    document.getElementById('locationPickerModal').style.display = 'none';
+    locationPickerSelectedImage = null;
+    locationPickerBaseImageData = null;
+    locationPickerMarkers = [];
+    locationPickerTargetInput = null;
+    const canvas = document.getElementById('locationPickerCanvas');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+}
+
+async function loadLocationPickerImages() {
+    const statusEl = document.getElementById('locationPickerStatus');
+    const selectEl = document.getElementById('locationPickerSelect');
+    statusEl.textContent = '도면 목록 로딩 중...';
+
+    try {
+        const response = await fetch('/livewalk/library');
+        if (!response.ok) throw new Error('도면 목록 조회 실패');
+
+        const images = await response.json();
+        const filtered = (images || []).filter(img => (img.description || '').includes('도면'));
+        locationPickerImagesCache = filtered;
+
+        if (!filtered.length) {
+            selectEl.innerHTML = '<option value="">-- 도면 이미지 없음 --</option>';
+            statusEl.textContent = '설명에 "도면"이 포함된 자료가 없습니다.';
+            return;
+        }
+
+        selectEl.innerHTML = ['<option value="">-- 도면을 선택하세요 --</option>']
+            .concat(filtered.map(img => {
+                const typeLabel = (img.fileType || 'img').toString().toUpperCase();
+                return `<option value="${img.imageId}">${img.title} (${typeLabel})</option>`;
+            }))
+            .join('');
+
+        // 8층 도면 자동 선택
+        const floor8Image = filtered.find(img => img.title.includes('8층'));
+        if (floor8Image) {
+            selectEl.value = floor8Image.imageId;
+            await handleLocationPickerSelect(floor8Image.imageId);
+        } else {
+            selectEl.value = '';
+        }
+
+        statusEl.textContent = `${filtered.length}개 도면 (설명에 "도면" 포함)`;
+    } catch (error) {
+        console.error(error);
+        statusEl.textContent = '도면 목록 로딩 실패.';
+        showMessage('도면 목록 조회 중 오류가 발생했습니다: ' + error.message, 'error');
+    }
+}
+
+async function handleLocationPickerSelect(imageId) {
+    const img = locationPickerImagesCache.find(i => String(i.imageId) === String(imageId));
+    locationPickerSelectedImage = img;
+
+    if (!img) {
+        renderLocationPickerPreview(null);
+        return;
+    }
+
+    await renderLocationPickerPreview(img);
+    await loadLocationPickerSpots(imageId);
+}
+
+async function renderLocationPickerPreview(image) {
+    const canvas = document.getElementById('locationPickerCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    locationPickerBaseImageData = null;
+
+    if (!image) {
+        ctx.font = '14px Arial';
+        ctx.fillStyle = '#666';
+        ctx.fillText('도면을 선택해 주세요.', 20, 30);
+        return;
+    }
+
+    if (image.fileType && image.fileType.toLowerCase() === 'pdf') {
+        await renderLocationPickerPdf(image.fileName, canvas);
+        return;
+    }
+    await renderLocationPickerImage(image.fileName, canvas);
+}
+
+function renderLocationPickerImage(fileName, canvas) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            locationPickerBaseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            redrawLocationPickerCanvas();
+            setupLocationPickerCanvasClick();
+            resolve();
+        };
+        img.onerror = (err) => {
+            const ctx = canvas.getContext('2d');
+            ctx.font = '14px Arial';
+            ctx.fillStyle = 'red';
+            ctx.fillText('이미지 로딩 실패.', 20, 30);
+            reject(err);
+        };
+        img.src = `/uploads/images/${fileName}`;
+    });
+}
+
+async function renderLocationPickerPdf(fileName, canvas) {
+    try {
+        const pdfjsLib = window['pdfjs-dist/build/pdf'];
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        const pdfUrl = `/uploads/images/${fileName}`;
+        const loadingTask = pdfjsLib.getDocument(pdfUrl);
+        const pdf = await loadingTask.promise;
+        const page = await pdf.getPage(1);
+
+        const viewport = page.getViewport({ scale: 1.5 });
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        const scaledViewport = page.getViewport({ scale: 1.5 });
+        const renderContext = {
+            canvasContext: canvas.getContext('2d'),
+            viewport: scaledViewport
+        };
+        await page.render(renderContext).promise;
+        locationPickerBaseImageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+        redrawLocationPickerCanvas();
+        setupLocationPickerCanvasClick();
+    } catch (error) {
+        console.error('PDF 렌더링 실패', error);
+        const ctx = canvas.getContext('2d');
+        ctx.font = '14px Arial';
+        ctx.fillStyle = 'red';
+        ctx.fillText('PDF 렌더링 실패했습니다.', 20, 30);
+    }
+}
+
+async function loadLocationPickerSpots(imageId) {
+    if (!imageId) return;
+    try {
+        const response = await fetch(`/livewalk/map-spot/image/${imageId}`);
+        if (!response.ok) throw new Error('좌표 조회 실패');
+        const spots = await response.json();
+        locationPickerMarkers = (spots || []).map(s => ({
+            x: s.posX,
+            y: s.posY,
+            name: s.spotName || '',
+            radius: s.radius || 20,
+            desc: s.description || ''
+        }));
+        redrawLocationPickerCanvas();
+    } catch (error) {
+        console.error(error);
+        showMessage('기존 좌표 조회 중 오류 발생: ' + error.message, 'error');
+    }
+}
+
+function redrawLocationPickerCanvas() {
+    const canvas = document.getElementById('locationPickerCanvas');
+    if (!canvas || !locationPickerBaseImageData) return;
+    const ctx = canvas.getContext('2d');
+    ctx.putImageData(locationPickerBaseImageData, 0, 0);
+
+    ctx.strokeStyle = 'red';
+    ctx.lineWidth = 2;
+    locationPickerMarkers.forEach(marker => {
+        const radius = marker.radius && marker.radius > 0 ? marker.radius : 20;
+        ctx.beginPath();
+        ctx.arc(marker.x, marker.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#c2191f';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const nameText = marker.name || '';
+        const descText = marker.desc || '';
+        if (descText) {
+            ctx.font = 'bold 12px Arial';
+            ctx.fillText(nameText, marker.x, marker.y - 6);
+            ctx.font = '11px Arial';
+            ctx.fillText(descText, marker.x, marker.y + 8);
+        } else {
+            ctx.font = 'bold 12px Arial';
+            ctx.fillText(nameText, marker.x, marker.y);
+        }
+    });
+}
+
+function setupLocationPickerCanvasClick() {
+    const canvas = document.getElementById('locationPickerCanvas');
+    if (!canvas) return;
+    canvas.onclick = handleLocationPickerCanvasClick;
+}
+
+function handleLocationPickerCanvasClick(event) {
+    const canvas = document.getElementById('locationPickerCanvas');
+    if (!canvas || !locationPickerBaseImageData || !locationPickerSelectedImage) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = Math.round((event.clientX - rect.left) * scaleX);
+    const y = Math.round((event.clientY - rect.top) * scaleY);
+
+    // 클릭한 위치에 있는 마커 찾기
+    const clickedMarker = locationPickerMarkers.find(m => {
+        const distance = Math.sqrt(Math.pow(m.x - x, 2) + Math.pow(m.y - y, 2));
+        return distance <= (m.radius || 20);
+    });
+
+    if (clickedMarker && locationPickerTargetInput) {
+        // 층 추출 (이미지 title에서 숫자 추출)
+        const floorMatch = locationPickerSelectedImage.title.match(/\d+/);
+        const floor = floorMatch ? floorMatch[0] : '';
+
+        // 층-구역이름 형식으로 입력
+        const locationCode = floor ? `${floor}-${clickedMarker.name}` : clickedMarker.name;
+        locationPickerTargetInput.value = locationCode;
+
+        showMessage(`위치 선택됨: ${locationCode}`, 'success');
+        closeLocationPicker();
+    }
+}
+
 
 
 
@@ -3367,47 +4117,26 @@ async function loadTemplateToCanvas() {
     const canvas = document.getElementById('documentCanvas');
     const ctx = canvas.getContext('2d');
 
-    // A4 크기 설정 (72 DPI 기준: 210mm x 297mm)
-    // 픽셀로 변환: 794 x 1123 (at 96 DPI)
-    const A4_WIDTH = 794;
-    const A4_HEIGHT = 1123;
-
-    canvas.width = A4_WIDTH;
-    canvas.height = A4_HEIGHT;
-
-    // 배경 흰색으로 채우기
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, A4_WIDTH, A4_HEIGHT);
-
     const img = new Image();
     img.onload = function () {
         currentTemplateImage = img;
 
-        // 이미지를 상단에 배치 (A4 너비에 맞춤)
-        const imgWidth = A4_WIDTH;
-        const imgHeight = (img.height / img.width) * A4_WIDTH;
+        // Canvas 크기를 이미지 원본 크기에 맞춤
+        canvas.width = img.width;
+        canvas.height = img.height;
 
-        // 이미지가 너무 크면 높이를 A4의 절반으로 제한
-        const maxImgHeight = A4_HEIGHT / 2;
-        let finalImgHeight = imgHeight;
-        let finalImgWidth = imgWidth;
+        // 배경 흰색으로 채우기
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        if (imgHeight > maxImgHeight) {
-            finalImgHeight = maxImgHeight;
-            finalImgWidth = (img.width / img.height) * maxImgHeight;
-        }
-
-        // 이미지를 상단 중앙에 배치
-        const imgX = (A4_WIDTH - finalImgWidth) / 2;
-        const imgY = 20; // 상단 여백
-
-        ctx.drawImage(img, imgX, imgY, finalImgWidth, finalImgHeight);
-
-        // 이미지 영역 표시 (선택사항 - 디버깅용)
-        // ctx.strokeStyle = '#ccc';
-        // ctx.strokeRect(imgX, imgY, finalImgWidth, finalImgHeight);
+        // 이미지를 원본 크기 그대로 그리기 (좌상단 0,0부터)
+        ctx.drawImage(img, 0, 0);
 
         redrawCanvas();
+
+        // 저장된 필드 설정 자동 불러오기
+        const imageId = parseInt(selectedOption.value);
+        loadFieldCoordinatesFromDB(imageId);
     };
     img.src = `/livewalk/library/image/${fileName}`;
 }
@@ -3453,30 +4182,31 @@ function redrawCanvas() {
     const canvas = document.getElementById('documentCanvas');
     const ctx = canvas.getContext('2d');
 
-    const A4_WIDTH = 794;
-    const A4_HEIGHT = 1123;
+    // Canvas 실제 크기 사용 (이미지에 맞춰 동적으로 설정됨)
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
 
     // Canvas 초기화
     ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, A4_WIDTH, A4_HEIGHT);
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
     // 눈금선 그리기 (50px 간격)
     ctx.strokeStyle = '#e0e0e0';
     ctx.lineWidth = 0.5;
 
     // 세로 눈금선
-    for (let x = 0; x <= A4_WIDTH; x += 50) {
+    for (let x = 0; x <= canvasWidth; x += 50) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
-        ctx.lineTo(x, A4_HEIGHT);
+        ctx.lineTo(x, canvasHeight);
         ctx.stroke();
     }
 
     // 가로 눈금선
-    for (let y = 0; y <= A4_HEIGHT; y += 50) {
+    for (let y = 0; y <= canvasHeight; y += 50) {
         ctx.beginPath();
         ctx.moveTo(0, y);
-        ctx.lineTo(A4_WIDTH, y);
+        ctx.lineTo(canvasWidth, y);
         ctx.stroke();
     }
 
@@ -3485,39 +4215,24 @@ function redrawCanvas() {
     ctx.lineWidth = 1;
 
     // 세로 눈금선 (100px)
-    for (let x = 0; x <= A4_WIDTH; x += 100) {
+    for (let x = 0; x <= canvasWidth; x += 100) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
-        ctx.lineTo(x, A4_HEIGHT);
+        ctx.lineTo(x, canvasHeight);
         ctx.stroke();
     }
 
     // 가로 눈금선 (100px)
-    for (let y = 0; y <= A4_HEIGHT; y += 100) {
+    for (let y = 0; y <= canvasHeight; y += 100) {
         ctx.beginPath();
         ctx.moveTo(0, y);
-        ctx.lineTo(A4_WIDTH, y);
+        ctx.lineTo(canvasWidth, y);
         ctx.stroke();
     }
 
-    // 이미지가 있으면 상단에 그리기
+    // 이미지가 있으면 원본 크기로 그리기
     if (currentTemplateImage) {
-        const imgWidth = A4_WIDTH;
-        const imgHeight = (currentTemplateImage.height / currentTemplateImage.width) * A4_WIDTH;
-
-        const maxImgHeight = A4_HEIGHT / 2;
-        let finalImgHeight = imgHeight;
-        let finalImgWidth = imgWidth;
-
-        if (imgHeight > maxImgHeight) {
-            finalImgHeight = maxImgHeight;
-            finalImgWidth = (currentTemplateImage.width / currentTemplateImage.height) * maxImgHeight;
-        }
-
-        const imgX = (A4_WIDTH - finalImgWidth) / 2;
-        const imgY = 20;
-
-        ctx.drawImage(currentTemplateImage, imgX, imgY, finalImgWidth, finalImgHeight);
+        ctx.drawImage(currentTemplateImage, 0, 0);
     }
 
     // 모든 텍스트 필드 그리기
@@ -4261,6 +4976,31 @@ function setEditorZoom(zoom) {
     container.style.minHeight = scaledHeight + 'px';
 
     document.getElementById('zoomLevel').textContent = Math.round(editorZoom * 100) + '%';
+
+    // 모든 줌 버튼 비활성화 스타일로 변경
+    const zoomButtons = ['zoom50Btn', 'zoom75Btn', 'zoom100Btn', 'zoom125Btn', 'zoom150Btn', 'zoom200Btn'];
+    zoomButtons.forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.style.background = '';
+            btn.style.color = '';
+        }
+    });
+
+    // 현재 선택된 줌 버튼 활성화 스타일 적용
+    const zoomMap = {
+        0.5: 'zoom50Btn',
+        0.75: 'zoom75Btn',
+        1.0: 'zoom100Btn',
+        1.25: 'zoom125Btn',
+        1.5: 'zoom150Btn',
+        2.0: 'zoom200Btn'
+    };
+    const activeBtn = document.getElementById(zoomMap[zoom]);
+    if (activeBtn) {
+        activeBtn.style.background = '#007bff';
+        activeBtn.style.color = 'white';
+    }
 }
 
 // 스냅 크기 변경
@@ -4268,6 +5008,30 @@ function setSnapSize(size) {
     editorSnapSize = parseInt(size);
     document.getElementById('snapSizeDisplay').textContent = `${editorSnapSize}px`;
     showMessage(`스냅 크기: ${editorSnapSize}px`, 'info');
+
+    // 모든 스냅 버튼 비활성화 스타일로 변경
+    const snapButtons = ['snap1Btn', 'snap5Btn', 'snap10Btn', 'snap25Btn', 'snap50Btn'];
+    snapButtons.forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.style.background = '';
+            btn.style.color = '';
+        }
+    });
+
+    // 현재 선택된 스냅 버튼 활성화 스타일 적용
+    const snapMap = {
+        1: 'snap1Btn',
+        5: 'snap5Btn',
+        10: 'snap10Btn',
+        25: 'snap25Btn',
+        50: 'snap50Btn'
+    };
+    const activeBtn = document.getElementById(snapMap[size]);
+    if (activeBtn) {
+        activeBtn.style.background = '#28a745';
+        activeBtn.style.color = 'white';
+    }
 }
 
 // 스냅 토글
@@ -4601,618 +5365,270 @@ function downloadTemplateJSON() {
     showMessage('JSON 파일이 다운로드되었습니다.', 'success');
 }
 
+// ==================== 템플릿 필드 설정 저장/불러오기 (DB 연동) ====================
 
-// ==================== 도면 좌표 마킹 ====================
-let mapSpotImagesCache = [];
-let mapSpotMarkers = [];
-let mapSpotBaseImageData = null;
-let mapSpotSelectedImage = null;
-let mapSpotRegisterEnabled = false;
+/**
+ * 현재 Canvas 필드 설정을 DB에 저장
+ */
+async function saveFieldCoordinatesToDB() {
+    const templateSelect = document.getElementById('templateSelect');
+    const selectedOption = templateSelect.options[templateSelect.selectedIndex];
 
-function openMapSpotModal() {
-    document.getElementById('mapSpotModal').style.display = 'block';
-    setupMapSpotCanvasClick();
-    mapSpotRegisterEnabled = false;
-    updateMapSpotRegisterToggleUI();
-    loadMapSpotImages();
-}
-
-function closeMapSpotModal() {
-    document.getElementById('mapSpotModal').style.display = 'none';
-    mapSpotMarkers = [];
-    mapSpotBaseImageData = null;
-    mapSpotSelectedImage = null;
-    updateMapSpotList();
-    mapSpotRegisterEnabled = false;
-    updateMapSpotRegisterToggleUI();
-    const canvas = document.getElementById('mapSpotCanvas');
-    if (canvas) {
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!selectedOption.value) {
+        showMessage('템플릿을 먼저 선택하세요.', 'error');
+        return;
     }
-}
 
-async function loadMapSpotImages() {
-    const statusEl = document.getElementById('mapSpotStatus');
-    const selectEl = document.getElementById('mapSpotSelect');
-    statusEl.textContent = '도면 목록 로딩 중...';
+    const imageId = parseInt(selectedOption.value);
+    const tbody = document.getElementById('canvasFieldsTableBody');
+    const rows = tbody.querySelectorAll('tr');
 
-    try {
-        const response = await fetch('/livewalk/library');
-        if (!response.ok) throw new Error('도면 목록 조회 실패');
+    if (rows.length === 0) {
+        showMessage('저장할 필드가 없습니다.', 'warning');
+        return;
+    }
 
-        const images = await response.json();
-        const filtered = (images || []).filter(img => (img.description || '').includes('도면'));
-        mapSpotImagesCache = filtered;
-        mapSpotMarkers = [];
-        updateMapSpotList();
+    const fields = [];
 
-        if (!filtered.length) {
-            selectEl.innerHTML = '<option value="">-- 도면 이미지 없음 --</option>';
-            statusEl.textContent = '설명에 "도면"이 포함된 자료가 없습니다.';
-            renderMapSpotPreview(null);
-            return;
-        }
+    rows.forEach(row => {
+        const fieldType = row.dataset.fieldType || 'point';
+        const label = row.querySelector('.canvas-field-label')?.value || '';
+        const x = parseInt(row.querySelector('.canvas-field-x').value);
+        const y = parseInt(row.querySelector('.canvas-field-y').value);
+        const fontSize = parseInt(row.querySelector('.canvas-field-fontsize')?.value || 14);
 
-        selectEl.innerHTML = ['<option value="">-- 도면을 선택해 주세요 --</option>']
-            .concat(filtered.map(img => {
-                const typeLabel = (img.fileType || 'img').toString().toUpperCase();
-                return `<option value="${img.imageId}">${img.title} (${typeLabel})</option>`;
-            }))
-            .join('');
+        const fieldData = {
+            type: fieldType,
+            label: label,
+            x: x,
+            y: y,
+            fontSize: fontSize
+        };
 
-        // 8층 도면 자동 선택
-        const floor8Image = filtered.find(img => img.title.includes('8층'));
-        if (floor8Image) {
-            selectEl.value = floor8Image.imageId;
-            await handleMapSpotSelect(floor8Image.imageId);
+        if (fieldType === 'box') {
+            const boxSizeInput = row.querySelector('.canvas-field-boxsize');
+            if (boxSizeInput && boxSizeInput.value) {
+                const sizeMatch = boxSizeInput.value.match(/(\d+)x(\d+)/);
+                if (sizeMatch) {
+                    fieldData.width = parseInt(sizeMatch[1]);
+                    fieldData.height = parseInt(sizeMatch[2]);
+                }
+            }
+        } else if (fieldType === 'table') {
+            const tableDataInput = row.querySelector('.canvas-field-tabledata');
+            if (tableDataInput && tableDataInput.value) {
+                try {
+                    fieldData.tableData = JSON.parse(tableDataInput.value);
+                } catch (e) {
+                    console.error('표 데이터 파싱 오류:', e);
+                }
+            }
         } else {
-            selectEl.value = '';
+            // 일반 포인트 타입
+            const lineWidthInput = row.querySelector('.canvas-field-linewidth');
+            if (lineWidthInput && lineWidthInput.value) {
+                const lineWidth = parseInt(lineWidthInput.value);
+                if (lineWidth > 0) {
+                    fieldData.lineWidth = lineWidth;
+                }
+            }
         }
 
-        statusEl.textContent = `${filtered.length}개 도면 (설명에 "도면" 포함)`;
-    } catch (error) {
-        console.error(error);
-        statusEl.textContent = '도면 목록 로딩 실패.';
-        showMessage('도면 목록 조회 중 오류가 발생했습니다: ' + error.message, 'error');
-    }
-}
-
-async function handleMapSpotSelect(imageId) {
-    const img = mapSpotImagesCache.find(i => String(i.imageId) === String(imageId));
-    mapSpotMarkers = [];
-    updateMapSpotList();
-
-    if (!img) {
-        renderMapSpotPreview(null);
-        return;
-    }
-    await renderMapSpotPreview(img);
-    await loadExistingMapSpots(img.imageId);
-}
-
-async function renderMapSpotPreview(image) {
-    const canvas = document.getElementById('mapSpotCanvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    mapSpotBaseImageData = null;
-    mapSpotSelectedImage = image;
-
-    if (!image) {
-        ctx.font = '14px Arial';
-        ctx.fillStyle = '#666';
-        ctx.fillText('도면을 선택해 주세요.', 20, 30);
-        return;
-    }
-
-    if (image.fileType && image.fileType.toLowerCase() === 'pdf') {
-        await renderMapSpotPdf(image.fileName, canvas);
-        return;
-    }
-    await renderMapSpotImage(image.fileName, canvas);
-}
-
-function renderMapSpotImage(fileName, canvas) {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-            mapSpotBaseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            redrawMapSpotCanvas();
-            resolve();
-        };
-        img.onerror = (err) => {
-            const ctx = canvas.getContext('2d');
-            ctx.font = '14px Arial';
-            ctx.fillStyle = 'red';
-            ctx.fillText('이미지 로딩 실패.', 20, 30);
-            reject(err);
-        };
-        img.src = `/uploads/images/${fileName}`;
+        fields.push(fieldData);
     });
-}
 
-async function renderMapSpotPdf(fileName, canvas) {
+    const coordinatesJson = JSON.stringify(fields);
+
     try {
-        const pdfjsLib = window['pdfjs-dist/build/pdf'];
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const formData = new FormData();
+        formData.append('coordinates', coordinatesJson);
 
-        const pdfUrl = `/uploads/images/${fileName}`;
-        const loadingTask = pdfjsLib.getDocument(pdfUrl);
-        const pdf = await loadingTask.promise;
-        const page = await pdf.getPage(1);
-
-        const desiredHeight = 700;
-        const viewport = page.getViewport({ scale: 1.0 });
-        const scale = desiredHeight / viewport.height;
-        const scaledViewport = page.getViewport({ scale });
-
-        canvas.height = scaledViewport.height;
-        canvas.width = scaledViewport.width;
-
-        const renderContext = {
-            canvasContext: canvas.getContext('2d'),
-            viewport: scaledViewport
-        };
-        await page.render(renderContext).promise;
-        mapSpotBaseImageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
-        redrawMapSpotCanvas();
-    } catch (error) {
-        console.error('PDF 렌더링 실패', error);
-        const ctx = canvas.getContext('2d');
-        ctx.font = '14px Arial';
-        ctx.fillStyle = 'red';
-        ctx.fillText('PDF 렌더링 실패했습니다.', 20, 30);
-    }
-}
-
-function setupMapSpotCanvasClick() {
-    const canvas = document.getElementById('mapSpotCanvas');
-    if (!canvas) return;
-    canvas.onclick = handleMapSpotCanvasClick;
-    canvas.style.cursor = 'crosshair';
-}
-
-function handleMapSpotCanvasClick(event) {
-    if (!mapSpotRegisterEnabled) return;
-    const canvas = document.getElementById('mapSpotCanvas');
-    if (!canvas || !mapSpotBaseImageData) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const x = Math.round((event.clientX - rect.left) * scaleX);
-    const y = Math.round((event.clientY - rect.top) * scaleY);
-
-    const name = `위치${mapSpotMarkers.length + 1}`;
-    mapSpotMarkers.push({ x, y, name, radius: 20, desc: '' });
-    redrawMapSpotCanvas();
-    updateMapSpotList();
-}
-
-function toggleMapSpotRegisterMode() {
-    mapSpotRegisterEnabled = !mapSpotRegisterEnabled;
-    updateMapSpotRegisterToggleUI();
-}
-
-function updateMapSpotRegisterToggleUI() {
-    const btn = document.getElementById('mapSpotRegisterToggleBtn');
-    if (!btn) return;
-    if (mapSpotRegisterEnabled) {
-        btn.textContent = '좌표 등록: ON';
-        btn.classList.remove('btn-gray');
-    } else {
-        btn.textContent = '좌표 등록: OFF';
-        if (!btn.classList.contains('btn-gray')) btn.classList.add('btn-gray');
-    }
-}
-
-async function loadExistingMapSpots(imageId) {
-    if (!imageId) return;
-    try {
-        const response = await fetch(`/livewalk/map-spot/image/${imageId}`);
-        if (!response.ok) throw new Error('좌표 조회 실패');
-        const spots = await response.json();
-        mapSpotMarkers = (spots || []).map(s => ({
-            x: s.posX,
-            y: s.posY,
-            name: s.spotName || '',
-            radius: s.radius || 20,
-            desc: s.description || ''
-        }));
-        redrawMapSpotCanvas();
-        updateMapSpotList();
-    } catch (error) {
-        console.error(error);
-        showMessage('기존 좌표 조회 중 오류 발생: ' + error.message, 'error');
-    }
-}
-
-function redrawMapSpotCanvas() {
-    const canvas = document.getElementById('mapSpotCanvas');
-    if (!canvas || !mapSpotBaseImageData) return;
-    const ctx = canvas.getContext('2d');
-    ctx.putImageData(mapSpotBaseImageData, 0, 0);
-
-    ctx.strokeStyle = 'red';
-    ctx.lineWidth = 2;
-    mapSpotMarkers.forEach(marker => {
-        const radius = marker.radius && marker.radius > 0 ? marker.radius : 20;
-        ctx.beginPath();
-        ctx.arc(marker.x, marker.y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = '#c2191f';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        const nameText = marker.name || '';
-        const descText = marker.desc || '';
-        if (descText) {
-            ctx.font = 'bold 12px Arial';
-            ctx.fillText(nameText, marker.x, marker.y - 6);
-            ctx.font = '11px Arial';
-            ctx.fillText(descText, marker.x, marker.y + 8);
-        } else {
-            ctx.font = 'bold 12px Arial';
-            ctx.fillText(nameText, marker.x, marker.y);
-        }
-    });
-}
-
-function updateMapSpotList() {
-    const tbody = document.getElementById('mapSpotListBody');
-    if (!tbody) return;
-
-    if (!mapSpotMarkers.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #888; padding: 8px;">좌표를 클릭하여 추가하거나, 기존 좌표를 수정하세요.</td></tr>';
-        return;
-    }
-
-    tbody.innerHTML = mapSpotMarkers.map((m, idx) => `
-        <tr>
-            <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${idx + 1}</td>
-            <td style="border: 1px solid #ddd; padding: 6px;">
-                <input type="text" value="${m.name || ''}" oninput="updateMapSpotMarkerField(${idx}, 'name', this.value)" style="width: 100%; padding: 4px; border: 1px solid #ccc; font-size: 12px;" placeholder="위치명">
-            </td>
-            <td style="border: 1px solid #ddd; padding: 6px; text-align: right;">
-                <input type="number" value="${m.x}" oninput="updateMapSpotMarkerField(${idx}, 'x', this.value)" style="width: 100%; padding: 4px; border: 1px solid #ccc; font-size: 12px;">
-            </td>
-            <td style="border: 1px solid #ddd; padding: 6px; text-align: right;">
-                <input type="number" value="${m.y}" oninput="updateMapSpotMarkerField(${idx}, 'y', this.value)" style="width: 100%; padding: 4px; border: 1px solid #ccc; font-size: 12px;">
-            </td>
-            <td style="border: 1px solid #ddd; padding: 6px; text-align: right;">
-                <input type="number" min="1" value="${m.radius || 20}" oninput="updateMapSpotMarkerField(${idx}, 'radius', this.value)" style="width: 100%; padding: 4px; border: 1px solid #ccc; font-size: 12px;">
-            </td>
-            <td style="border: 1px solid #ddd; padding: 6px;">
-                <input type="text" value="${m.desc || ''}" oninput="updateMapSpotMarkerField(${idx}, 'desc', this.value)" style="width: 100%; padding: 4px; border: 1px solid #ccc; font-size: 12px;" placeholder="설명">
-            </td>
-            <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
-                <button type="button" class="btn btn-gray" style="padding: 4px 8px; font-size: 12px;" onclick="deleteMapSpotMarker(${idx})">삭제</button>
-            </td>
-        </tr>
-    `).join('');
-}
-
-function updateMapSpotMarkerField(index, field, value) {
-    if (index < 0 || index >= mapSpotMarkers.length) return;
-
-    if (field === 'radius') {
-        const r = parseInt(value, 10);
-        mapSpotMarkers[index].radius = Number.isFinite(r) && r > 0 ? r : 20;
-    } else if (field === 'name') {
-        mapSpotMarkers[index].name = value;
-    } else if (field === 'desc') {
-        mapSpotMarkers[index].desc = value;
-    } else if (field === 'x') {
-        const xVal = parseInt(value, 10);
-        if (Number.isFinite(xVal)) mapSpotMarkers[index].x = xVal;
-    } else if (field === 'y') {
-        const yVal = parseInt(value, 10);
-        if (Number.isFinite(yVal)) mapSpotMarkers[index].y = yVal;
-    }
-    redrawMapSpotCanvas();
-}
-
-function deleteMapSpotMarker(index) {
-    if (index < 0 || index >= mapSpotMarkers.length) return;
-    mapSpotMarkers.splice(index, 1);
-    redrawMapSpotCanvas();
-    updateMapSpotList();
-}
-
-function clearMapSpotMarkers() {
-    mapSpotMarkers = [];
-    redrawMapSpotCanvas();
-    updateMapSpotList();
-}
-
-function submitMapSpotMarkers() {
-    if (!mapSpotSelectedImage) {
-        showMessage('도면을 먼저 선택하세요.', 'warning');
-        return;
-    }
-    if (mapSpotMarkers.length === 0) {
-        showMessage('저장할 좌표가 없습니다. 좌표를 클릭해서 추가하세요.', 'warning');
-        return;
-    }
-
-    const payload = mapSpotMarkers.map(marker => ({
-        imageId: mapSpotSelectedImage.imageId,
-        spotName: marker.name || '',
-        posX: marker.x,
-        posY: marker.y,
-        radius: marker.radius || 20,
-        description: marker.desc || ''
-    }));
-
-    fetch('/livewalk/map-spot/bulk', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-    })
-        .then(response => {
-            if (!response.ok) throw new Error('저장 실패');
-            showMessage('좌표가 저장되었습니다.', 'success');
-        })
-        .catch(err => {
-            showMessage('좌표 저장 오류: ' + err.message, 'error');
+        const response = await fetch(`/livewalk/library/${imageId}/coordinates`, {
+            method: 'POST',
+            body: formData
         });
-}
 
-// ==================== 도면 위치 선택 (Location Picker) ====================
-let locationPickerImagesCache = [];
-let locationPickerSelectedImage = null;
-let locationPickerBaseImageData = null;
-let locationPickerMarkers = [];
-let locationPickerTargetInput = null;
-
-function openLocationPicker(buttonElement) {
-    // 버튼의 행에서 도면 위치 입력 필드 찾기
-    const row = buttonElement.closest('tr');
-    locationPickerTargetInput = row.querySelector('.bulk-map-location');
-
-    document.getElementById('locationPickerModal').style.display = 'block';
-    loadLocationPickerImages();
-}
-
-function closeLocationPicker() {
-    document.getElementById('locationPickerModal').style.display = 'none';
-    locationPickerSelectedImage = null;
-    locationPickerBaseImageData = null;
-    locationPickerMarkers = [];
-    locationPickerTargetInput = null;
-    const canvas = document.getElementById('locationPickerCanvas');
-    if (canvas) {
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (response.ok) {
+            showMessage(`템플릿 필드 설정이 저장되었습니다 (${fields.length}개 필드)`, 'success');
+        } else {
+            const error = await response.json();
+            showMessage('저장 실패: ' + error.message, 'error');
+        }
+    } catch (error) {
+        showMessage('저장 오류: ' + error.message, 'error');
     }
 }
 
-async function loadLocationPickerImages() {
-    const statusEl = document.getElementById('locationPickerStatus');
-    const selectEl = document.getElementById('locationPickerSelect');
-    statusEl.textContent = '도면 목록 로딩 중...';
+/**
+ * DB에서 저장된 필드 설정 불러오기
+ */
+async function loadFieldCoordinatesFromDB(imageId) {
+    if (!imageId) return;
 
     try {
-        const response = await fetch('/livewalk/library');
-        if (!response.ok) throw new Error('도면 목록 조회 실패');
-
-        const images = await response.json();
-        const filtered = (images || []).filter(img => (img.description || '').includes('도면'));
-        locationPickerImagesCache = filtered;
-
-        if (!filtered.length) {
-            selectEl.innerHTML = '<option value="">-- 도면 이미지 없음 --</option>';
-            statusEl.textContent = '설명에 "도면"이 포함된 자료가 없습니다.';
+        const response = await fetch(`/livewalk/library/${imageId}`);
+        if (!response.ok) {
+            console.warn('템플릿 정보 조회 실패');
             return;
         }
 
-        selectEl.innerHTML = ['<option value="">-- 도면을 선택하세요 --</option>']
-            .concat(filtered.map(img => {
-                const typeLabel = (img.fileType || 'img').toString().toUpperCase();
-                return `<option value="${img.imageId}">${img.title} (${typeLabel})</option>`;
-            }))
-            .join('');
+        const template = await response.json();
 
-        // 8층 도면 자동 선택
-        const floor8Image = filtered.find(img => img.title.includes('8층'));
-        if (floor8Image) {
-            selectEl.value = floor8Image.imageId;
-            await handleLocationPickerSelect(floor8Image.imageId);
-        } else {
-            selectEl.value = '';
+        if (!template.fieldCoordinates) {
+            console.log('저장된 필드 설정이 없습니다.');
+            return;
         }
 
-        statusEl.textContent = `${filtered.length}개 도면 (설명에 "도면" 포함)`;
-    } catch (error) {
-        console.error(error);
-        statusEl.textContent = '도면 목록 로딩 실패.';
-        showMessage('도면 목록 조회 중 오류가 발생했습니다: ' + error.message, 'error');
-    }
-}
+        const fields = JSON.parse(template.fieldCoordinates);
 
-async function handleLocationPickerSelect(imageId) {
-    const img = locationPickerImagesCache.find(i => String(i.imageId) === String(imageId));
-    locationPickerSelectedImage = img;
-
-    if (!img) {
-        renderLocationPickerPreview(null);
-        return;
-    }
-
-    await renderLocationPickerPreview(img);
-    await loadLocationPickerSpots(imageId);
-}
-
-async function renderLocationPickerPreview(image) {
-    const canvas = document.getElementById('locationPickerCanvas');
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    locationPickerBaseImageData = null;
-
-    if (!image) {
-        ctx.font = '14px Arial';
-        ctx.fillStyle = '#666';
-        ctx.fillText('도면을 선택해 주세요.', 20, 30);
-        return;
-    }
-
-    if (image.fileType && image.fileType.toLowerCase() === 'pdf') {
-        await renderLocationPickerPdf(image.fileName, canvas);
-        return;
-    }
-    await renderLocationPickerImage(image.fileName, canvas);
-}
-
-function renderLocationPickerImage(fileName, canvas) {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-            locationPickerBaseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            redrawLocationPickerCanvas();
-            setupLocationPickerCanvasClick();
-            resolve();
-        };
-        img.onerror = (err) => {
-            const ctx = canvas.getContext('2d');
-            ctx.font = '14px Arial';
-            ctx.fillStyle = 'red';
-            ctx.fillText('이미지 로딩 실패.', 20, 30);
-            reject(err);
-        };
-        img.src = `/uploads/images/${fileName}`;
-    });
-}
-
-async function renderLocationPickerPdf(fileName, canvas) {
-    try {
-        const pdfjsLib = window['pdfjs-dist/build/pdf'];
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-        const pdfUrl = `/uploads/images/${fileName}`;
-        const loadingTask = pdfjsLib.getDocument(pdfUrl);
-        const pdf = await loadingTask.promise;
-        const page = await pdf.getPage(1);
-
-        const viewport = page.getViewport({ scale: 1.5 });
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-
-        const scaledViewport = page.getViewport({ scale: 1.5 });
-        const renderContext = {
-            canvasContext: canvas.getContext('2d'),
-            viewport: scaledViewport
-        };
-        await page.render(renderContext).promise;
-        locationPickerBaseImageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
-        redrawLocationPickerCanvas();
-        setupLocationPickerCanvasClick();
-    } catch (error) {
-        console.error('PDF 렌더링 실패', error);
-        const ctx = canvas.getContext('2d');
-        ctx.font = '14px Arial';
-        ctx.fillStyle = 'red';
-        ctx.fillText('PDF 렌더링 실패했습니다.', 20, 30);
-    }
-}
-
-async function loadLocationPickerSpots(imageId) {
-    if (!imageId) return;
-    try {
-        const response = await fetch(`/livewalk/map-spot/image/${imageId}`);
-        if (!response.ok) throw new Error('좌표 조회 실패');
-        const spots = await response.json();
-        locationPickerMarkers = (spots || []).map(s => ({
-            x: s.posX,
-            y: s.posY,
-            name: s.spotName || '',
-            radius: s.radius || 20,
-            desc: s.description || ''
-        }));
-        redrawLocationPickerCanvas();
-    } catch (error) {
-        console.error(error);
-        showMessage('기존 좌표 조회 중 오류 발생: ' + error.message, 'error');
-    }
-}
-
-function redrawLocationPickerCanvas() {
-    const canvas = document.getElementById('locationPickerCanvas');
-    if (!canvas || !locationPickerBaseImageData) return;
-    const ctx = canvas.getContext('2d');
-    ctx.putImageData(locationPickerBaseImageData, 0, 0);
-
-    ctx.strokeStyle = 'red';
-    ctx.lineWidth = 2;
-    locationPickerMarkers.forEach(marker => {
-        const radius = marker.radius && marker.radius > 0 ? marker.radius : 20;
-        ctx.beginPath();
-        ctx.arc(marker.x, marker.y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = '#c2191f';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        const nameText = marker.name || '';
-        const descText = marker.desc || '';
-        if (descText) {
-            ctx.font = 'bold 12px Arial';
-            ctx.fillText(nameText, marker.x, marker.y - 6);
-            ctx.font = '11px Arial';
-            ctx.fillText(descText, marker.x, marker.y + 8);
-        } else {
-            ctx.font = 'bold 12px Arial';
-            ctx.fillText(nameText, marker.x, marker.y);
+        if (!Array.isArray(fields) || fields.length === 0) {
+            console.log('필드 데이터가 비어있습니다.');
+            return;
         }
-    });
-}
 
-function setupLocationPickerCanvasClick() {
-    const canvas = document.getElementById('locationPickerCanvas');
-    if (!canvas) return;
-    canvas.onclick = handleLocationPickerCanvasClick;
-}
+        // 기존 필드 초기화
+        const tbody = document.getElementById('canvasFieldsTableBody');
+        tbody.innerHTML = '';
 
-function handleLocationPickerCanvasClick(event) {
-    const canvas = document.getElementById('locationPickerCanvas');
-    if (!canvas || !locationPickerBaseImageData || !locationPickerSelectedImage) return;
+        // 저장된 필드 복원
+        fields.forEach(field => {
+            if (field.type === 'box') {
+                addBoxToTable(field.label || '', field.x, field.y, field.width, field.height);
+            } else if (field.type === 'table') {
+                const tableData = field.tableData;
+                if (tableData) {
+                    const totalWidth = tableData.widths.reduce((sum, w) => sum + w, 0);
+                    addTableToCanvas(field.x, field.y, totalWidth, tableData.height, tableData.columns);
+                }
+            } else {
+                // 일반 포인트 타입
+                addFieldToTable(field.label || '', field.x, field.y);
 
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const x = Math.round((event.clientX - rect.left) * scaleX);
-    const y = Math.round((event.clientY - rect.top) * scaleY);
+                // fontSize, lineWidth 복원
+                const rows = tbody.querySelectorAll('tr');
+                const lastRow = rows[rows.length - 1];
+                if (lastRow) {
+                    const fontSizeInput = lastRow.querySelector('.canvas-field-fontsize');
+                    if (fontSizeInput && field.fontSize) {
+                        fontSizeInput.value = field.fontSize;
+                    }
 
-    // 클릭한 위치에 있는 마커 찾기
-    const clickedMarker = locationPickerMarkers.find(m => {
-        const distance = Math.sqrt(Math.pow(m.x - x, 2) + Math.pow(m.y - y, 2));
-        return distance <= (m.radius || 20);
-    });
+                    const lineWidthInput = lastRow.querySelector('.canvas-field-linewidth');
+                    if (lineWidthInput && field.lineWidth) {
+                        lineWidthInput.value = field.lineWidth;
+                    }
+                }
+            }
+        });
 
-    if (clickedMarker && locationPickerTargetInput) {
-        // 층 추출 (이미지 title에서 숫자 추출)
-        const floorMatch = locationPickerSelectedImage.title.match(/\d+/);
-        const floor = floorMatch ? floorMatch[0] : '';
+        redrawCanvas();
+        showMessage(`저장된 필드 설정을 불러왔습니다 (${fields.length}개 필드)`, 'info');
 
-        // 층-구역이름 형식으로 입력
-        const locationCode = floor ? `${floor}-${clickedMarker.name}` : clickedMarker.name;
-        locationPickerTargetInput.value = locationCode;
-
-        showMessage(`위치 선택됨: ${locationCode}`, 'success');
-        closeLocationPicker();
+    } catch (error) {
+        console.error('필드 설정 불러오기 오류:', error);
     }
+}
+
+// ==================== Canvas를 PDF로 변환 ====================
+
+/**
+ * Canvas 내용을 PDF로 생성하여 다운로드/보기
+ */
+async function generatePDFFromCanvas() {
+    const canvas = document.getElementById('documentCanvas');
+    const templateSelect = document.getElementById('templateSelect');
+    const titleInput = document.getElementById('docTitle');
+
+    if (!canvas) {
+        showMessage('Canvas를 찾을 수 없습니다.', 'error');
+        return;
+    }
+
+    const selectedOption = templateSelect.options[templateSelect.selectedIndex];
+    if (!selectedOption.value) {
+        showMessage('템플릿을 선택하세요.', 'error');
+        return;
+    }
+
+    const title = titleInput.value.trim();
+    if (!title) {
+        showMessage('문서 제목을 입력하세요.', 'error');
+        return;
+    }
+
+    const templateId = parseInt(selectedOption.value);
+    const incomingId = currentIncomingIdForDocument; // 문서 모달에서 사용하는 전역 변수
+
+    try {
+        showMessage('PDF 생성 중...', 'info');
+
+        // Canvas를 Blob으로 변환
+        const blob = await new Promise(resolve => {
+            canvas.toBlob(resolve, 'image/png');
+        });
+
+        // FormData로 서버 전송
+        const formData = new FormData();
+        formData.append('templateId', templateId);
+        formData.append('title', title);
+        formData.append('image', blob, 'canvas.png');
+
+        if (incomingId) {
+            formData.append('incomingId', incomingId);
+        }
+
+        const response = await fetch('/livewalk/documents/generate-canvas-pdf', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'PDF 생성 실패');
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+            showMessage('PDF가 생성되었습니다!', 'success');
+
+            // PDF 새 창에서 열기
+            const pdfFileName = result.document.fileName;
+            window.open(`/livewalk/documents/view/${pdfFileName}`, '_blank');
+
+            // 문서 모달 닫고 목록 새로고침
+            closeDocumentCreateModal();
+            if (currentIncomingIdForDocument) {
+                loadDocuments(currentIncomingIdForDocument);
+            }
+        } else {
+            throw new Error(result.message || 'PDF 생성 실패');
+        }
+
+    } catch (error) {
+        showMessage('PDF 생성 오류: ' + error.message, 'error');
+    }
+}
+
+/**
+ * Canvas를 PNG 이미지로 다운로드 (미리보기용)
+ */
+function downloadCanvasAsImage() {
+    const canvas = document.getElementById('documentCanvas');
+    if (!canvas) {
+        showMessage('Canvas를 찾을 수 없습니다.', 'error');
+        return;
+    }
+
+    canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'canvas_preview.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showMessage('이미지가 다운로드되었습니다.', 'success');
+    }, 'image/png');
 }

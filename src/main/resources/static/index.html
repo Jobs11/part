@@ -395,92 +395,6 @@
         <div id="message" class="message"></div>
     </div>
 
-    <!-- 도면 좌표 마킹 모달 -->
-    <div id="mapSpotModal"
-        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000;">
-        <div
-            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 8px; width: 95%; max-width: 1200px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-            <div
-                style="position: sticky; top: 0; background: white; border-bottom: 2px solid #e0e0e0; padding: 15px 20px; border-radius: 8px 8px 0 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-                <h3 style="margin: 0;">도면 좌표 마킹</h3>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <button type="button" id="mapSpotRegisterToggleBtn" class="btn btn-gray" onclick="toggleMapSpotRegisterMode()">좌표등록 모드: OFF</button>
-                    <button type="button" class="btn" onclick="submitMapSpotMarkers()">등록하기</button>
-                    <button type="button" class="btn" onclick="loadMapSpotImages()">새로고침</button>
-                    <button type="button" class="btn btn-gray" onclick="closeMapSpotModal()" style="padding: 6px 12px; font-weight: bold;">닫기 ✕</button>
-                </div>
-            </div>
-            <div style="overflow-y: auto; padding: 20px;">
-                <div style="margin-bottom: 12px; color: #555; font-size: 13px; line-height: 1.5;">
-                    1) 자료실 이미지를 선택하고 2) 좌표등록 모드를 ON 한 뒤 3) 캔버스를 클릭해 좌표를 찍으세요. 리스트에서 구역명/반지름/설명을 수정하면 바로 반영됩니다.
-                </div>
-                <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px;">
-                    <label for="mapSpotSelect" style="font-weight: bold;">자료실 이미지 선택</label>
-                    <select id="mapSpotSelect" onchange="handleMapSpotSelect(this.value)" style="min-width: 260px; padding: 6px; border: 1px solid #ababab; font-size: 13px;">
-                        <option value="">-- 불러올 이미지를 선택하세요 --</option>
-                    </select>
-                    <span id="mapSpotStatus" style="color: #666; font-size: 12px;">목록을 불러오는 중...</span>
-                </div>
-                <div style="border: 1px solid #ddd; border-radius: 6px; padding: 12px; background: #fafafa; margin-bottom: 12px;">
-                    <canvas id="mapSpotCanvas" style="width: 100%; max-height: 700px; border: 1px solid #ccc; background: white; display: block;"></canvas>
-                </div>
-                <div style="border: 1px solid #ddd; border-radius: 6px; padding: 12px; background: #fff;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                        <strong>좌표 리스트</strong>
-                        <button type="button" class="btn btn-gray" onclick="clearMapSpotMarkers()" style="padding: 4px 10px; font-size: 12px;">초기화</button>
-                    </div>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                        <thead>
-                            <tr style="background: #f0f0f0;">
-                                <th style="border: 1px solid #ddd; padding: 6px; width: 60px;">#</th>
-                                <th style="border: 1px solid #ddd; padding: 6px;">구역명</th>
-                                <th style="border: 1px solid #ddd; padding: 6px; width: 100px;">X</th>
-                                <th style="border: 1px solid #ddd; padding: 6px; width: 100px;">Y</th>
-                                <th style="border: 1px solid #ddd; padding: 6px; width: 90px;">반지름</th>
-                                <th style="border: 1px solid #ddd; padding: 6px;">설명</th>
-                                <th style="border: 1px solid #ddd; padding: 6px; width: 70px;">삭제</th>
-                            </tr>
-                        </thead>
-                        <tbody id="mapSpotListBody">
-                            <tr><td colspan="7" style="text-align: center; color: #888; padding: 8px;">좌표를 클릭해 추가하고, 구역명/크기/설명을 설정하세요.</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 도면 위치 선택 모달 -->
-    <div id="locationPickerModal"
-        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000;">
-        <div
-            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 8px; width: 95%; max-width: 1200px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-            <div
-                style="position: sticky; top: 0; background: white; border-bottom: 2px solid #e0e0e0; padding: 15px 20px; border-radius: 8px 8px 0 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-                <h3 style="margin: 0;">배치도 위치 선택</h3>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <button type="button" class="btn" onclick="loadLocationPickerImages()">새로고침</button>
-                    <button type="button" class="btn btn-gray" onclick="closeLocationPicker()" style="padding: 6px 12px; font-weight: bold;">닫기 ✕</button>
-                </div>
-            </div>
-            <div style="overflow-y: auto; padding: 20px;">
-                <div style="margin-bottom: 12px; color: #555; font-size: 13px; line-height: 1.5;">
-                    도면을 선택하고 원하는 위치를 클릭하면 입력칸에 자동으로 입력됩니다.
-                </div>
-                <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px;">
-                    <label for="locationPickerSelect" style="font-weight: bold;">도면 선택</label>
-                    <select id="locationPickerSelect" onchange="handleLocationPickerSelect(this.value)" style="min-width: 260px; padding: 6px; border: 1px solid #ababab; font-size: 13px;">
-                        <option value="">-- 도면을 선택하세요 --</option>
-                    </select>
-                    <span id="locationPickerStatus" style="color: #666; font-size: 12px;">목록을 불러오는 중...</span>
-                </div>
-                <div style="border: 1px solid #ddd; border-radius: 6px; padding: 12px; background: #fafafa; margin-bottom: 12px;">
-                    <canvas id="locationPickerCanvas" style="width: 100%; max-height: 700px; border: 1px solid #ccc; background: white; display: block; cursor: pointer;"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script src="js/main.js?v=32"></script>
     <script>
         // 관리자 권한 확인 및 관리자 페이지 버튼 표시
@@ -580,7 +494,7 @@
                     <table id="categoryListTable">
                         <thead>
                             <tr>
-                                <th style="width: 150px;">이름</th>
+                                <th style="width: 200px;">이름</th>
                                 <th>설명</th>
                                 <th style="width: 80px;">삭제</th>
                             </tr>
@@ -737,53 +651,79 @@
                         <!-- Canvas 미리보기 및 편집 -->
                         <div
                             style="margin-bottom: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                                 <h4 style="margin: 0;">템플릿 에디터</h4>
                                 <div style="display: flex; gap: 8px; align-items: center;">
+                                    <!-- 필드 설정 저장 버튼 -->
+                                    <button type="button" onclick="saveFieldCoordinatesToDB()" class="btn"
+                                        style="padding: 5px 15px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold;">💾
+                                        필드 설정 저장</button>
                                     <!-- 좌표 표시 -->
-                                    <span id="canvasCoordDisplay" style="font-size: 12px; color: #666; min-width: 100px;">X: 0, Y: 0</span>
+                                    <span id="canvasCoordDisplay"
+                                        style="font-size: 12px; color: #666; min-width: 100px;">X: 0, Y: 0</span>
                                     <!-- 줌 레벨 -->
                                     <span id="zoomLevel" style="font-size: 12px; color: #666;">100%</span>
                                     <!-- 스냅 토글 -->
-                                    <button type="button" id="snapToggleBtn" onclick="toggleSnap()" class="btn-small" style="padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer;">🧲 스냅: ON (1px)</button>
+                                    <button type="button" id="snapToggleBtn" onclick="toggleSnap()" class="btn-small"
+                                        style="padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer;">🧲
+                                        스냅: ON (1px)</button>
                                     <!-- 드래그 모드 -->
-                                    <button type="button" id="dragModeBtn" onclick="toggleDragMode()" class="btn-small" style="padding: 5px 10px; background: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer;">📦 박스 모드: OFF</button>
+                                    <button type="button" id="dragModeBtn" onclick="toggleDragMode()" class="btn-small"
+                                        style="padding: 5px 10px; background: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer;">📦
+                                        박스 모드: OFF</button>
                                     <!-- 표 모드 -->
-                                    <button type="button" id="tableModeBtn" onclick="toggleTableMode()" class="btn-small" style="padding: 5px 10px; background: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer;">📊 표 모드: OFF</button>
+                                    <button type="button" id="tableModeBtn" onclick="toggleTableMode()"
+                                        class="btn-small"
+                                        style="padding: 5px 10px; background: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer;">📊
+                                        표 모드: OFF</button>
                                     <!-- 수정 모드 -->
-                                    <button type="button" id="editModeBtn" onclick="toggleEditMode()" class="btn-small" style="padding: 5px 10px; background: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer;">✏️ 수정 모드: OFF</button>
+                                    <button type="button" id="editModeBtn" onclick="toggleEditMode()" class="btn-small"
+                                        style="padding: 5px 10px; background: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer;">✏️
+                                        수정 모드: OFF</button>
                                 </div>
                             </div>
                             <!-- 줌 컨트롤 -->
                             <div style="margin-bottom: 10px; display: flex; gap: 10px; align-items: center;">
                                 <label style="font-size: 12px; color: #666;">확대/축소:</label>
-                                <button type="button" onclick="setEditorZoom(0.5)" class="btn-small" style="padding: 4px 8px;">50%</button>
-                                <button type="button" onclick="setEditorZoom(0.75)" class="btn-small" style="padding: 4px 8px;">75%</button>
-                                <button type="button" onclick="setEditorZoom(1.0)" class="btn-small" style="padding: 4px 8px;">100%</button>
-                                <button type="button" onclick="setEditorZoom(1.25)" class="btn-small" style="padding: 4px 8px;">125%</button>
-                                <button type="button" onclick="setEditorZoom(1.5)" class="btn-small" style="padding: 4px 8px;">150%</button>
-                                <button type="button" onclick="setEditorZoom(2.0)" class="btn-small" style="padding: 4px 8px;">200%</button>
+                                <button type="button" id="zoom50Btn" onclick="setEditorZoom(0.5)" class="btn-small"
+                                    style="padding: 4px 8px;">50%</button>
+                                <button type="button" id="zoom75Btn" onclick="setEditorZoom(0.75)" class="btn-small"
+                                    style="padding: 4px 8px;">75%</button>
+                                <button type="button" id="zoom100Btn" onclick="setEditorZoom(1.0)" class="btn-small"
+                                    style="padding: 4px 8px; background: #007bff; color: white;">100%</button>
+                                <button type="button" id="zoom125Btn" onclick="setEditorZoom(1.25)" class="btn-small"
+                                    style="padding: 4px 8px;">125%</button>
+                                <button type="button" id="zoom150Btn" onclick="setEditorZoom(1.5)" class="btn-small"
+                                    style="padding: 4px 8px;">150%</button>
+                                <button type="button" id="zoom200Btn" onclick="setEditorZoom(2.0)" class="btn-small"
+                                    style="padding: 4px 8px;">200%</button>
                             </div>
                             <!-- 스냅 크기 조절 -->
                             <div style="margin-bottom: 10px; display: flex; gap: 10px; align-items: center;">
                                 <label style="font-size: 12px; color: #666;">스냅 크기:</label>
-                                <button type="button" onclick="setSnapSize(1)" class="btn-small" style="padding: 4px 8px; background: #28a745; color: white;">1px</button>
-                                <button type="button" onclick="setSnapSize(5)" class="btn-small" style="padding: 4px 8px;">5px</button>
-                                <button type="button" onclick="setSnapSize(10)" class="btn-small" style="padding: 4px 8px;">10px</button>
-                                <button type="button" onclick="setSnapSize(25)" class="btn-small" style="padding: 4px 8px;">25px</button>
-                                <button type="button" onclick="setSnapSize(50)" class="btn-small" style="padding: 4px 8px;">50px</button>
-                                <span id="snapSizeDisplay" style="font-size: 12px; color: #666; margin-left: 5px;">1px</span>
+                                <button type="button" id="snap1Btn" onclick="setSnapSize(1)" class="btn-small"
+                                    style="padding: 4px 8px; background: #28a745; color: white;">1px</button>
+                                <button type="button" id="snap5Btn" onclick="setSnapSize(5)" class="btn-small"
+                                    style="padding: 4px 8px;">5px</button>
+                                <button type="button" id="snap10Btn" onclick="setSnapSize(10)" class="btn-small"
+                                    style="padding: 4px 8px;">10px</button>
+                                <button type="button" id="snap25Btn" onclick="setSnapSize(25)" class="btn-small"
+                                    style="padding: 4px 8px;">25px</button>
+                                <button type="button" id="snap50Btn" onclick="setSnapSize(50)" class="btn-small"
+                                    style="padding: 4px 8px;">50px</button>
+                                <span id="snapSizeDisplay"
+                                    style="font-size: 12px; color: #666; margin-left: 5px;">1px</span>
                             </div>
                             <div style="font-size: 12px; color: #666; margin-bottom: 10px;">
-                                💡 <strong>클릭 모드:</strong> Canvas를 클릭하여 필드 추가 | <strong>박스 모드:</strong> 드래그로 영역 선택 후 중앙 좌표에 필드 추가
+                                💡 <strong>클릭 모드:</strong> Canvas를 클릭하여 필드 추가 | <strong>박스 모드:</strong> 드래그로 영역 선택 후 중앙
+                                좌표에 필드 추가
                             </div>
                             <div
                                 style="text-align: center; background: #fff; padding: 20px; border: 1px solid #ddd; border-radius: 4px; position: relative; overflow: auto; max-height: 800px;">
-                                <canvas id="documentCanvas"
-                                    onclick="addFieldAtPosition(event)"
+                                <canvas id="documentCanvas" onclick="addFieldAtPosition(event)"
                                     onmousemove="handleCanvasMouseMove(event)"
-                                    onmousedown="handleCanvasMouseDown(event)"
-                                    onmouseup="handleCanvasMouseUp(event)"
+                                    onmousedown="handleCanvasMouseDown(event)" onmouseup="handleCanvasMouseUp(event)"
                                     style="max-width: 100%; border: 1px solid #ccc; cursor: crosshair;"></canvas>
                             </div>
                         </div>
@@ -796,7 +736,8 @@
                                 <h4 style="margin: 0;">필드 목록</h4>
                                 <div style="display: flex; gap: 10px;">
                                     <button type="button" class="btn" onclick="saveTemplateCoordinates()"
-                                        style="padding: 5px 12px; font-size: 12px; background: #28a745;">💾 좌표 저장</button>
+                                        style="padding: 5px 12px; font-size: 12px; background: #28a745;">💾 좌표
+                                        저장</button>
                                     <button type="button" class="btn btn-gray" onclick="downloadTemplateJSON()"
                                         style="padding: 5px 12px; font-size: 12px;">📥 JSON 백업</button>
                                     <button type="button" class="btn" onclick="clearAllFields()"
@@ -828,10 +769,12 @@
             </div>
 
             <!-- 생성 버튼 -->
-            <div style="text-align: right; padding: 20px;">
-                <button type="button" class="btn btn-gray" onclick="closeDocumentCreateModal()"
-                    style="margin-right: 10px;">취소</button>
-                <button type="button" class="btn" onclick="generateDocument()">📄 문서 생성</button>
+            <div style="text-align: right; padding: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn btn-gray" onclick="closeDocumentCreateModal()">취소</button>
+                <button type="button" class="btn" onclick="downloadCanvasAsImage()" style="background: #6c757d;">🖼️ 이미지
+                    다운로드</button>
+                <button type="button" class="btn" onclick="generatePDFFromCanvas()"
+                    style="background: #dc3545; font-weight: bold;">📄 PDF 생성 및 보기</button>
             </div>
             </form>
         </div>
@@ -848,8 +791,9 @@
                 style="position: sticky; top: 0; background: white; border-bottom: 2px solid #e0e0e0; padding: 15px 20px; border-radius: 5px 5px 0 0; z-index: 10;">
                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
                     <h3 style="margin: 0;">📁 자료실 (문서 양식 / 도면)</h3>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <button type="button" id="mapSpotButton" class="btn" onclick="openMapSpotModal()">도면 좌표 마킹</button>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button type="button" id="mapSpotButton" class="btn" title="도면 좌표 마킹 (준비 중)"
+                            onclick="openMapSpotModal()">도면 좌표 마킹</button>
                         <button type="button" class="btn btn-gray" onclick="closeLibraryModal()"
                             style="padding: 6px 12px; font-weight: bold;">닫기 ✕</button>
                     </div>
@@ -883,6 +827,107 @@
                 <!-- 자료 목록 -->
                 <div id="libraryListContainer">
                     <p style="text-align: center; color: #999;">등록된 자료가 없습니다.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 도면 좌표 마킹 모달 -->
+    <div id="mapSpotModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000;">
+        <div
+            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 8px; width: 95%; max-width: 1200px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <div
+                style="position: sticky; top: 0; background: white; border-bottom: 2px solid #e0e0e0; padding: 15px 20px; border-radius: 8px 8px 0 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                <h3 style="margin: 0;">도면 좌표 마킹</h3>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button type="button" id="mapSpotRegisterToggleBtn" class="btn btn-gray"
+                        onclick="toggleMapSpotRegisterMode()">좌표등록 모드: OFF</button>
+                    <button type="button" class="btn" onclick="submitMapSpotMarkers()">등록하기</button>
+                    <button type="button" class="btn" onclick="loadMapSpotImages()">새로고침</button>
+                    <button type="button" class="btn btn-gray" onclick="closeMapSpotModal()"
+                        style="padding: 6px 12px; font-weight: bold;">닫기 ✕</button>
+                </div>
+            </div>
+            <div style="overflow-y: auto; padding: 20px;">
+                <div style="margin-bottom: 12px; color: #555; font-size: 13px; line-height: 1.5;">
+                    1) 자료실 이미지를 선택하고 2) 좌표등록 모드를 ON 한 뒤 3) 캔버스를 클릭해 좌표를 찍으세요. 리스트에서 구역명/반지름/설명을 수정하면 바로 반영됩니다.
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px;">
+                    <label for="mapSpotSelect" style="font-weight: bold;">자료실 이미지 선택</label>
+                    <select id="mapSpotSelect" onchange="handleMapSpotSelect(this.value)"
+                        style="min-width: 260px; padding: 6px; border: 1px solid #ababab; font-size: 13px;">
+                        <option value="">-- 불러올 이미지를 선택하세요 --</option>
+                    </select>
+                    <span id="mapSpotStatus" style="color: #666; font-size: 12px;">목록을 불러오는 중...</span>
+                </div>
+                <div
+                    style="border: 1px solid #ddd; border-radius: 6px; padding: 12px; background: #fafafa; margin-bottom: 12px;">
+                    <canvas id="mapSpotCanvas"
+                        style="width: 100%; max-height: 700px; border: 1px solid #ccc; background: white; display: block;"></canvas>
+                </div>
+                <div style="border: 1px solid #ddd; border-radius: 6px; padding: 12px; background: #fff;">
+                    <div
+                        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <strong>좌표 리스트</strong>
+                        <button type="button" class="btn btn-gray" onclick="clearMapSpotMarkers()"
+                            style="padding: 4px 10px; font-size: 12px;">초기화</button>
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <thead>
+                            <tr style="background: #f0f0f0;">
+                                <th style="border: 1px solid #ddd; padding: 6px; width: 60px;">#</th>
+                                <th style="border: 1px solid #ddd; padding: 6px;">구역명</th>
+                                <th style="border: 1px solid #ddd; padding: 6px; width: 100px;">X</th>
+                                <th style="border: 1px solid #ddd; padding: 6px; width: 100px;">Y</th>
+                                <th style="border: 1px solid #ddd; padding: 6px; width: 90px;">반지름</th>
+                                <th style="border: 1px solid #ddd; padding: 6px;">설명</th>
+                                <th style="border: 1px solid #ddd; padding: 6px; width: 70px;">삭제</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mapSpotListBody">
+                            <tr>
+                                <td colspan="7" style="text-align: center; color: #888; padding: 8px;">좌표를 클릭해 추가하고,
+                                    구역명/크기/설명을 설정하세요.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- 도면 위치 선택 모달 -->
+    <div id="locationPickerModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000;">
+        <div
+            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 8px; width: 95%; max-width: 1200px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <div
+                style="position: sticky; top: 0; background: white; border-bottom: 2px solid #e0e0e0; padding: 15px 20px; border-radius: 8px 8px 0 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                <h3 style="margin: 0;">배치도 위치 선택</h3>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button type="button" class="btn" onclick="loadLocationPickerImages()">새로고침</button>
+                    <button type="button" class="btn btn-gray" onclick="closeLocationPicker()"
+                        style="padding: 6px 12px; font-weight: bold;">닫기 ✕</button>
+                </div>
+            </div>
+            <div style="overflow-y: auto; padding: 20px;">
+                <div style="margin-bottom: 12px; color: #555; font-size: 13px; line-height: 1.5;">
+                    도면을 선택하고 원하는 위치를 클릭하면 입력칸에 자동으로 입력됩니다.
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px;">
+                    <label for="locationPickerSelect" style="font-weight: bold;">도면 선택</label>
+                    <select id="locationPickerSelect" onchange="handleLocationPickerSelect(this.value)"
+                        style="min-width: 260px; padding: 6px; border: 1px solid #ababab; font-size: 13px;">
+                        <option value="">-- 도면을 선택하세요 --</option>
+                    </select>
+                    <span id="locationPickerStatus" style="color: #666; font-size: 12px;">목록을 불러오는 중...</span>
+                </div>
+                <div
+                    style="border: 1px solid #ddd; border-radius: 6px; padding: 12px; background: #fafafa; margin-bottom: 12px;">
+                    <canvas id="locationPickerCanvas"
+                        style="width: 100%; max-height: 700px; border: 1px solid #ccc; background: white; display: block; cursor: pointer;"></canvas>
                 </div>
             </div>
         </div>

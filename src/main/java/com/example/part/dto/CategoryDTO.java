@@ -9,7 +9,6 @@ public class CategoryDTO {
     private Integer categoryId;
     private String categoryName;
     private String description;
-    private Integer lastNumber;
     private Boolean isActive;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

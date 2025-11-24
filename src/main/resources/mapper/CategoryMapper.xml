@@ -9,7 +9,6 @@
         <id property="categoryId" column="category_id"/>
         <result property="categoryName" column="category_name"/>
         <result property="description" column="description"/>
-        <result property="lastNumber" column="last_number"/>
         <result property="isActive" column="is_active"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
@@ -30,6 +29,8 @@
         FROM category
         WHERE category_id = #{categoryId}
     </select>
+
+    <!-- 카테고리 코드로 조회 - 제거됨 (더 이상 사용하지 않음) -->
 
     <!-- ✅ 카테고리 이름으로 조회 -->
     <select id="findByName" resultMap="categoryResultMap" parameterType="string">
@@ -69,30 +70,7 @@
         WHERE category_id = #{categoryId}
     </update>
 
-    <!-- ✅ 부품번호 자동 발급용: last_number 조회 -->
-    <select id="getLastNumber" resultType="int" parameterType="int">
-        SELECT last_number
-        FROM category
-        WHERE category_id = #{categoryId}
-    </select>
-
-    <!-- ✅ 부품번호 자동 발급용: last_number 증가 -->
-    <update id="updateLastNumber">
-        UPDATE category
-        SET last_number = #{lastNumber}
-        WHERE category_id = #{categoryId}
-    </update>
-
-    <!-- ✅ 부품번호 자동 발급용: last_number 원자적 증가 및 조회 -->
-    <update id="incrementAndGetLastNumber" parameterType="int">
-        UPDATE category
-        SET last_number = LAST_INSERT_ID(last_number + 1)
-        WHERE category_id = #{categoryId}
-    </update>
-
-    <select id="getLastNumberAfterIncrement" resultType="int">
-        SELECT LAST_INSERT_ID() AS last_number
-    </select>
+    <!-- last_number 관련 쿼리 제거됨 - 부품번호가 더 이상 카테고리별로 생성되지 않음 -->
 
     <!-- ✅ 카테고리 비활성화 -->
     <update id="deactivateCategory" parameterType="int">
