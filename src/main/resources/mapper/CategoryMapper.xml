@@ -7,7 +7,6 @@
     <!-- ✅ ResultMap -->
     <resultMap id="categoryResultMap" type="com.example.part.dto.CategoryDTO">
         <id property="categoryId" column="category_id"/>
-        <result property="categoryCode" column="category_code"/>
         <result property="categoryName" column="category_name"/>
         <result property="description" column="description"/>
         <result property="lastNumber" column="last_number"/>
@@ -32,13 +31,6 @@
         WHERE category_id = #{categoryId}
     </select>
 
-    <!-- ✅ 카테고리 코드로 조회 -->
-    <select id="findByCode" resultMap="categoryResultMap" parameterType="string">
-        SELECT *
-        FROM category
-        WHERE category_code = #{categoryCode}
-    </select>
-
     <!-- ✅ 카테고리 이름으로 조회 -->
     <select id="findByName" resultMap="categoryResultMap" parameterType="string">
         SELECT *
@@ -59,11 +51,9 @@
     <!-- ✅ 카테고리 등록 -->
     <insert id="insertCategory" parameterType="com.example.part.dto.CategoryDTO">
         INSERT INTO category (
-            category_code,
             category_name,
             description
         ) VALUES (
-            #{categoryCode},
             #{categoryName},
             #{description}
         )

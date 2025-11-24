@@ -16,9 +16,6 @@ public interface CategoryMapper {
     // 단일 카테고리 조회
     CategoryDTO findById(@Param("categoryId") int categoryId);
 
-    // 카테고리 코드로 조회
-    CategoryDTO findByCode(@Param("categoryCode") String categoryCode);
-
     // 카테고리 이름으로 조회
     CategoryDTO findByName(@Param("categoryName") String categoryName);
 

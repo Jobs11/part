@@ -43,7 +43,7 @@ public class CategoryServiceImpl implements CategoryService {
 
                 if (incomingList.isEmpty()) {
                     log.debug("카테고리 [{}] - 입고 내역 없음, last_number 유지: {}",
-                            category.getCategoryCode(), category.getLastNumber());
+                            category.getCategoryName(), category.getLastNumber());
                     continue;
                 }
 
@@ -68,11 +68,11 @@ public class CategoryServiceImpl implements CategoryService {
                 if (maxNumber > category.getLastNumber()) {
                     categoryMapper.updateLastNumber(category.getCategoryId(), maxNumber);
                     log.info("✅ 카테고리 [{}] last_number 동기화: {} → {}",
-                            category.getCategoryCode(), category.getLastNumber(), maxNumber);
+                            category.getCategoryName(), category.getLastNumber(), maxNumber);
                     syncCount++;
                 } else {
                     log.debug("카테고리 [{}] - last_number 이미 최신: {}",
-                            category.getCategoryCode(), category.getLastNumber());
+                            category.getCategoryName(), category.getLastNumber());
                 }
             }
 
@@ -106,15 +106,6 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public CategoryDTO getCategoryByCode(String categoryCode) {
-        CategoryDTO category = categoryMapper.findByCode(categoryCode);
-        if (category == null) {
-            throw new RuntimeException("카테고리를 찾을 수 없습니다. 코드: " + categoryCode);
-        }
-        return category;
-    }
-
-    @Override
     @Transactional
     public CategoryDTO findOrCreateCategoryByName(String categoryName) {
         // 1. 이름으로 카테고리 조회
@@ -124,26 +115,13 @@ public class CategoryServiceImpl implements CategoryService {
             return category;
         }
 
-        // 2. 없으면 새로 생성 (코드는 이름의 첫 글자 대문자 사용)
-        String categoryCode = categoryName.substring(0, 1).toUpperCase();
-
-        // 코드 중복 체크 및 번호 추가
-        CategoryDTO existing = categoryMapper.findByCode(categoryCode);
-        int suffix = 1;
-        String finalCode = categoryCode;
-        while (existing != null) {
-            finalCode = categoryCode + suffix;
-            existing = categoryMapper.findByCode(finalCode);
-            suffix++;
-        }
-
+        // 2. 없으면 새로 생성
         CategoryDTO newCategory = new CategoryDTO();
-        newCategory.setCategoryCode(finalCode);
         newCategory.setCategoryName(categoryName);
         newCategory.setDescription("자동 생성된 카테고리");
 
         categoryMapper.insertCategory(newCategory);
-        log.info("새 카테고리 자동 생성: {} ({})", categoryName, finalCode);
+        log.info("새 카테고리 자동 생성: {}", categoryName);
 
         // 생성된 카테고리 반환
         return categoryMapper.findByName(categoryName);
@@ -152,10 +130,10 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Transactional
     public void createCategory(CategoryDTO categoryDTO) {
-        // 중복 체크
-        CategoryDTO existing = categoryMapper.findByCode(categoryDTO.getCategoryCode());
+        // 중복 체크 (이름으로)
+        CategoryDTO existing = categoryMapper.findByName(categoryDTO.getCategoryName());
         if (existing != null) {
-            throw new RuntimeException("이미 존재하는 카테고리 코드입니다: " + categoryDTO.getCategoryCode());
+            throw new RuntimeException("이미 존재하는 카테고리 이름입니다: " + categoryDTO.getCategoryName());
         }
 
         int result = categoryMapper.insertCategory(categoryDTO);
@@ -180,9 +158,10 @@ public class CategoryServiceImpl implements CategoryService {
     public synchronized String generatePartNumber(int categoryId) {
         log.info("=== generatePartNumber 호출 시작 - categoryId: {} ===", categoryId);
 
-        // 1. 카테고리 조회 (카테고리 코드 가져오기)
+        // 1. 카테고리 조회
         CategoryDTO category = getCategoryById(categoryId);
-        log.info("카테고리 조회 완료 - 코드: {}, 현재 last_number: {}", category.getCategoryCode(), category.getLastNumber());
+        String categoryPrefix = category.getCategoryName().substring(0, 1).toUpperCase();
+        log.info("카테고리 조회 완료 - 이름: {}, 현재 last_number: {}", category.getCategoryName(), category.getLastNumber());
 
         // 2. last_number 원자적 증가 (DB에서 직접 +1)
         int result = categoryMapper.incrementAndGetLastNumber(categoryId);
@@ -196,7 +175,7 @@ public class CategoryServiceImpl implements CategoryService {
         log.info("증가 후 조회된 last_number: {}", nextNumber);
 
         // 4. 부품번호 생성 (예: E-0001)
-        String partNumber = String.format("%s-%04d", category.getCategoryCode(), nextNumber);
+        String partNumber = String.format("%s-%04d", categoryPrefix, nextNumber);
 
         log.info("=== 부품번호 생성 완료: {} ===", partNumber);
         return partNumber;

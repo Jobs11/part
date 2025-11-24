@@ -12,8 +12,6 @@ public interface CategoryService {
     // 단일 카테고리 조회
     CategoryDTO getCategoryById(int categoryId);
 
-    // 카테고리 코드로 조회
-    CategoryDTO getCategoryByCode(String categoryCode);
     List<CategoryDTO> getCategoriesByDescription(String description);
 
     // 카테고리 이름으로 조회 또는 생성

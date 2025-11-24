@@ -48,15 +48,6 @@ public class CategoryController {
     }
 
     /**
-     * 카테고리 코드로 조회
-     */
-    @GetMapping("/code/{code}")
-    public ResponseEntity<CategoryDTO> getCategoryByCode(@PathVariable("code") String categoryCode) {
-        CategoryDTO category = categoryService.getCategoryByCode(categoryCode);
-        return ResponseEntity.ok(category);
-    }
-
-    /**
      * 결제수단 카테고리 조회
      */
     @GetMapping("/payment-methods")

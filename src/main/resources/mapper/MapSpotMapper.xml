@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.part.mapper.MapSpotMapper">
+
+    <insert id="insertMapSpots" parameterType="java.util.List">
+        INSERT INTO map_spot (
+            image_id,
+            spot_name,
+            pos_x,
+            pos_y,
+            radius,
+            description
+        )
+        VALUES
+        <foreach collection="list" item="spot" separator=",">
+            (
+                #{spot.imageId},
+                #{spot.spotName},
+                #{spot.posX},
+                #{spot.posY},
+                #{spot.radius},
+                #{spot.description}
+            )
+        </foreach>
+    </insert>
+
+    <select id="findByImageId" resultType="com.example.part.dto.MapSpotDTO">
+        SELECT
+            spot_id,
+            image_id,
+            spot_name,
+            pos_x,
+            pos_y,
+            radius,
+            description,
+            created_at
+        FROM map_spot
+        WHERE image_id = #{imageId}
+        ORDER BY spot_id ASC
+    </select>
+
+</mapper>

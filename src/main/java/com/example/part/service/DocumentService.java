@@ -14,6 +14,9 @@ public interface DocumentService {
     GeneratedDocumentDTO generateCanvasDocument(Long templateId, String title, Integer incomingId,
                                                  MultipartFile image, Integer createdBy);
 
+    GeneratedDocumentDTO generateCanvasPDF(Long templateId, String title, Integer incomingId,
+                                            MultipartFile image, Integer createdBy);
+
     List<GeneratedDocumentDTO> getDocumentsByIncomingId(Integer incomingId);
 
     GeneratedDocumentDTO getDocumentById(Long documentId);

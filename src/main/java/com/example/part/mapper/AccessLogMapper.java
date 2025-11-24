@@ -20,4 +20,6 @@ public interface AccessLogMapper {
     List<AccessLogDTO> selectAccessLogsByUserId(@Param("userId") Integer userId);
 
     AccessLogDTO selectAccessLogBySessionId(@Param("sessionId") String sessionId);
+
+    List<AccessLogDTO> selectActiveSessions();
 }

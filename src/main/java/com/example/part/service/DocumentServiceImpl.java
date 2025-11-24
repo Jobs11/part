@@ -400,4 +400,78 @@ public class DocumentServiceImpl implements DocumentService {
             throw new RuntimeException("Canvas 문서 생성 실패: " + e.getMessage(), e);
         }
     }
+
+    @Override
+    @Transactional
+    public GeneratedDocumentDTO generateCanvasPDF(Long templateId, String title, Integer incomingId,
+            org.springframework.web.multipart.MultipartFile image,
+            Integer createdBy) {
+        try {
+            // PDF 파일명 생성
+            String timestamp = java.time.LocalDateTime.now()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            String pdfFileName = "canvas_" + timestamp + ".pdf";
+            java.nio.file.Path pdfPath = java.nio.file.Paths.get(documentDir, pdfFileName);
+
+            // Canvas 이미지를 임시 저장
+            String tempImageName = "temp_" + timestamp + ".png";
+            java.nio.file.Path tempImagePath = java.nio.file.Paths.get(documentDir, tempImageName);
+            java.nio.file.Files.copy(image.getInputStream(), tempImagePath,
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+            // PDF 문서 생성 (A4 크기)
+            PDDocument document = new PDDocument();
+            PDPage page = new PDPage(PDRectangle.A4);
+            document.addPage(page);
+
+            // 이미지를 PDF에 삽입
+            PDImageXObject canvasImage = PDImageXObject.createFromFile(tempImagePath.toString(), document);
+
+            try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
+                float pageHeight = page.getMediaBox().getHeight();
+
+                // Canvas 이미지 원본 크기 (픽셀)
+                float imageWidth = canvasImage.getWidth();
+                float imageHeight = canvasImage.getHeight();
+
+                // 이미지를 원본 크기 그대로 PDF에 삽입
+                // 픽셀 크기를 포인트로 직접 사용 (1픽셀 = 1포인트)
+                float pdfWidth = imageWidth;
+                float pdfHeight = imageHeight;
+
+                // 좌상단 기준 (0, 0)부터 시작
+                // PDF 좌표계는 좌하단이 원점이므로 y 좌표 조정
+                float x = 0;
+                float y = pageHeight - pdfHeight;
+
+                // 이미지 그리기 (원본 크기 그대로)
+                contentStream.drawImage(canvasImage, x, y, pdfWidth, pdfHeight);
+            }
+
+            // PDF 저장
+            document.save(pdfPath.toFile());
+            document.close();
+
+            // 임시 이미지 삭제
+            java.nio.file.Files.deleteIfExists(tempImagePath);
+
+            // DTO 생성
+            GeneratedDocumentDTO documentData = new GeneratedDocumentDTO();
+            documentData.setTemplateId(templateId);
+            documentData.setIncomingId(incomingId);
+            documentData.setTitle(title);
+            documentData.setFileName(pdfFileName);
+            documentData.setFilePath(pdfPath.toString());
+            documentData.setFileSize(java.nio.file.Files.size(pdfPath));
+            documentData.setCreatedBy(createdBy);
+
+            // DB 저장
+            documentMapper.insertDocument(documentData);
+
+            return documentData;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Canvas PDF 생성 실패: " + e.getMessage(), e);
+        }
+    }
 }

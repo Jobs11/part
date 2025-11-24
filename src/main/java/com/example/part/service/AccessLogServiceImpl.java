@@ -48,4 +48,9 @@ public class AccessLogServiceImpl implements AccessLogService {
     public List<AccessLogDTO> getAccessLogsByUserId(Integer userId) {
         return accessLogMapper.selectAccessLogsByUserId(userId);
     }
+
+    @Override
+    public List<AccessLogDTO> getActiveSessions() {
+        return accessLogMapper.selectActiveSessions();
+    }
 }

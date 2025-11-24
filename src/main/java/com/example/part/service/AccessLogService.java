@@ -13,4 +13,6 @@ public interface AccessLogService {
     List<AccessLogDTO> getAllAccessLogs();
 
     List<AccessLogDTO> getAccessLogsByUserId(Integer userId);
+
+    List<AccessLogDTO> getActiveSessions();
 }

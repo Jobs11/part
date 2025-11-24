@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     // 데이터 로드
     Promise.all([loadCategories(), loadPaymentMethods()])
         .catch(() => {
-            // 데이터 로드 중 �??�류��??�시됨
+            // 데이터 로드 중 오류 무시됨
         })
         .finally(() => {
             addBulkRow();
@@ -248,7 +248,7 @@ async function loadCategories() {
             categoriesData.forEach(category => {
                 const option = document.createElement('option');
                 option.value = category.categoryId;
-                option.textContent = `${category.categoryName} (${category.categoryCode})`;
+                option.textContent = category.categoryName;
                 select.appendChild(option);
             });
         }
@@ -303,7 +303,8 @@ async function onCategoryChange() {
 
         const category = await response.json();
         const nextNumber = category.lastNumber + 1;
-        const previewPartNumber = `${category.categoryCode}-${String(nextNumber).padStart(4, '0')}`;
+        const categoryPrefix = category.categoryName.substring(0, 1).toUpperCase();
+        const previewPartNumber = `${categoryPrefix}-${String(nextNumber).padStart(4, '0')}`;
 
         if (partNumberEl) partNumberEl.value = previewPartNumber + ' (미리보기)';
     } catch (error) {
@@ -617,7 +618,7 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
         let options = '<option value="">선택하세요</option>';
         categoriesData.forEach(category => {
             const selected = category.categoryId === currentValue ? 'selected' : '';
-            options += `<option value="${category.categoryId}" ${selected}>${category.categoryName} (${category.categoryCode})</option>`;
+            options += `<option value="${category.categoryId}" ${selected}>${category.categoryName}</option>`;
         });
         inputElement.innerHTML = options;
     } else if (field === 'paymentMethodId') {
@@ -2337,7 +2338,8 @@ function addBulkRow() {
         </td>
         <td><input type="text" class="bulk-input bulk-part-number" placeholder="부품번호" required></td>
         <td><input type="text" class="bulk-input bulk-part-name" placeholder="부품명"></td>
-        <td><input type="text" class="bulk-input bulk-location" placeholder="예: A-1" maxlength="5"></td>
+        <td><input type="text" class="bulk-input bulk-cabinet-location" placeholder="예: A-1" maxlength="10"></td>
+        <td><input type="text" class="bulk-input bulk-map-location" placeholder="예: 8-A" maxlength="10"></td>
         <td><input type="number" class="bulk-input bulk-quantity" placeholder="수량" min="1"></td>
         <td><input type="text" class="bulk-input bulk-unit" value="EA"></td>
         <td>
@@ -2351,7 +2353,6 @@ function addBulkRow() {
         <td><input type="text" class="bulk-input bulk-note" placeholder="비고(실제 파트넘버)"></td>
     `;
     tbody.appendChild(tr);
-    attachLocationInputHandlers(tr.querySelector('.bulk-location'));
 
     // 날짜 기본값 설정
     tr.querySelector('.bulk-date').value = new Date().toISOString().split('T')[0];
@@ -2383,7 +2384,7 @@ async function loadCategoriesForBulk() {
             categoriesData.forEach(category => {
                 const option = document.createElement('option');
                 option.value = category.categoryId;
-                option.textContent = `${category.categoryName} (${category.categoryCode})`;
+                option.textContent = category.categoryName;
                 select.appendChild(option);
             });
         }
@@ -2457,16 +2458,14 @@ async function submitBulkInsert() {
     const tbody = document.getElementById('bulkInsertTableBody');
     const rows = tbody.querySelectorAll('tr');
     const dataList = [];
-    let invalidLocationInput = null;
 
     // 입력된 행만 수집
     for (const row of rows) {
         const partNumber = row.querySelector('.bulk-part-number').value.trim();
         const categoryId = row.querySelector('.bulk-category').value;
         const partName = row.querySelector('.bulk-part-name').value.trim();
-        const locationInput = row.querySelector('.bulk-location');
-        const location = normalizeLocationCode(locationInput.value.trim());
-        locationInput.value = location;
+        const cabinetLocation = row.querySelector('.bulk-cabinet-location').value.trim();
+        const mapLocation = row.querySelector('.bulk-map-location').value.trim();
         const quantity = row.querySelector('.bulk-quantity').value;
         const unit = row.querySelector('.bulk-unit').value.trim();
         const paymentMethodId = row.querySelector('.bulk-payment-method').value;
@@ -2475,18 +2474,14 @@ async function submitBulkInsert() {
         const description = row.querySelector('.bulk-description').value.trim();
         const note = row.querySelector('.bulk-note').value.trim();
 
-        if (location && !isValidLocationCode(location)) {
-            invalidLocationInput = locationInput;
-            break;
-        }
-
         // 필수 항목: 부품번호, 카테고리, 부품명, 수량, 금액, 구매일자, 설명
         if (partNumber && categoryId && paymentMethodId && partName && quantity && price && date && description) {
             const data = {
                 partNumber: partNumber,
                 categoryId: parseInt(categoryId),
                 partName: partName,
-                location: location || null,
+                cabinetLocation: cabinetLocation || null,
+                mapLocation: mapLocation || null,
                 incomingQuantity: parseInt(quantity),
                 unit: unit || 'EA',
                 paymentMethodId: parseInt(paymentMethodId),
@@ -2500,12 +2495,6 @@ async function submitBulkInsert() {
 
             dataList.push(data);
         }
-    }
-
-    if (invalidLocationInput) {
-        showMessage('부품 위치는 A~AA 영역과 1~32 행을 "-"로 구분한 형식(예: A-1)만 입력할 수 있습니다.', 'error');
-        invalidLocationInput.focus();
-        return;
     }
 
     if (dataList.length === 0) {
@@ -2561,7 +2550,6 @@ async function loadCategoryList() {
         categories.forEach(category => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${category.categoryCode}</td>
                 <td>${category.categoryName}</td>
                 <td>${category.description || '-'}</td>
                 <td>
@@ -2603,7 +2591,6 @@ async function submitCategory(event) {
     event.preventDefault();
 
     const categoryData = {
-        categoryCode: document.getElementById('categoryCode').value.trim(),
         categoryName: document.getElementById('categoryName').value.trim(),
         description: document.getElementById('categoryDescription').value.trim() || null
     };
@@ -4563,4 +4550,362 @@ function downloadTemplateJSON() {
     URL.revokeObjectURL(url);
 
     showMessage('JSON 파일이 다운로드되었습니다.', 'success');
+}
+
+
+// ==================== 도면 좌표 마킹 ====================
+let mapSpotImagesCache = [];
+let mapSpotMarkers = [];
+let mapSpotBaseImageData = null;
+let mapSpotSelectedImage = null;
+let mapSpotRegisterEnabled = false;
+
+function openMapSpotModal() {
+    document.getElementById('mapSpotModal').style.display = 'block';
+    setupMapSpotCanvasClick();
+    mapSpotRegisterEnabled = false;
+    updateMapSpotRegisterToggleUI();
+    loadMapSpotImages();
+}
+
+function closeMapSpotModal() {
+    document.getElementById('mapSpotModal').style.display = 'none';
+    mapSpotMarkers = [];
+    mapSpotBaseImageData = null;
+    mapSpotSelectedImage = null;
+    updateMapSpotList();
+    mapSpotRegisterEnabled = false;
+    updateMapSpotRegisterToggleUI();
+    const canvas = document.getElementById('mapSpotCanvas');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+}
+
+async function loadMapSpotImages() {
+    const statusEl = document.getElementById('mapSpotStatus');
+    const selectEl = document.getElementById('mapSpotSelect');
+    statusEl.textContent = '도면 목록 로딩 중...';
+
+    try {
+        const response = await fetch('/livewalk/library');
+        if (!response.ok) throw new Error('도면 목록 조회 실패');
+
+        const images = await response.json();
+        const filtered = (images || []).filter(img => (img.description || '').includes('도면'));
+        mapSpotImagesCache = filtered;
+        mapSpotMarkers = [];
+        updateMapSpotList();
+
+        if (!filtered.length) {
+            selectEl.innerHTML = '<option value="">-- 도면 이미지 없음 --</option>';
+            statusEl.textContent = '설명에 "도면"이 포함된 자료가 없습니다.';
+            renderMapSpotPreview(null);
+            return;
+        }
+
+        selectEl.innerHTML = ['<option value="">-- 도면을 선택해 주세요 --</option>']
+            .concat(filtered.map(img => {
+                const typeLabel = (img.fileType || 'img').toString().toUpperCase();
+                return `<option value="${img.imageId}">${img.title} (${typeLabel})</option>`;
+            }))
+            .join('');
+
+        selectEl.value = '';
+        statusEl.textContent = `${filtered.length}개 도면 (설명에 "도면" 포함)`;
+    } catch (error) {
+        console.error(error);
+        statusEl.textContent = '도면 목록 로딩 실패.';
+        showMessage('도면 목록 조회 중 오류가 발생했습니다: ' + error.message, 'error');
+    }
+}
+
+async function handleMapSpotSelect(imageId) {
+    const img = mapSpotImagesCache.find(i => String(i.imageId) === String(imageId));
+    mapSpotMarkers = [];
+    updateMapSpotList();
+
+    if (!img) {
+        renderMapSpotPreview(null);
+        return;
+    }
+    await renderMapSpotPreview(img);
+    await loadExistingMapSpots(img.imageId);
+}
+
+async function renderMapSpotPreview(image) {
+    const canvas = document.getElementById('mapSpotCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    mapSpotBaseImageData = null;
+    mapSpotSelectedImage = image;
+
+    if (!image) {
+        ctx.font = '14px Arial';
+        ctx.fillStyle = '#666';
+        ctx.fillText('도면을 선택해 주세요.', 20, 30);
+        return;
+    }
+
+    if (image.fileType && image.fileType.toLowerCase() === 'pdf') {
+        await renderMapSpotPdf(image.fileName, canvas);
+        return;
+    }
+    await renderMapSpotImage(image.fileName, canvas);
+}
+
+function renderMapSpotImage(fileName, canvas) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            mapSpotBaseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            redrawMapSpotCanvas();
+            resolve();
+        };
+        img.onerror = (err) => {
+            const ctx = canvas.getContext('2d');
+            ctx.font = '14px Arial';
+            ctx.fillStyle = 'red';
+            ctx.fillText('이미지 로딩 실패.', 20, 30);
+            reject(err);
+        };
+        img.src = `/uploads/images/${fileName}`;
+    });
+}
+
+async function renderMapSpotPdf(fileName, canvas) {
+    try {
+        const pdfjsLib = window['pdfjs-dist/build/pdf'];
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        const pdfUrl = `/uploads/images/${fileName}`;
+        const loadingTask = pdfjsLib.getDocument(pdfUrl);
+        const pdf = await loadingTask.promise;
+        const page = await pdf.getPage(1);
+
+        const desiredHeight = 700;
+        const viewport = page.getViewport({ scale: 1.0 });
+        const scale = desiredHeight / viewport.height;
+        const scaledViewport = page.getViewport({ scale });
+
+        canvas.height = scaledViewport.height;
+        canvas.width = scaledViewport.width;
+
+        const renderContext = {
+            canvasContext: canvas.getContext('2d'),
+            viewport: scaledViewport
+        };
+        await page.render(renderContext).promise;
+        mapSpotBaseImageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+        redrawMapSpotCanvas();
+    } catch (error) {
+        console.error('PDF 렌더링 실패', error);
+        const ctx = canvas.getContext('2d');
+        ctx.font = '14px Arial';
+        ctx.fillStyle = 'red';
+        ctx.fillText('PDF 렌더링 실패했습니다.', 20, 30);
+    }
+}
+
+function setupMapSpotCanvasClick() {
+    const canvas = document.getElementById('mapSpotCanvas');
+    if (!canvas) return;
+    canvas.onclick = handleMapSpotCanvasClick;
+    canvas.style.cursor = 'crosshair';
+}
+
+function handleMapSpotCanvasClick(event) {
+    if (!mapSpotRegisterEnabled) return;
+    const canvas = document.getElementById('mapSpotCanvas');
+    if (!canvas || !mapSpotBaseImageData) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = Math.round((event.clientX - rect.left) * scaleX);
+    const y = Math.round((event.clientY - rect.top) * scaleY);
+
+    const name = `위치${mapSpotMarkers.length + 1}`;
+    mapSpotMarkers.push({ x, y, name, radius: 20, desc: '' });
+    redrawMapSpotCanvas();
+    updateMapSpotList();
+}
+
+function toggleMapSpotRegisterMode() {
+    mapSpotRegisterEnabled = !mapSpotRegisterEnabled;
+    updateMapSpotRegisterToggleUI();
+}
+
+function updateMapSpotRegisterToggleUI() {
+    const btn = document.getElementById('mapSpotRegisterToggleBtn');
+    if (!btn) return;
+    if (mapSpotRegisterEnabled) {
+        btn.textContent = '좌표 등록: ON';
+        btn.classList.remove('btn-gray');
+    } else {
+        btn.textContent = '좌표 등록: OFF';
+        if (!btn.classList.contains('btn-gray')) btn.classList.add('btn-gray');
+    }
+}
+
+async function loadExistingMapSpots(imageId) {
+    if (!imageId) return;
+    try {
+        const response = await fetch(`/livewalk/map-spot/image/${imageId}`);
+        if (!response.ok) throw new Error('좌표 조회 실패');
+        const spots = await response.json();
+        mapSpotMarkers = (spots || []).map(s => ({
+            x: s.posX,
+            y: s.posY,
+            name: s.spotName || '',
+            radius: s.radius || 20,
+            desc: s.description || ''
+        }));
+        redrawMapSpotCanvas();
+        updateMapSpotList();
+    } catch (error) {
+        console.error(error);
+        showMessage('기존 좌표 조회 중 오류 발생: ' + error.message, 'error');
+    }
+}
+
+function redrawMapSpotCanvas() {
+    const canvas = document.getElementById('mapSpotCanvas');
+    if (!canvas || !mapSpotBaseImageData) return;
+    const ctx = canvas.getContext('2d');
+    ctx.putImageData(mapSpotBaseImageData, 0, 0);
+
+    ctx.strokeStyle = 'red';
+    ctx.lineWidth = 2;
+    mapSpotMarkers.forEach(marker => {
+        const radius = marker.radius && marker.radius > 0 ? marker.radius : 20;
+        ctx.beginPath();
+        ctx.arc(marker.x, marker.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#c2191f';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const nameText = marker.name || '';
+        const descText = marker.desc || '';
+        if (descText) {
+            ctx.font = 'bold 12px Arial';
+            ctx.fillText(nameText, marker.x, marker.y - 6);
+            ctx.font = '11px Arial';
+            ctx.fillText(descText, marker.x, marker.y + 8);
+        } else {
+            ctx.font = 'bold 12px Arial';
+            ctx.fillText(nameText, marker.x, marker.y);
+        }
+    });
+}
+
+function updateMapSpotList() {
+    const tbody = document.getElementById('mapSpotListBody');
+    if (!tbody) return;
+
+    if (!mapSpotMarkers.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #888; padding: 8px;">??? ??? ????, ???/??/??? ?????.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = mapSpotMarkers.map((m, idx) => `
+        <tr>
+            <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${idx + 1}</td>
+            <td style="border: 1px solid #ddd; padding: 6px;">
+                <input type="text" value="${m.name || ''}" oninput="updateMapSpotMarkerField(${idx}, 'name', this.value)" style="width: 100%; padding: 4px; border: 1px solid #ccc; font-size: 12px;" placeholder="???">
+            </td>
+            <td style="border: 1px solid #ddd; padding: 6px; text-align: right;">
+                <input type="number" value="${m.x}" oninput="updateMapSpotMarkerField(${idx}, 'x', this.value)" style="width: 100%; padding: 4px; border: 1px solid #ccc; font-size: 12px;">
+            </td>
+            <td style="border: 1px solid #ddd; padding: 6px; text-align: right;">
+                <input type="number" value="${m.y}" oninput="updateMapSpotMarkerField(${idx}, 'y', this.value)" style="width: 100%; padding: 4px; border: 1px solid #ccc; font-size: 12px;">
+            </td>
+            <td style="border: 1px solid #ddd; padding: 6px; text-align: right;">
+                <input type="number" min="1" value="${m.radius || 20}" oninput="updateMapSpotMarkerField(${idx}, 'radius', this.value)" style="width: 100%; padding: 4px; border: 1px solid #ccc; font-size: 12px;">
+            </td>
+            <td style="border: 1px solid #ddd; padding: 6px;">
+                <input type="text" value="${m.desc || ''}" oninput="updateMapSpotMarkerField(${idx}, 'desc', this.value)" style="width: 100%; padding: 4px; border: 1px solid #ccc; font-size: 12px;" placeholder="??">
+            </td>
+            <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+                <button type="button" class="btn btn-gray" style="padding: 4px 8px; font-size: 12px;" onclick="deleteMapSpotMarker(${idx})">??</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function updateMapSpotMarkerField(index, field, value) {
+    if (index < 0 || index >= mapSpotMarkers.length) return;
+
+    if (field === 'radius') {
+        const r = parseInt(value, 10);
+        mapSpotMarkers[index].radius = Number.isFinite(r) && r > 0 ? r : 20;
+    } else if (field === 'name') {
+        mapSpotMarkers[index].name = value;
+    } else if (field === 'desc') {
+        mapSpotMarkers[index].desc = value;
+    } else if (field === 'x') {
+        const xVal = parseInt(value, 10);
+        if (Number.isFinite(xVal)) mapSpotMarkers[index].x = xVal;
+    } else if (field === 'y') {
+        const yVal = parseInt(value, 10);
+        if (Number.isFinite(yVal)) mapSpotMarkers[index].y = yVal;
+    }
+    redrawMapSpotCanvas();
+}
+
+function deleteMapSpotMarker(index) {
+    if (index < 0 || index >= mapSpotMarkers.length) return;
+    mapSpotMarkers.splice(index, 1);
+    redrawMapSpotCanvas();
+    updateMapSpotList();
+}
+
+function clearMapSpotMarkers() {
+    mapSpotMarkers = [];
+    redrawMapSpotCanvas();
+    updateMapSpotList();
+}
+
+function submitMapSpotMarkers() {
+    if (!mapSpotSelectedImage) {
+        showMessage('???? ?? ?????.', 'warning');
+        return;
+    }
+    if (mapSpotMarkers.length === 0) {
+        showMessage('??? ??? ????. ???? ??? ??? ?????.', 'warning');
+        return;
+    }
+
+    const payload = mapSpotMarkers.map(marker => ({
+        imageId: mapSpotSelectedImage.imageId,
+        spotName: marker.name || '',
+        posX: marker.x,
+        posY: marker.y,
+        radius: marker.radius || 20,
+        description: marker.desc || ''
+    }));
+
+    fetch('/livewalk/map-spot/bulk', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    })
+        .then(response => {
+            if (!response.ok) throw new Error('?? ??');
+            showMessage('??? ???????.', 'success');
+        })
+        .catch(err => {
+            showMessage('?? ?? ??: ' + err.message, 'error');
+        });
 }

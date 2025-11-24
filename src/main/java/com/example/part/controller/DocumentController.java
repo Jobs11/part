@@ -144,4 +144,28 @@ public class DocumentController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
+
+    @PostMapping(value = "/generate-canvas-pdf", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> generateCanvasPDF(
+            @org.springframework.web.bind.annotation.RequestParam("templateId") Long templateId,
+            @org.springframework.web.bind.annotation.RequestParam("title") String title,
+            @org.springframework.web.bind.annotation.RequestParam(value = "incomingId", required = false) Integer incomingId,
+            @org.springframework.web.bind.annotation.RequestParam("image") org.springframework.web.multipart.MultipartFile image,
+            Authentication authentication) {
+        try {
+            UserDTO user = userMapper.findByUsername(authentication.getName());
+
+            GeneratedDocumentDTO document = documentService.generateCanvasPDF(
+                    templateId, title, incomingId, image, user.getUserId());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("document", document);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
 }

@@ -49,4 +49,10 @@
         LIMIT 1
     </select>
 
+    <select id="selectActiveSessions" resultMap="accessLogResultMap">
+        SELECT * FROM user_access_logs
+        WHERE logout_time IS NULL
+        ORDER BY login_time DESC
+    </select>
+
 </mapper>
