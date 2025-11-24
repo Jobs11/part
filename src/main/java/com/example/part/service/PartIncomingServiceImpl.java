@@ -276,9 +276,17 @@ public class PartIncomingServiceImpl implements PartIncomingService {
 
         }
 
+        // location_code 또는 posX/posY 중 하나라도 있으면 저장
+        if (!StringUtils.hasText(locationDTO.getLocationCode()) &&
+            (locationDTO.getPosX() == null || locationDTO.getPosY() == null)) {
+            log.warn("위치 정보가 없어 위치 저장을 건너뜁니다. partNumber={}, cabinet={}, map={}", partNumber, cabinetLocation,
+                    mapLocation);
+            return;
+        }
+
         partLocationService.saveOrUpdate(locationDTO);
 
-        log.info("?? ?? ?? ??: {} -> ???:{}, ??:{}", partNumber, cabinetLocation, mapLocation);
+        log.info("부품 위치 저장 완료: {} -> 캐비넷:{}, 도면:{}", partNumber, cabinetLocation, mapLocation);
 
     }
 

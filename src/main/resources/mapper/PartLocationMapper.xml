@@ -42,6 +42,8 @@
         UPDATE part_location
         SET part_number = #{partNumber},
             part_name = #{partName},
+            pos_x = #{posX},
+            pos_y = #{posY},
             note = #{note}
         WHERE location_code = #{locationCode}
     </update>

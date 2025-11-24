@@ -566,7 +566,7 @@ async function displayIncomingList(incomingList) {
                 <td>${formatDateTime(incoming.createdAt)}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'note', '${escapeHtml(incoming.note || '')}')">${incoming.note || '-'}</td>
                 <td><button class="btn-small" onclick="openImageModal(${incoming.incomingId})">🖼 사진${imageCount > 0 ? ' ' + imageCount + '개' : ''}</button></td>
-                <td><button class="btn-small" data-part-number="${escapeHtml(incoming.partNumber)}" onclick="openLocationModal(this.dataset.partNumber)">📍 배치도</button></td>
+                <td><button class="btn-small" data-part-number="${escapeHtml(incoming.partNumber)}" onclick="openPartLocationView(this.dataset.partNumber)">📍 배치도</button></td>
             </tr>
         `;
     });
@@ -893,15 +893,16 @@ function displayInventory(inventory) {
     }
 
     tbody.innerHTML = inventory.map(item => `
-        <tr class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name)}')">
-            <td>${item.part_number}</td>
-            <td>${item.part_name}</td>
-            <td>${item.category_name || '-'}</td>
-            <td><strong>${item.current_stock}</strong></td>
-            <td>${item.unit || '-'}</td>
-            <td>${item.total_incoming}</td>
-            <td>${item.total_used}</td>
-            <td>${item.incoming_count}</td>
+        <tr>
+            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name)}')">${item.part_number}</td>
+            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name)}')">${item.part_name}</td>
+            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name)}')">${item.category_name || '-'}</td>
+            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name)}')"><strong>${item.current_stock}</strong></td>
+            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name)}')">${item.unit || '-'}</td>
+            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name)}')">${item.total_incoming}</td>
+            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name)}')">${item.total_used}</td>
+            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name)}')">${item.incoming_count}</td>
+            <td><button class="btn-small" data-part-number="${escapeHtml(item.part_number)}" onclick="event.stopPropagation(); openPartLocationView(this.dataset.partNumber)">📍 배치도</button></td>
         </tr>
     `).join('');
 }
@@ -1203,6 +1204,7 @@ function displayUsageList(usageList) {
             <td class="editable" ondblclick="makeUsageEditable(event, ${usage.usageId}, 'usageLocation', '${escapeHtml(usage.usageLocation || '')}')">${usage.usageLocation || '-'}</td>
             <td>${usage.note || '-'}</td>
             <td>${formatDateTime(usage.createdAt)}</td>
+            <td><button class="btn-small" data-part-number="${escapeHtml(usage.partNumber)}" onclick="openPartLocationView(this.dataset.partNumber)">📍 배치도</button></td>
         </tr>
     `).join('');
 }
@@ -2467,6 +2469,8 @@ async function submitBulkInsert() {
     const rows = tbody.querySelectorAll('tr');
     const dataList = [];
 
+    console.log('submitBulkInsert 시작, 행 개수:', rows.length);
+
     // 입력된 행만 수집
     for (const row of rows) {
         const partNumber = row.querySelector('.bulk-part-number').value.trim();
@@ -2481,6 +2485,8 @@ async function submitBulkInsert() {
         const date = row.querySelector('.bulk-date').value;
         const description = row.querySelector('.bulk-description').value.trim();
         const note = row.querySelector('.bulk-note').value.trim();
+
+        console.log('행 데이터:', {partNumber, categoryId, partName, cabinetLocation, mapLocation, quantity, paymentMethodId, price, date, description});
 
         // 필수 항목: 부품번호, 카테고리, 부품명, 수량, 금액, 구매일자, 설명
         if (partNumber && categoryId && paymentMethodId && partName && quantity && price && date && description) {
@@ -2505,12 +2511,16 @@ async function submitBulkInsert() {
         }
     }
 
+    console.log('수집된 데이터:', dataList);
+
     if (dataList.length === 0) {
         showMessage('등록할 데이터가 없습니다. 필수 항목을 입력하세요.', 'error');
         return;
     }
 
     if (!confirm(`${dataList.length}건을 등록하시겠습니까?`)) return;
+
+    console.log('서버 전송 시작');
 
     try {
         const response = await fetch(`${INCOMING_API}/bulk`, {
@@ -2519,8 +2529,11 @@ async function submitBulkInsert() {
             body: JSON.stringify(dataList)
         });
 
+        console.log('서버 응답:', response.status);
+
         if (response.ok) {
             const result = await response.json();
+            console.log('등록 결과:', result);
             showMessage(`등록 완료: ${result.success}건 성공, ${result.fail}건 실패`, 'success');
             clearBulkTable();
             loadAllIncoming();
@@ -2528,9 +2541,11 @@ async function submitBulkInsert() {
             loadLowStock();
         } else {
             const message = await response.text();
+            console.error('등록 실패:', message);
             showMessage('등록 실패: ' + message, 'error');
         }
     } catch (error) {
+        console.error('서버 연결 오류:', error);
         showMessage('서버 연결 오류: ' + error.message, 'error');
     }
 }
@@ -5631,4 +5646,334 @@ function downloadCanvasAsImage() {
         URL.revokeObjectURL(url);
         showMessage('이미지가 다운로드되었습니다.', 'success');
     }, 'image/png');
+}
+
+// ==================== 부품 배치도 보기 (읽기 전용) ====================
+let partLocationViewImagesCache = [];
+let partLocationViewSelectedImage = null;
+let partLocationViewBaseImageData = null;
+let partLocationViewMarkers = [];
+let partLocationViewPartNumber = null;
+
+/**
+ * 부품 배치도 보기 모달 열기 (읽기 전용)
+ */
+async function openPartLocationView(partNumber) {
+    try {
+        partLocationViewPartNumber = partNumber;
+
+        // 부품 위치 정보 조회
+        const response = await fetch(`/livewalk/part-locations/part?partNumber=${encodeURIComponent(partNumber)}`);
+        if (!response.ok) {
+            showMessage('부품 위치 정보를 찾을 수 없습니다.', 'error');
+            return;
+        }
+
+        const location = await response.json();
+        const locationCode = location.locationCode;
+
+        if (!locationCode) {
+            showMessage('등록된 도면 위치 정보가 없습니다.', 'info');
+            return;
+        }
+
+        // locationCode 파싱 (예: "8-A" -> 층: 8, 구역: A)
+        if (!locationCode.includes('-')) {
+            showMessage('위치 코드 형식이 올바르지 않습니다.', 'error');
+            return;
+        }
+
+        const parts = locationCode.split('-');
+        const floor = parts[0].trim();
+        const zone = parts[1].trim();
+
+        // 모달 열기
+        document.getElementById('partLocationViewModal').style.display = 'block';
+
+        // 제목 업데이트
+        document.getElementById('partLocationViewTitle').innerHTML =
+            `부품 배치도: <span style="color: #007bff;">${location.partName || partNumber}</span>`;
+
+        // 정보 업데이트
+        document.getElementById('partLocationViewInfo').innerHTML =
+            `부품번호: <strong>${partNumber}</strong> | 위치: <strong style="color: #dc3545;">${locationCode}</strong> (${floor}층 ${zone}구역)`;
+
+        // 도면 선택 드롭다운 숨기기
+        const selectContainer = document.querySelector('label[for="partLocationViewSelect"]')?.parentElement;
+        if (selectContainer) {
+            selectContainer.style.display = 'none';
+        }
+
+        // 이미지 목록 로드
+        await loadPartLocationViewImages();
+
+        // 해당 층 이미지 찾기 및 선택
+        const floorImage = partLocationViewImagesCache.find(img =>
+            img.title && img.title.includes(floor + '층')
+        );
+
+        if (floorImage) {
+            const selectEl = document.getElementById('partLocationViewSelect');
+            selectEl.value = floorImage.imageId;
+            await handlePartLocationViewSelect(floorImage.imageId, zone);
+        } else {
+            showMessage(`${floor}층 배치도를 찾을 수 없습니다.`, 'error');
+        }
+
+    } catch (error) {
+        console.error('배치도 조회 오류:', error);
+        showMessage('배치도 조회 오류: ' + error.message, 'error');
+    }
+}
+
+/**
+ * 배치도 보기용 이미지 목록 로드
+ */
+async function loadPartLocationViewImages() {
+    const selectEl = document.getElementById('partLocationViewSelect');
+    const statusEl = document.getElementById('partLocationViewStatus');
+
+    try {
+        statusEl.textContent = '목록을 불러오는 중...';
+        selectEl.innerHTML = '<option value="">-- 도면을 선택하세요 --</option>';
+
+        const response = await fetch('/livewalk/library');
+        if (!response.ok) {
+            throw new Error('자료실 목록 조회 실패');
+        }
+
+        const images = await response.json();
+
+        // "도면"을 포함하는 이미지만 필터링
+        const filtered = (images || []).filter(img =>
+            img.description && img.description.includes('도면')
+        );
+
+        partLocationViewImagesCache = filtered;
+
+        if (filtered.length === 0) {
+            selectEl.innerHTML = '<option value="">-- 자료가 없습니다 --</option>';
+            statusEl.textContent = '설명에 "도면"이 포함된 자료가 없습니다.';
+            return;
+        }
+
+        filtered.forEach(img => {
+            const option = document.createElement('option');
+            option.value = img.imageId;
+            const typeLabel = (img.fileType || 'img').toString().toUpperCase();
+            option.textContent = `${img.title} (${typeLabel})`;
+            selectEl.appendChild(option);
+        });
+
+        statusEl.textContent = `${filtered.length}건 로드됨`;
+
+    } catch (error) {
+        console.error('이미지 목록 로드 오류:', error);
+        statusEl.textContent = '목록을 불러오지 못했습니다.';
+        showMessage('도면 목록 불러오기 실패: ' + error.message, 'error');
+    }
+}
+
+/**
+ * 배치도 보기용 이미지 선택 처리
+ */
+async function handlePartLocationViewSelect(imageId, highlightZone = null) {
+    if (!imageId) {
+        return;
+    }
+
+    const statusEl = document.getElementById('partLocationViewStatus');
+    const canvas = document.getElementById('partLocationViewCanvas');
+    const ctx = canvas.getContext('2d');
+
+    try {
+        statusEl.textContent = '이미지를 불러오는 중...';
+
+        // 선택된 이미지 정보 저장
+        partLocationViewSelectedImage = partLocationViewImagesCache.find(
+            img => img.imageId == imageId
+        );
+
+        if (!partLocationViewSelectedImage) {
+            throw new Error('선택한 이미지를 찾을 수 없습니다.');
+        }
+
+        // Canvas 초기화
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        partLocationViewBaseImageData = null;
+
+        // 이미지 또는 PDF 로드
+        if (partLocationViewSelectedImage.fileType && partLocationViewSelectedImage.fileType.toLowerCase() === 'pdf') {
+            await renderPartLocationViewPdf(partLocationViewSelectedImage.fileName, canvas);
+        } else {
+            await renderPartLocationViewImage(partLocationViewSelectedImage.fileName, canvas);
+        }
+
+        // 해당 이미지의 좌표 마커 로드
+        await loadPartLocationViewMarkers(imageId, highlightZone);
+
+        statusEl.textContent = '로드 완료';
+
+    } catch (error) {
+        console.error('이미지 로드 오류:', error);
+        statusEl.textContent = '로드 실패';
+        showMessage('이미지를 불러올 수 없습니다: ' + error.message, 'error');
+    }
+}
+
+/**
+ * 배치도 보기용 이미지 렌더링
+ */
+function renderPartLocationViewImage(fileName, canvas) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            partLocationViewBaseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            resolve();
+        };
+        img.onerror = (err) => {
+            const ctx = canvas.getContext('2d');
+            ctx.font = '14px Arial';
+            ctx.fillStyle = 'red';
+            ctx.fillText('이미지를 불러오지 못했습니다.', 20, 30);
+            reject(err);
+        };
+        img.src = `/uploads/images/${fileName}`;
+    });
+}
+
+/**
+ * 배치도 보기용 PDF 렌더링
+ */
+async function renderPartLocationViewPdf(fileName, canvas) {
+    try {
+        const pdfjsLib = window['pdfjs-dist/build/pdf'];
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        const pdfUrl = `/uploads/images/${fileName}`;
+        const loadingTask = pdfjsLib.getDocument(pdfUrl);
+        const pdf = await loadingTask.promise;
+        const page = await pdf.getPage(1);
+
+        const desiredHeight = 700;
+        const viewport = page.getViewport({ scale: 1.0 });
+        const scale = desiredHeight / viewport.height;
+        const scaledViewport = page.getViewport({ scale });
+
+        canvas.height = scaledViewport.height;
+        canvas.width = scaledViewport.width;
+
+        const renderContext = {
+            canvasContext: canvas.getContext('2d'),
+            viewport: scaledViewport
+        };
+        await page.render(renderContext).promise;
+        partLocationViewBaseImageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+    } catch (error) {
+        console.error('PDF 미리보기 실패', error);
+        const ctx = canvas.getContext('2d');
+        ctx.font = '14px Arial';
+        ctx.fillStyle = 'red';
+        ctx.fillText('PDF 미리보기에 실패했습니다.', 20, 30);
+        throw error;
+    }
+}
+
+/**
+ * 배치도 보기용 마커 로드 및 표시
+ */
+async function loadPartLocationViewMarkers(imageId, highlightZone = null) {
+    try {
+        const response = await fetch(`/livewalk/map-spot/image/${imageId}`);
+        if (!response.ok) {
+            partLocationViewMarkers = [];
+            return;
+        }
+
+        const allMarkers = await response.json();
+
+        // highlightZone이 있으면 해당 구역만 필터링
+        if (highlightZone) {
+            partLocationViewMarkers = allMarkers.filter(marker =>
+                marker.spotName === highlightZone
+            );
+        } else {
+            partLocationViewMarkers = allMarkers;
+        }
+
+        // 마커 그리기
+        drawPartLocationViewMarkers(highlightZone);
+
+    } catch (error) {
+        console.error('좌표 마커 로드 오류:', error);
+        partLocationViewMarkers = [];
+    }
+}
+
+/**
+ * 배치도 보기용 마커 그리기
+ */
+function drawPartLocationViewMarkers(highlightZone = null) {
+    const canvas = document.getElementById('partLocationViewCanvas');
+    const ctx = canvas.getContext('2d');
+
+    if (!partLocationViewBaseImageData) {
+        return;
+    }
+
+    // 기본 이미지 복원
+    ctx.putImageData(partLocationViewBaseImageData, 0, 0);
+
+    // 마커 그리기 (도면 좌표 마킹과 동일한 스타일)
+    partLocationViewMarkers.forEach(marker => {
+        const radius = marker.radius && marker.radius > 0 ? marker.radius : 20;
+
+        // 원 그리기
+        ctx.beginPath();
+        ctx.arc(marker.posX, marker.posY, radius, 0, 2 * Math.PI);
+
+        // 배경: 흰색
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+
+        // 테두리: 빨간색
+        ctx.strokeStyle = 'red';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // 구역명 / 설명 텍스트 표시 (중앙 정렬)
+        ctx.fillStyle = '#c2191f';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const nameText = marker.spotName || '';
+        const descText = marker.description || '';
+
+        if (descText) {
+            // 설명이 있으면 두 줄로 표시
+            ctx.font = 'bold 12px Arial';
+            ctx.fillText(nameText, marker.posX, marker.posY - 6);
+            ctx.font = '11px Arial';
+            ctx.fillText(descText, marker.posX, marker.posY + 8);
+        } else {
+            // 설명이 없으면 구역명만 표시
+            ctx.font = 'bold 12px Arial';
+            ctx.fillText(nameText, marker.posX, marker.posY);
+        }
+    });
+}
+
+/**
+ * 배치도 보기 모달 닫기
+ */
+function closePartLocationView() {
+    document.getElementById('partLocationViewModal').style.display = 'none';
+    partLocationViewSelectedImage = null;
+    partLocationViewBaseImageData = null;
+    partLocationViewMarkers = [];
+    partLocationViewPartNumber = null;
 }
