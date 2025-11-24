@@ -1923,7 +1923,7 @@ async function openDocumentCreateForm() {
 
     // 폼 초기화
     document.getElementById('documentCreateForm').reset();
-    
+
     // Canvas 초기화
     const canvas = document.getElementById('documentCanvas');
     const ctx = canvas.getContext('2d');
@@ -3145,17 +3145,17 @@ function displayLibraryImages(images) {
     container.innerHTML = `
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;">
             ${images.map(img => {
-                const isPdf = img.fileType === 'pdf';
-                const previewHtml = isPdf
-                    ? `<canvas id="libraryPdfCanvas_${img.imageId}"
+        const isPdf = img.fileType === 'pdf';
+        const previewHtml = isPdf
+            ? `<canvas id="libraryPdfCanvas_${img.imageId}"
                               style="width: 100%; height: 200px; border-radius: 4px; cursor: pointer; background: #f5f5f5;"
                               onclick="window.open('/uploads/images/${img.fileName}', '_blank')"></canvas>`
-                    : `<img src="/uploads/images/${img.fileName}"
+            : `<img src="/uploads/images/${img.fileName}"
                            alt="${img.title}"
                            style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; cursor: pointer;"
                            onclick="window.open('/uploads/images/${img.fileName}', '_blank')">`;
 
-                return `
+        return `
                     <div style="border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f9f9f9;">
                         ${previewHtml}
                         <h4 style="margin: 10px 0 5px 0; font-size: 14px;">${img.title} ${isPdf ? '[PDF]' : ''}</h4>
@@ -3166,7 +3166,7 @@ function displayLibraryImages(images) {
                         <button onclick="deleteLibraryImage(${img.imageId}, '${img.title}')" class="btn btn-gray" style="width: 100%; padding: 5px; font-size: 12px;">삭제</button>
                     </div>
                 `;
-            }).join('')}
+    }).join('')}
         </div>
     `;
 
@@ -3300,14 +3300,14 @@ let currentTemplateImage = null;
 async function loadTemplateToCanvas() {
     const templateSelect = document.getElementById('templateSelect');
     const selectedOption = templateSelect.options[templateSelect.selectedIndex];
-    
+
     if (!selectedOption.value) {
         return;
     }
 
     const fileName = selectedOption.dataset.fileName;
     const fileType = selectedOption.dataset.fileType;
-    
+
     // 이미지 파일만 지원
     if (fileType === 'pdf') {
         alert('Canvas 편집은 이미지 파일만 지원합니다. PDF 파일은 선택할 수 없습니다.');
@@ -3322,7 +3322,7 @@ async function loadTemplateToCanvas() {
     // 픽셀로 변환: 794 x 1123 (at 96 DPI)
     const A4_WIDTH = 794;
     const A4_HEIGHT = 1123;
-    
+
     canvas.width = A4_WIDTH;
     canvas.height = A4_HEIGHT;
 
@@ -3331,33 +3331,33 @@ async function loadTemplateToCanvas() {
     ctx.fillRect(0, 0, A4_WIDTH, A4_HEIGHT);
 
     const img = new Image();
-    img.onload = function() {
+    img.onload = function () {
         currentTemplateImage = img;
-        
+
         // 이미지를 상단에 배치 (A4 너비에 맞춤)
         const imgWidth = A4_WIDTH;
         const imgHeight = (img.height / img.width) * A4_WIDTH;
-        
+
         // 이미지가 너무 크면 높이를 A4의 절반으로 제한
         const maxImgHeight = A4_HEIGHT / 2;
         let finalImgHeight = imgHeight;
         let finalImgWidth = imgWidth;
-        
+
         if (imgHeight > maxImgHeight) {
             finalImgHeight = maxImgHeight;
             finalImgWidth = (img.width / img.height) * maxImgHeight;
         }
-        
+
         // 이미지를 상단 중앙에 배치
         const imgX = (A4_WIDTH - finalImgWidth) / 2;
         const imgY = 20; // 상단 여백
-        
+
         ctx.drawImage(img, imgX, imgY, finalImgWidth, finalImgHeight);
-        
+
         // 이미지 영역 표시 (선택사항 - 디버깅용)
         // ctx.strokeStyle = '#ccc';
         // ctx.strokeRect(imgX, imgY, finalImgWidth, finalImgHeight);
-        
+
         redrawCanvas();
     };
     img.src = `/livewalk/library/image/${fileName}`;
@@ -3680,7 +3680,7 @@ function redrawCanvas() {
                     // 크기 조절 핸들 (우하단)
                     ctx.fillStyle = '#ffc107';
                     ctx.fillRect(x + totalWidth - 8, y + height - 8, 16, 16);
-                } catch (e) {}
+                } catch (e) { }
             }
         }
     }
@@ -3693,17 +3693,17 @@ let currentCategory = 'parts'; // 기본값: 부품
 // 카테고리 전환
 function switchCategory(category) {
     currentCategory = category;
-    
+
     const partsSections = document.querySelectorAll('.parts-section');
     const docsSections = document.querySelectorAll('.docs-section');
     const partsBtn = document.getElementById('categoryBtnParts');
     const docsBtn = document.getElementById('categoryBtnDocs');
-    
+
     if (category === 'parts') {
         // 부품 섹션 보이기
         partsSections.forEach(section => section.style.display = 'block');
         docsSections.forEach(section => section.style.display = 'none');
-        
+
         // 버튼 스타일 변경
         partsBtn.style.background = '#007bff';
         partsBtn.style.color = 'white';
@@ -3713,13 +3713,13 @@ function switchCategory(category) {
         // 문서 섹션 보이기
         partsSections.forEach(section => section.style.display = 'none');
         docsSections.forEach(section => section.style.display = 'block');
-        
+
         // 버튼 스타일 변경
         docsBtn.style.background = '#007bff';
         docsBtn.style.color = 'white';
         partsBtn.style.background = 'white';
         partsBtn.style.color = '#007bff';
-        
+
         // 문서 목록 로드
         loadAllDocuments();
     }
@@ -3878,7 +3878,7 @@ function checkResizeHandle(clickX, clickY) {
                 const tableData = JSON.parse(tableDataInput.value);
                 width = tableData.widths.reduce((sum, w) => sum + w, 0);
                 height = tableData.height;
-            } catch (e) {}
+            } catch (e) { }
         }
     }
 
@@ -3995,7 +3995,7 @@ function resizeSelectedField(deltaX, deltaY) {
 
                 tableDataInput.value = JSON.stringify(tableData);
                 showMessage(`표 크기 조절: ${newTotalWidth}x${newHeight}`, 'success');
-            } catch (e) {}
+            } catch (e) { }
         }
     }
 }
@@ -4073,7 +4073,7 @@ function selectFieldAtPosition(clickX, clickY) {
                     if (clickX >= x && clickX <= x + totalWidth && clickY >= y && clickY <= y + height) {
                         editorSelectedField = row;
                     }
-                } catch (e) {}
+                } catch (e) { }
             }
         }
     });
@@ -4168,9 +4168,9 @@ function addTableToCanvas(x, y, totalWidth, height, columns) {
         columnWidths.push(cellWidth);
     }
 
-    const tableDataJson = JSON.stringify({columns: columns, widths: columnWidths, height: height});
+    const tableDataJson = JSON.stringify({ columns: columns, widths: columnWidths, height: height });
 
-    console.log('표 추가:', {x, y, totalWidth, height, columns, tableDataJson});
+    console.log('표 추가:', { x, y, totalWidth, height, columns, tableDataJson });
 
     newRow.innerHTML = `
         <td style="border: 1px solid #dee2e6; padding: 4px; background: #f0f8ff;">
@@ -4813,7 +4813,7 @@ function updateMapSpotList() {
     if (!tbody) return;
 
     if (!mapSpotMarkers.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #888; padding: 8px;">??? ??? ????, ???/??/??? ?????.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #888; padding: 8px;">좌표를 클릭하여 추가하거나, 기존 좌표를 수정하세요.</td></tr>';
         return;
     }
 
@@ -4821,7 +4821,7 @@ function updateMapSpotList() {
         <tr>
             <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${idx + 1}</td>
             <td style="border: 1px solid #ddd; padding: 6px;">
-                <input type="text" value="${m.name || ''}" oninput="updateMapSpotMarkerField(${idx}, 'name', this.value)" style="width: 100%; padding: 4px; border: 1px solid #ccc; font-size: 12px;" placeholder="???">
+                <input type="text" value="${m.name || ''}" oninput="updateMapSpotMarkerField(${idx}, 'name', this.value)" style="width: 100%; padding: 4px; border: 1px solid #ccc; font-size: 12px;" placeholder="위치명">
             </td>
             <td style="border: 1px solid #ddd; padding: 6px; text-align: right;">
                 <input type="number" value="${m.x}" oninput="updateMapSpotMarkerField(${idx}, 'x', this.value)" style="width: 100%; padding: 4px; border: 1px solid #ccc; font-size: 12px;">
@@ -4833,10 +4833,10 @@ function updateMapSpotList() {
                 <input type="number" min="1" value="${m.radius || 20}" oninput="updateMapSpotMarkerField(${idx}, 'radius', this.value)" style="width: 100%; padding: 4px; border: 1px solid #ccc; font-size: 12px;">
             </td>
             <td style="border: 1px solid #ddd; padding: 6px;">
-                <input type="text" value="${m.desc || ''}" oninput="updateMapSpotMarkerField(${idx}, 'desc', this.value)" style="width: 100%; padding: 4px; border: 1px solid #ccc; font-size: 12px;" placeholder="??">
+                <input type="text" value="${m.desc || ''}" oninput="updateMapSpotMarkerField(${idx}, 'desc', this.value)" style="width: 100%; padding: 4px; border: 1px solid #ccc; font-size: 12px;" placeholder="설명">
             </td>
             <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
-                <button type="button" class="btn btn-gray" style="padding: 4px 8px; font-size: 12px;" onclick="deleteMapSpotMarker(${idx})">??</button>
+                <button type="button" class="btn btn-gray" style="padding: 4px 8px; font-size: 12px;" onclick="deleteMapSpotMarker(${idx})">삭제</button>
             </td>
         </tr>
     `).join('');
@@ -4877,11 +4877,11 @@ function clearMapSpotMarkers() {
 
 function submitMapSpotMarkers() {
     if (!mapSpotSelectedImage) {
-        showMessage('???? ?? ?????.', 'warning');
+        showMessage('도면을 먼저 선택하세요.', 'warning');
         return;
     }
     if (mapSpotMarkers.length === 0) {
-        showMessage('??? ??? ????. ???? ??? ??? ?????.', 'warning');
+        showMessage('저장할 좌표가 없습니다. 좌표를 클릭해서 추가하세요.', 'warning');
         return;
     }
 
@@ -4902,10 +4902,10 @@ function submitMapSpotMarkers() {
         body: JSON.stringify(payload)
     })
         .then(response => {
-            if (!response.ok) throw new Error('?? ??');
-            showMessage('??? ???????.', 'success');
+            if (!response.ok) throw new Error('저장 실패');
+            showMessage('좌표가 저장되었습니다.', 'success');
         })
         .catch(err => {
-            showMessage('?? ?? ??: ' + err.message, 'error');
+            showMessage('좌표 저장 오류: ' + err.message, 'error');
         });
 }
