@@ -2,10 +2,13 @@ package com.example.part.service;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import com.example.part.dto.CategoryDTO;
 import com.example.part.dto.PartIncomingDTO;

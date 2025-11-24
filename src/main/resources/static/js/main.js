@@ -2326,6 +2326,39 @@ async function deleteGeneratedDocument(documentId) {
 }
 
 // 행 추가 (1개씩)
+// ??? ?? ???/??
+const CABINET_LOC_REGEX = /^[A-Z]{1,2}-\d{1,2}$/;
+function normalizeCabinetLocationValue(value) {
+    if (!value) return '';
+    const trimmed = value.trim().toUpperCase();
+    if (CABINET_LOC_REGEX.test(trimmed)) return trimmed;
+    const match = /^([A-Z]{1,2})(\d{1,2})$/.exec(trimmed);
+    if (match) return `${match[1]}-${match[2]}`;
+    return trimmed;
+}
+function isCabinetLocationValid(value) {
+    if (!value) return true; // ? ?? ??
+    const normalized = normalizeCabinetLocationValue(value);
+    if (!CABINET_LOC_REGEX.test(normalized)) return false;
+    const parts = normalized.split('-');
+    const row = parseInt(parts[1], 10);
+    return row >= 1 && row <= 32;
+}
+function attachCabinetNormalizer(inputEl) {
+    if (!inputEl) return;
+    const handler = () => {
+        const normalized = normalizeCabinetLocationValue(inputEl.value);
+        if (inputEl.value !== normalized) {
+            inputEl.value = normalized;
+            if (inputEl === document.activeElement) {
+                inputEl.selectionStart = inputEl.selectionEnd = normalized.length;
+            }
+        }
+    };
+    inputEl.addEventListener('blur', handler);
+    inputEl.addEventListener('input', handler);
+}
+
 function addBulkRow() {
     const tbody = document.getElementById('bulkInsertTableBody');
 
@@ -2339,7 +2372,12 @@ function addBulkRow() {
         <td><input type="text" class="bulk-input bulk-part-number" placeholder="부품번호" required></td>
         <td><input type="text" class="bulk-input bulk-part-name" placeholder="부품명"></td>
         <td><input type="text" class="bulk-input bulk-cabinet-location" placeholder="예: A-1" maxlength="10"></td>
-        <td><input type="text" class="bulk-input bulk-map-location" placeholder="예: 8-A" maxlength="10"></td>
+        <td>
+            <div style="display: flex; gap: 5px; align-items: center;">
+                <input type="text" class="bulk-input bulk-map-location" placeholder="예: 8-A" maxlength="10" style="flex: 1;">
+                <button type="button" class="btn btn-small" onclick="openLocationPicker(this)" style="padding: 4px 8px; font-size: 12px; white-space: nowrap;">배치</button>
+            </div>
+        </td>
         <td><input type="number" class="bulk-input bulk-quantity" placeholder="수량" min="1"></td>
         <td><input type="text" class="bulk-input bulk-unit" value="EA"></td>
         <td>
@@ -2356,6 +2394,10 @@ function addBulkRow() {
 
     // 날짜 기본값 설정
     tr.querySelector('.bulk-date').value = new Date().toISOString().split('T')[0];
+
+    // ??? ?? ?? ?? ??
+    attachCabinetNormalizer(tr.querySelector('.bulk-cabinet-location'));
+
 
     // 카테고리 로드
     loadCategoriesForBulk();
@@ -2464,8 +2506,15 @@ async function submitBulkInsert() {
         const partNumber = row.querySelector('.bulk-part-number').value.trim();
         const categoryId = row.querySelector('.bulk-category').value;
         const partName = row.querySelector('.bulk-part-name').value.trim();
-        const cabinetLocation = row.querySelector('.bulk-cabinet-location').value.trim();
+        const cabinetLocationRaw = row.querySelector('.bulk-cabinet-location').value;
+        const cabinetLocation = normalizeCabinetLocationValue(cabinetLocationRaw);
         const mapLocation = row.querySelector('.bulk-map-location').value.trim();
+
+        // ??? ?? ?? ?? (??? ??? ??)
+        if (cabinetLocation && !isCabinetLocationValid(cabinetLocation)) {
+            showMessage(`??? ??? A~AA ?, 1~32 ?? A-1 ??? ?? ?????. (${cabinetLocationRaw})`, 'error');
+            return;
+        }
         const quantity = row.querySelector('.bulk-quantity').value;
         const unit = row.querySelector('.bulk-unit').value.trim();
         const paymentMethodId = row.querySelector('.bulk-payment-method').value;
@@ -4612,7 +4661,15 @@ async function loadMapSpotImages() {
             }))
             .join('');
 
-        selectEl.value = '';
+        // 8층 도면 자동 선택
+        const floor8Image = filtered.find(img => img.title.includes('8층'));
+        if (floor8Image) {
+            selectEl.value = floor8Image.imageId;
+            await handleMapSpotSelect(floor8Image.imageId);
+        } else {
+            selectEl.value = '';
+        }
+
         statusEl.textContent = `${filtered.length}개 도면 (설명에 "도면" 포함)`;
     } catch (error) {
         console.error(error);
@@ -4908,4 +4965,254 @@ function submitMapSpotMarkers() {
         .catch(err => {
             showMessage('좌표 저장 오류: ' + err.message, 'error');
         });
+}
+
+// ==================== 도면 위치 선택 (Location Picker) ====================
+let locationPickerImagesCache = [];
+let locationPickerSelectedImage = null;
+let locationPickerBaseImageData = null;
+let locationPickerMarkers = [];
+let locationPickerTargetInput = null;
+
+function openLocationPicker(buttonElement) {
+    // 버튼의 행에서 도면 위치 입력 필드 찾기
+    const row = buttonElement.closest('tr');
+    locationPickerTargetInput = row.querySelector('.bulk-map-location');
+
+    document.getElementById('locationPickerModal').style.display = 'block';
+    loadLocationPickerImages();
+}
+
+function closeLocationPicker() {
+    document.getElementById('locationPickerModal').style.display = 'none';
+    locationPickerSelectedImage = null;
+    locationPickerBaseImageData = null;
+    locationPickerMarkers = [];
+    locationPickerTargetInput = null;
+    const canvas = document.getElementById('locationPickerCanvas');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+}
+
+async function loadLocationPickerImages() {
+    const statusEl = document.getElementById('locationPickerStatus');
+    const selectEl = document.getElementById('locationPickerSelect');
+    statusEl.textContent = '도면 목록 로딩 중...';
+
+    try {
+        const response = await fetch('/livewalk/library');
+        if (!response.ok) throw new Error('도면 목록 조회 실패');
+
+        const images = await response.json();
+        const filtered = (images || []).filter(img => (img.description || '').includes('도면'));
+        locationPickerImagesCache = filtered;
+
+        if (!filtered.length) {
+            selectEl.innerHTML = '<option value="">-- 도면 이미지 없음 --</option>';
+            statusEl.textContent = '설명에 "도면"이 포함된 자료가 없습니다.';
+            return;
+        }
+
+        selectEl.innerHTML = ['<option value="">-- 도면을 선택하세요 --</option>']
+            .concat(filtered.map(img => {
+                const typeLabel = (img.fileType || 'img').toString().toUpperCase();
+                return `<option value="${img.imageId}">${img.title} (${typeLabel})</option>`;
+            }))
+            .join('');
+
+        // 8층 도면 자동 선택
+        const floor8Image = filtered.find(img => img.title.includes('8층'));
+        if (floor8Image) {
+            selectEl.value = floor8Image.imageId;
+            await handleLocationPickerSelect(floor8Image.imageId);
+        } else {
+            selectEl.value = '';
+        }
+
+        statusEl.textContent = `${filtered.length}개 도면 (설명에 "도면" 포함)`;
+    } catch (error) {
+        console.error(error);
+        statusEl.textContent = '도면 목록 로딩 실패.';
+        showMessage('도면 목록 조회 중 오류가 발생했습니다: ' + error.message, 'error');
+    }
+}
+
+async function handleLocationPickerSelect(imageId) {
+    const img = locationPickerImagesCache.find(i => String(i.imageId) === String(imageId));
+    locationPickerSelectedImage = img;
+
+    if (!img) {
+        renderLocationPickerPreview(null);
+        return;
+    }
+
+    await renderLocationPickerPreview(img);
+    await loadLocationPickerSpots(imageId);
+}
+
+async function renderLocationPickerPreview(image) {
+    const canvas = document.getElementById('locationPickerCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    locationPickerBaseImageData = null;
+
+    if (!image) {
+        ctx.font = '14px Arial';
+        ctx.fillStyle = '#666';
+        ctx.fillText('도면을 선택해 주세요.', 20, 30);
+        return;
+    }
+
+    if (image.fileType && image.fileType.toLowerCase() === 'pdf') {
+        await renderLocationPickerPdf(image.fileName, canvas);
+        return;
+    }
+    await renderLocationPickerImage(image.fileName, canvas);
+}
+
+function renderLocationPickerImage(fileName, canvas) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            locationPickerBaseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            redrawLocationPickerCanvas();
+            setupLocationPickerCanvasClick();
+            resolve();
+        };
+        img.onerror = (err) => {
+            const ctx = canvas.getContext('2d');
+            ctx.font = '14px Arial';
+            ctx.fillStyle = 'red';
+            ctx.fillText('이미지 로딩 실패.', 20, 30);
+            reject(err);
+        };
+        img.src = `/uploads/images/${fileName}`;
+    });
+}
+
+async function renderLocationPickerPdf(fileName, canvas) {
+    try {
+        const pdfjsLib = window['pdfjs-dist/build/pdf'];
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        const pdfUrl = `/uploads/images/${fileName}`;
+        const loadingTask = pdfjsLib.getDocument(pdfUrl);
+        const pdf = await loadingTask.promise;
+        const page = await pdf.getPage(1);
+
+        const viewport = page.getViewport({ scale: 1.5 });
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        const scaledViewport = page.getViewport({ scale: 1.5 });
+        const renderContext = {
+            canvasContext: canvas.getContext('2d'),
+            viewport: scaledViewport
+        };
+        await page.render(renderContext).promise;
+        locationPickerBaseImageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+        redrawLocationPickerCanvas();
+        setupLocationPickerCanvasClick();
+    } catch (error) {
+        console.error('PDF 렌더링 실패', error);
+        const ctx = canvas.getContext('2d');
+        ctx.font = '14px Arial';
+        ctx.fillStyle = 'red';
+        ctx.fillText('PDF 렌더링 실패했습니다.', 20, 30);
+    }
+}
+
+async function loadLocationPickerSpots(imageId) {
+    if (!imageId) return;
+    try {
+        const response = await fetch(`/livewalk/map-spot/image/${imageId}`);
+        if (!response.ok) throw new Error('좌표 조회 실패');
+        const spots = await response.json();
+        locationPickerMarkers = (spots || []).map(s => ({
+            x: s.posX,
+            y: s.posY,
+            name: s.spotName || '',
+            radius: s.radius || 20,
+            desc: s.description || ''
+        }));
+        redrawLocationPickerCanvas();
+    } catch (error) {
+        console.error(error);
+        showMessage('기존 좌표 조회 중 오류 발생: ' + error.message, 'error');
+    }
+}
+
+function redrawLocationPickerCanvas() {
+    const canvas = document.getElementById('locationPickerCanvas');
+    if (!canvas || !locationPickerBaseImageData) return;
+    const ctx = canvas.getContext('2d');
+    ctx.putImageData(locationPickerBaseImageData, 0, 0);
+
+    ctx.strokeStyle = 'red';
+    ctx.lineWidth = 2;
+    locationPickerMarkers.forEach(marker => {
+        const radius = marker.radius && marker.radius > 0 ? marker.radius : 20;
+        ctx.beginPath();
+        ctx.arc(marker.x, marker.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#c2191f';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const nameText = marker.name || '';
+        const descText = marker.desc || '';
+        if (descText) {
+            ctx.font = 'bold 12px Arial';
+            ctx.fillText(nameText, marker.x, marker.y - 6);
+            ctx.font = '11px Arial';
+            ctx.fillText(descText, marker.x, marker.y + 8);
+        } else {
+            ctx.font = 'bold 12px Arial';
+            ctx.fillText(nameText, marker.x, marker.y);
+        }
+    });
+}
+
+function setupLocationPickerCanvasClick() {
+    const canvas = document.getElementById('locationPickerCanvas');
+    if (!canvas) return;
+    canvas.onclick = handleLocationPickerCanvasClick;
+}
+
+function handleLocationPickerCanvasClick(event) {
+    const canvas = document.getElementById('locationPickerCanvas');
+    if (!canvas || !locationPickerBaseImageData || !locationPickerSelectedImage) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = Math.round((event.clientX - rect.left) * scaleX);
+    const y = Math.round((event.clientY - rect.top) * scaleY);
+
+    // 클릭한 위치에 있는 마커 찾기
+    const clickedMarker = locationPickerMarkers.find(m => {
+        const distance = Math.sqrt(Math.pow(m.x - x, 2) + Math.pow(m.y - y, 2));
+        return distance <= (m.radius || 20);
+    });
+
+    if (clickedMarker && locationPickerTargetInput) {
+        // 층 추출 (이미지 title에서 숫자 추출)
+        const floorMatch = locationPickerSelectedImage.title.match(/\d+/);
+        const floor = floorMatch ? floorMatch[0] : '';
+
+        // 층-구역이름 형식으로 입력
+        const locationCode = floor ? `${floor}-${clickedMarker.name}` : clickedMarker.name;
+        locationPickerTargetInput.value = locationCode;
+
+        showMessage(`위치 선택됨: ${locationCode}`, 'success');
+        closeLocationPicker();
+    }
 }
