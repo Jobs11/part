@@ -1901,10 +1901,13 @@ async function openDocumentCreateForm() {
     // 폼 초기화
     document.getElementById('documentCreateForm').reset();
 
-    // Canvas 초기화
+    // Canvas 초기화 (A4 크기)
     const canvas = document.getElementById('documentCanvas');
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.width = 794;  // A4 가로
+    canvas.height = 1123; // A4 세로
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     currentTemplateImage = null;
 
     // 필드 테이블 초기화 (1개 행만 남기고 모두 제거)
@@ -4136,15 +4139,15 @@ async function loadTemplateToCanvas() {
     img.onload = function () {
         currentTemplateImage = img;
 
-        // Canvas 크기를 이미지 원본 크기에 맞춤
-        canvas.width = img.width;
-        canvas.height = img.height;
+        // Canvas 크기를 A4로 고정 (210mm x 297mm @ 96 DPI)
+        canvas.width = 794;  // A4 가로
+        canvas.height = 1123; // A4 세로
 
         // 배경 흰색으로 채우기
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 이미지를 원본 크기 그대로 그리기 (좌상단 0,0부터)
+        // 이미지를 맨 위(0, 0)에 배치 (원본 크기 유지)
         ctx.drawImage(img, 0, 0);
 
         redrawCanvas();
@@ -5670,10 +5673,18 @@ async function openPartLocationView(partNumber) {
         }
 
         const location = await response.json();
+
+        // pos_x, pos_y가 있으면 캐비넷 그리드 방식
+        if (location.posX && location.posY) {
+            openCabinetGridView(partNumber, location);
+            return;
+        }
+
+        // locationCode가 있으면 도면 방식
         const locationCode = location.locationCode;
 
         if (!locationCode) {
-            showMessage('등록된 도면 위치 정보가 없습니다.', 'info');
+            showMessage('등록된 위치 정보가 없습니다.', 'info');
             return;
         }
 
@@ -5976,4 +5987,94 @@ function closePartLocationView() {
     partLocationViewBaseImageData = null;
     partLocationViewMarkers = [];
     partLocationViewPartNumber = null;
+}
+
+// ==================== 캐비넷 그리드 배치도 ====================
+
+/**
+ * 캐비넷 그리드 배치도 열기
+ */
+function openCabinetGridView(partNumber, location) {
+    // 모달 열기
+    document.getElementById('cabinetGridModal').style.display = 'block';
+
+    // 제목 업데이트
+    document.getElementById('cabinetGridTitle').innerHTML =
+        `캐비넷 배치도: <span style="color: #007bff;">${location.partName || partNumber}</span>`;
+
+    // 정보 업데이트
+    const locationText = `${location.posX}-${location.posY}`;
+    document.getElementById('cabinetGridInfo').innerHTML =
+        `부품번호: <strong>${partNumber}</strong> | 위치: <strong style="color: #dc3545;">${locationText}</strong>`;
+
+    // 그리드 생성 (32x27)
+    createCabinetGrid(location.posX, location.posY);
+}
+
+/**
+ * 32x27 캐비넷 그리드 생성
+ * 가로: A~AA (27개)
+ * 세로: 1~32 (32개)
+ */
+function createCabinetGrid(highlightX, highlightY) {
+    const container = document.getElementById('cabinetGridContainer');
+    const rows = 32;  // 세로 (숫자)
+    const cols = 27;  // 가로 (영어)
+
+    let html = '<table style="border-collapse: collapse; margin: 0 auto;">';
+
+    // 가로 레이블 생성 (A-Z, AA) - 27개
+    const colLabels = [];
+    for (let i = 0; i < cols; i++) {
+        if (i < 26) {
+            colLabels.push(String.fromCharCode(65 + i)); // A-Z
+        } else {
+            colLabels.push('A' + String.fromCharCode(65 + (i - 26))); // AA
+        }
+    }
+
+    // 헤더 (가로 - 영어)
+    html += '<tr><th style="border: 2px solid #999; padding: 10px; background: #f5f5f5; min-width: 50px; font-weight: bold;"></th>';
+    for (let col = 0; col < cols; col++) {
+        html += `<th style="border: 2px solid #999; padding: 10px; background: #f5f5f5; min-width: 50px; font-size: 14px; font-weight: bold;">${colLabels[col]}</th>`;
+    }
+    html += '</tr>';
+
+    // 행 생성 (세로 - 숫자 1~32)
+    for (let row = 1; row <= rows; row++) {
+        html += '<tr>';
+        // 행 헤더 (숫자)
+        html += `<th style="border: 2px solid #999; padding: 10px; background: #f5f5f5; font-size: 14px; font-weight: bold;">${row}</th>`;
+
+        // 각 셀
+        for (let col = 0; col < cols; col++) {
+            const colLabel = colLabels[col];
+            const isHighlight = (colLabel === highlightX && row === highlightY);
+
+            let cellStyle = 'border: 2px solid #999; padding: 15px; text-align: center; min-width: 50px; min-height: 40px;';
+            let cellContent = '';
+
+            if (isHighlight) {
+                // 강조 셀 - 빨간색 배경
+                cellStyle += ' background: #dc3545; color: white; font-weight: bold; font-size: 16px;';
+                cellContent = `${colLabel}-${row}`;
+            } else {
+                cellStyle += ' background: #fff; font-size: 13px;';
+            }
+
+            html += `<td style="${cellStyle}">${cellContent}</td>`;
+        }
+        html += '</tr>';
+    }
+
+    html += '</table>';
+    container.innerHTML = html;
+}
+
+/**
+ * 캐비넷 그리드 모달 닫기
+ */
+function closeCabinetGrid() {
+    document.getElementById('cabinetGridModal').style.display = 'none';
+    document.getElementById('cabinetGridContainer').innerHTML = '';
 }

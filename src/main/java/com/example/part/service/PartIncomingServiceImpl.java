@@ -284,6 +284,15 @@ public class PartIncomingServiceImpl implements PartIncomingService {
             return;
         }
 
+        // 이미 동일한 부품번호와 이름으로 위치가 등록되어 있는지 확인
+        PartLocationDTO existingLocation = partLocationService.getLocationByPartNumber(partNumber);
+        if (existingLocation != null &&
+            StringUtils.hasText(existingLocation.getPartName()) &&
+            existingLocation.getPartName().equals(partName)) {
+            log.info("동일한 부품번호({})와 이름({})으로 이미 위치가 등록되어 있어 위치 저장을 건너뜁니다.", partNumber, partName);
+            return;
+        }
+
         partLocationService.saveOrUpdate(locationDTO);
 
         log.info("부품 위치 저장 완료: {} -> 캐비넷:{}, 도면:{}", partNumber, cabinetLocation, mapLocation);
