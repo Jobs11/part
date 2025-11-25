@@ -12,6 +12,7 @@
         <result property="categoryName" column="category_name"/>
         <result property="partName" column="part_name"/>
         <result property="description" column="description"/>
+        <result property="projectName" column="project_name"/>
         <result property="unit" column="unit"/>
         <result property="paymentMethodId" column="payment_method_id"/>
         <result property="paymentMethodName" column="payment_method_name"/>
@@ -35,6 +36,7 @@
             category_id,
             part_name,
             description,
+            project_name,
             unit,
             payment_method_id,
             incoming_quantity,
@@ -52,6 +54,7 @@
             #{categoryId},
             #{partName},
             #{description},
+            #{projectName},
             #{unit},
             #{paymentMethodId},
             #{incomingQuantity},

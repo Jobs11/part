@@ -26,6 +26,11 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    public List<CategoryDTO> getAllCategoriesForManagement() {
+        return categoryMapper.selectAllCategoriesForManagement();
+    }
+
+    @Override
     public CategoryDTO getCategoryById(int categoryId) {
         CategoryDTO category = categoryMapper.findById(categoryId);
         if (category == null) {

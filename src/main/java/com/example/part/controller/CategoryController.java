@@ -37,6 +37,15 @@ public class CategoryController {
     }
 
     /**
+     * 관리용 전체 카테고리 조회 (필터 없음)
+     */
+    @GetMapping("/management")
+    public ResponseEntity<List<CategoryDTO>> getAllCategoriesForManagement() {
+        List<CategoryDTO> categories = categoryService.getAllCategoriesForManagement();
+        return ResponseEntity.ok(categories);
+    }
+
+    /**
      * 단일 카테고리 조회
      */
     @GetMapping("/{id}")
@@ -54,6 +63,15 @@ public class CategoryController {
     public ResponseEntity<List<CategoryDTO>> getPaymentMethods() {
         List<CategoryDTO> paymentMethods = categoryService.getCategoriesByDescription("결제수단");
         return ResponseEntity.ok(paymentMethods);
+    }
+
+    /**
+     * 프로젝트 카테고리 조회
+     */
+    @GetMapping("/projects")
+    public ResponseEntity<List<CategoryDTO>> getProjects() {
+        List<CategoryDTO> projects = categoryService.getCategoriesByDescription("프로젝트");
+        return ResponseEntity.ok(projects);
     }
 
     /**

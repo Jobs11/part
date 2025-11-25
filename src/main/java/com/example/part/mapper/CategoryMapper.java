@@ -13,6 +13,9 @@ public interface CategoryMapper {
     // 전체 카테고리 조회
     List<CategoryDTO> selectAllCategories();
 
+    // 관리용 전체 카테고리 조회 (필터 없음)
+    List<CategoryDTO> selectAllCategoriesForManagement();
+
     // 단일 카테고리 조회
     CategoryDTO findById(@Param("categoryId") int categoryId);
 

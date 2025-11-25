@@ -2,6 +2,7 @@
 const USAGE_API = '/livewalk/part-usage';
 const CATEGORY_API = '/livewalk/categories';
 const PAYMENT_METHOD_API = '/livewalk/categories/payment-methods';
+const PROJECT_API = '/livewalk/categories/projects';
 const LOCATION_CODE_REGEX = /^(?:[A-Z]|AA)-(?:[1-9]|[12]\d|3[0-2])$/;
 
 function enableEnterKeySearch(inputId, callback) {
@@ -123,6 +124,7 @@ function attachLocationInputHandlers(inputEl) {
 
 let categoriesData = [];
 let paymentMethodsData = [];
+let projectsData = [];
 let inventoryData = [];
 let currentInventorySearchKeyword = '';
 let currentInventorySearchColumn = '';
@@ -212,7 +214,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     // 데이터 로드
-    Promise.all([loadCategories(), loadPaymentMethods()])
+    Promise.all([loadCategories(), loadPaymentMethods(), loadProjects()])
         .catch(() => {
             // 데이터 로드 중 �??�류��??�시됨
         })
@@ -282,6 +284,18 @@ async function loadPaymentMethods() {
         }
     } catch (error) {
         showMessage('결제수단 조회 ?�류: ' + error.message, 'error');
+    }
+}
+
+// 프로젝트 로드
+async function loadProjects() {
+    try {
+        const response = await fetch(PROJECT_API);
+        if (!response.ok) throw new Error('프로젝트 조회 실패');
+
+        projectsData = await response.json();
+    } catch (error) {
+        showMessage('프로젝트 조회 오류: ' + error.message, 'error');
     }
 }
 
@@ -495,12 +509,13 @@ async function sortIncomingTable(column) {
         'part_number': 1,
         'part_name': 2,
         'description': 3,
-        'incoming_quantity': 4,
-        'payment_method_name': 6,
-        'purchase_price': 7,
-        'purchase_date': 8,
-        'created_at': 9,
-        'note': 10
+        'project_name': 4,
+        'incoming_quantity': 5,
+        'payment_method_name': 7,
+        'purchase_price': 8,
+        'purchase_date': 9,
+        'created_at': 10,
+        'note': 11
     };
     if (columnIndex[column] !== undefined && headers[columnIndex[column]]) {
         headers[columnIndex[column]].style.backgroundColor = '#e3f2fd';
@@ -535,7 +550,7 @@ async function displayIncomingList(incomingList) {
     const tbody = document.getElementById('incomingTableBody');
 
     if (incomingList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="13" style="text-align: center;">입고 내역이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="14" style="text-align: center;">입고 내역이 없습니다.</td></tr>';
         return;
     }
 
@@ -558,6 +573,7 @@ async function displayIncomingList(incomingList) {
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'partNumber', '${escapeHtml(incoming.partNumber || '')}')">${incoming.partNumber || '-'}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'partName', '${escapeHtml(incoming.partName)}')">${incoming.partName || '-'}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'description', '${escapeHtml(incoming.description || '')}')">${incoming.description || '-'}</td>
+                <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'projectName', '${escapeHtml(incoming.projectName || '')}')">${incoming.projectName || '-'}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'incomingQuantity', ${incoming.incomingQuantity})">${incoming.incomingQuantity}</td>
                 <td>${incoming.unit || '-'}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'paymentMethodId', ${incoming.paymentMethodId != null ? incoming.paymentMethodId : 'null'}, null, '${escapeHtml(incoming.paymentMethodName || '')}')">${incoming.paymentMethodName || '-'}</td>
@@ -602,6 +618,15 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
         paymentMethodsData.forEach(method => {
             const selected = method.categoryId === currentValue ? 'selected' : '';
             options += `<option value="${method.categoryId}" ${selected}>${method.categoryName}</option>`;
+        });
+        inputElement.innerHTML = options;
+    } else if (field === 'projectName') {
+        // 프로젝트명은 select
+        inputElement = document.createElement('select');
+        let options = '<option value="">선택</option>';
+        projectsData.forEach(project => {
+            const selected = project.categoryName === currentValue ? 'selected' : '';
+            options += `<option value="${project.categoryName}" ${selected}>${project.categoryName}</option>`;
         });
         inputElement.innerHTML = options;
     } else if (field === 'currency') {
@@ -2335,6 +2360,11 @@ function addBulkRow() {
         <td><input type="number" class="bulk-input bulk-price" placeholder="금액" min="0" step="0.01"></td>
         <td><input type="date" class="bulk-input bulk-date"></td>
         <td><input type="text" class="bulk-input bulk-description" placeholder="설명"></td>
+        <td>
+            <select class="bulk-input bulk-project-name">
+                <option value="">선택</option>
+            </select>
+        </td>
         <td><input type="text" class="bulk-input bulk-note" placeholder="비고(실제 파트넘버)"></td>
     `;
     tbody.appendChild(tr);
@@ -2349,6 +2379,7 @@ function addBulkRow() {
     // 카테고리 로드
     loadCategoriesForBulk();
     loadPaymentMethodsForBulk();
+    loadProjectsForBulk();
 }
 
 // 행 삭제 (마지막 행)
@@ -2412,6 +2443,23 @@ async function loadPaymentMethodsForBulk() {
                 const option = document.createElement('option');
                 option.value = method.categoryId;
                 option.textContent = method.categoryName;
+                select.appendChild(option);
+            });
+        }
+    });
+}
+
+async function loadProjectsForBulk() {
+    if (projectsData.length === 0) {
+        await loadProjects();
+    }
+
+    document.querySelectorAll('.bulk-project-name').forEach(select => {
+        if (select.children.length <= 1) {
+            projectsData.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.categoryName;
+                option.textContent = project.categoryName;
                 select.appendChild(option);
             });
         }
@@ -2487,9 +2535,10 @@ async function submitBulkInsert() {
         const price = row.querySelector('.bulk-price').value;
         const date = row.querySelector('.bulk-date').value;
         const description = row.querySelector('.bulk-description').value.trim();
+        const projectName = row.querySelector('.bulk-project-name').value.trim();
         const note = row.querySelector('.bulk-note').value.trim();
 
-        console.log('행 데이터:', {partNumber, categoryId, partName, cabinetLocation, mapLocation, quantity, paymentMethodId, price, date, description});
+        console.log('행 데이터:', {partNumber, categoryId, partName, cabinetLocation, mapLocation, quantity, paymentMethodId, price, date, description, projectName});
 
         // 필수 항목: 부품번호, 카테고리, 부품명, 수량, 금액, 구매일자, 설명
         if (partNumber && categoryId && paymentMethodId && partName && quantity && price && date && description) {
@@ -2506,6 +2555,7 @@ async function submitBulkInsert() {
                 currency: 'KRW',
                 purchaseDate: date,
                 description: description,
+                projectName: projectName || null,
                 note: note,
                 createdBy: 'system'
             };
@@ -2567,7 +2617,7 @@ function closeCategoryModal() {
 
 async function loadCategoryList() {
     try {
-        const response = await fetch(CATEGORY_API);
+        const response = await fetch(`${CATEGORY_API}/management`);
         const categories = await response.json();
 
         const tbody = document.getElementById('categoryListBody');
@@ -2807,6 +2857,7 @@ async function downloadIncomingCSV() {
             '\uBD80\uD488\uBC88\uD638': item.partNumber,
             '\uBD80\uD488\uBA85': item.partName,
             '\uC124\uBA85': item.description,
+            '\uD504\uB85C\uC81D\uD2B8\uBA85': item.projectName || '',
             '\uC785\uACE0\uC218\uB7C9': item.incomingQuantity,
             '\uB2E8\uC704': item.unit,
             '\uACB0\uC81C\uC218\uB2E8': item.paymentMethodName || '',
@@ -2820,7 +2871,7 @@ async function downloadIncomingCSV() {
             '\uBE44\uACE0': item.remarks
         }));
 
-        const headers = ['\uC785\uACE0ID', '\uCE74\uD14C\uACE0\uB9AC', '\uBD80\uD488\uBC88\uD638', '\uBD80\uD488\uBA85', '\uC124\uBA85', '\uC785\uACE0\uC218\uB7C9', '\uB2E8\uC704', '\uACB0\uC81C\uC218\uB2E8', '\uD1B5\uD654', '\uC678\uD654\uB2E8\uAC00', '\uD658\uC728', '\uAD6C\uB9E4\uAE08\uC561', '\uACF5\uAE09\uC5C5\uCCB4', '\uC785\uACE0\uC77C', '\uB4F1\uB85D\uC77C\uC2DC', '\uBE44\uACE0'];
+        const headers = ['\uC785\uACE0ID', '\uCE74\uD14C\uACE0\uB9AC', '\uBD80\uD488\uBC88\uD638', '\uBD80\uD488\uBA85', '\uC124\uBA85', '\uD504\uB85C\uC81D\uD2B8\uBA85', '\uC785\uACE0\uC218\uB7C9', '\uB2E8\uC704', '\uACB0\uC81C\uC218\uB2E8', '\uD1B5\uD654', '\uC678\uD654\uB2E8\uAC00', '\uD658\uC728', '\uAD6C\uB9E4\uAE08\uC561', '\uACF5\uAE09\uC5C5\uCCB4', '\uC785\uACE0\uC77C', '\uB4F1\uB85D\uC77C\uC2DC', '\uBE44\uACE0'];
 
         // 컬럼 선택 모달 열기
         openCsvColumnModal('incoming', csvData, headers);
@@ -6034,9 +6085,9 @@ function createCabinetGrid(highlightX, highlightY) {
     }
 
     // 헤더 (가로 - 영어)
-    html += '<tr><th style="border: 2px solid #999; padding: 10px; background: #f5f5f5; min-width: 50px; font-weight: bold;"></th>';
+    html += '<tr><th style="border: 2px solid #999; padding: 12px; background: #f5f5f5; min-width: 60px; font-weight: bold;"></th>';
     for (let col = 0; col < cols; col++) {
-        html += `<th style="border: 2px solid #999; padding: 10px; background: #f5f5f5; min-width: 50px; font-size: 14px; font-weight: bold;">${colLabels[col]}</th>`;
+        html += `<th style="border: 2px solid #999; padding: 12px; background: #f5f5f5; min-width: 60px; font-size: 15px; font-weight: bold;">${colLabels[col]}</th>`;
     }
     html += '</tr>';
 
@@ -6044,22 +6095,22 @@ function createCabinetGrid(highlightX, highlightY) {
     for (let row = 1; row <= rows; row++) {
         html += '<tr>';
         // 행 헤더 (숫자)
-        html += `<th style="border: 2px solid #999; padding: 10px; background: #f5f5f5; font-size: 14px; font-weight: bold;">${row}</th>`;
+        html += `<th style="border: 2px solid #999; padding: 12px; background: #f5f5f5; font-size: 15px; font-weight: bold;">${row}</th>`;
 
         // 각 셀
         for (let col = 0; col < cols; col++) {
             const colLabel = colLabels[col];
             const isHighlight = (colLabel === highlightX && row === highlightY);
 
-            let cellStyle = 'border: 2px solid #999; padding: 15px; text-align: center; min-width: 50px; min-height: 40px;';
+            let cellStyle = 'border: 2px solid #999; padding: 18px; text-align: center; min-width: 60px; min-height: 50px;';
             let cellContent = '';
 
             if (isHighlight) {
                 // 강조 셀 - 빨간색 배경
-                cellStyle += ' background: #dc3545; color: white; font-weight: bold; font-size: 16px;';
+                cellStyle += ' background: #dc3545; color: white; font-weight: bold; font-size: 17px;';
                 cellContent = `${colLabel}-${row}`;
             } else {
-                cellStyle += ' background: #fff; font-size: 13px;';
+                cellStyle += ' background: #fff; font-size: 14px;';
             }
 
             html += `<td style="${cellStyle}">${cellContent}</td>`;

@@ -23,6 +23,13 @@
         ORDER BY category_name ASC
     </select>
 
+    <!-- ✅ 관리용 전체 카테고리 조회 (필터 없음) -->
+    <select id="selectAllCategoriesForManagement" resultMap="categoryResultMap">
+        SELECT *
+        FROM category
+        ORDER BY category_id ASC
+    </select>
+
     <!-- ✅ 단일 카테고리 조회 -->
     <select id="findById" resultMap="categoryResultMap" parameterType="int">
         SELECT *

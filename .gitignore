@@ -40,3 +40,4 @@ src/main/resources/application-secret.properties
 ### Uploads ###
 uploads/
 nul
+src/main/resources/static/estimate.html

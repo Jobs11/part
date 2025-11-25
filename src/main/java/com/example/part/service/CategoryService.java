@@ -9,6 +9,9 @@ public interface CategoryService {
     // 전체 카테고리 조회
     List<CategoryDTO> getAllCategories();
 
+    // 관리용 전체 카테고리 조회 (필터 없음)
+    List<CategoryDTO> getAllCategoriesForManagement();
+
     // 단일 카테고리 조회
     CategoryDTO getCategoryById(int categoryId);
 

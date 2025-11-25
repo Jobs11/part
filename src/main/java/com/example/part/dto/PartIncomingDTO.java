@@ -19,6 +19,7 @@ public class PartIncomingDTO {
     private String cabinetLocation; // 캐비넷 위치 (A-1 형식)
     private String mapLocation; // 도면 위치 (8-A 형식)
     private String description;
+    private String projectName; // 프로젝트명
     private String unit;
     private Integer paymentMethodId;
     private String paymentMethodName;
