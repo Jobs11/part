@@ -2697,8 +2697,8 @@ async function submitBulkInsert() {
 
         console.log('행 데이터:', {partNumber, categoryId, partName, cabinetLocation, mapLocation, quantity, paymentMethodId, price, date, description, projectName, supplier, purchaser});
 
-        // 필수 항목: 부품번호, 카테고리, 부품명, 수량, 금액, 구매일자, 설명
-        if (partNumber && categoryId && paymentMethodId && partName && quantity && price && date && description) {
+        // 필수 항목: 부품번호, 카테고리, 부품명, 수량, 금액, 구매일자 (설명은 선택)
+        if (partNumber && categoryId && paymentMethodId && partName && quantity && price && date) {
             const data = {
                 partNumber: partNumber,
                 categoryId: parseInt(categoryId),
@@ -2711,7 +2711,7 @@ async function submitBulkInsert() {
                 purchasePrice: parseFloat(price),
                 currency: 'KRW',
                 purchaseDate: date,
-                description: description,
+                description: description || '-',
                 projectName: projectName || null,
                 supplier: supplier || null,
                 purchaser: purchaser || null,

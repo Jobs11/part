@@ -38,70 +38,96 @@ public class PartIncomingServiceImpl implements PartIncomingService {
     @Transactional
 
     public void registerIncoming(PartIncomingDTO partIncomingDTO) {
+        log.info("========== 입고 등록 시작 ==========");
+        log.info("받은 데이터: {}", partIncomingDTO);
 
-        // 1. 카테고리 처리
+        try {
+            // 1. 카테고리 처리
+            log.info("1단계: 카테고리 처리 시작");
+            if (partIncomingDTO.getCategoryName() != null && !partIncomingDTO.getCategoryName().isEmpty()) {
 
-        if (partIncomingDTO.getCategoryName() != null && !partIncomingDTO.getCategoryName().isEmpty()) {
+                // 카테고리 이름이 제공된 경우 - 이름으로 찾거나 생성
+                log.info("카테고리 이름으로 처리: {}", partIncomingDTO.getCategoryName());
+                CategoryDTO category = categoryService.findOrCreateCategoryByName(partIncomingDTO.getCategoryName());
 
-            // 카테고리 이름이 제공된 경우 - 이름으로 찾거나 생성
+                partIncomingDTO.setCategoryId(category.getCategoryId());
 
-            CategoryDTO category = categoryService.findOrCreateCategoryByName(partIncomingDTO.getCategoryName());
+                log.info("카테고리 설정: {} (ID: {})", category.getCategoryName(), category.getCategoryId());
 
-            partIncomingDTO.setCategoryId(category.getCategoryId());
+            } else if (partIncomingDTO.getCategoryId() == null) {
+                log.error("카테고리 정보 없음!");
+                throw new RuntimeException("카테고리 정보가 제공되지 않았습니다.");
 
-            log.info("카테고리 설정: {} (ID: {})", category.getCategoryName(), category.getCategoryId());
+            } else {
+                log.info("카테고리 ID로 처리: {}", partIncomingDTO.getCategoryId());
+            }
 
-        } else if (partIncomingDTO.getCategoryId() == null) {
+            // 2. 부품번호 검증 - 사용자가 직접 입력한 부품번호 사용
+            log.info("2단계: 부품번호 검증 시작");
+            String partNumber = partIncomingDTO.getPartNumber();
+            log.info("입력된 부품번호: [{}], 길이: {}", partNumber, partNumber != null ? partNumber.length() : 0);
 
-            throw new RuntimeException("카테고리 정보가 제공되지 않았습니다.");
+            if (partNumber == null || partNumber.trim().isEmpty()) {
+                log.error("부품번호가 비어있음!");
+                throw new RuntimeException("부품번호는 필수 입력 항목입니다.");
 
+            }
+
+            log.info("부품번호 검증 완료: {}", partNumber);
+
+            // 3. 환율 계산
+            log.info("3단계: 환율 계산 시작");
+            calculateExchangeRate(partIncomingDTO);
+            log.info("환율 계산 완료 - 구매금액: {}, 통화: {}", partIncomingDTO.getPurchasePrice(), partIncomingDTO.getCurrency());
+
+            // 4. 입고 등록
+            log.info("4단계: DB 입고 등록 시작");
+            log.info("DB 저장 전 DTO 상태: partNumber={}, categoryId={}, partName={}, quantity={}",
+                    partIncomingDTO.getPartNumber(),
+                    partIncomingDTO.getCategoryId(),
+                    partIncomingDTO.getPartName(),
+                    partIncomingDTO.getIncomingQuantity());
+
+            int result = partIncomingMapper.insertIncoming(partIncomingDTO);
+            log.info("DB 입고 등록 결과: {}", result);
+
+            if (result == 0) {
+                log.error("DB 입고 등록 실패! result = 0");
+                throw new RuntimeException("입고 등록에 실패했습니다.");
+
+            }
+
+            // 5. 부품 위치 정보 저장
+            log.info("5단계: 부품 위치 정보 저장 시작");
+            String cabinetLoc = partIncomingDTO.getCabinetLocation();
+
+            String mapLoc = partIncomingDTO.getMapLocation();
+
+            String oldLoc = partIncomingDTO.getLocation(); // 이전 방식 호환
+            log.info("위치 정보 - 캐비넷: [{}], 도면: [{}], 이전: [{}]", cabinetLoc, mapLoc, oldLoc);
+
+            if ((cabinetLoc != null && !cabinetLoc.trim().isEmpty()) ||
+
+                    (mapLoc != null && !mapLoc.trim().isEmpty()) ||
+
+                    (oldLoc != null && !oldLoc.trim().isEmpty())) {
+
+                savePartLocation(partNumber, partIncomingDTO.getPartName(), cabinetLoc, mapLoc, oldLoc);
+
+            } else {
+                log.info("위치 정보 없음 - 위치 저장 건너뜀");
+            }
+
+            log.info("입고 등록 완료: 부품번호 {}, 수량 {}", partNumber, partIncomingDTO.getIncomingQuantity());
+            log.info("========== 입고 등록 성공 ==========");
+
+        } catch (Exception e) {
+            log.error("========== 입고 등록 실패 ==========");
+            log.error("에러 타입: {}", e.getClass().getName());
+            log.error("에러 메시지: {}", e.getMessage());
+            log.error("스택 트레이스:", e);
+            throw e;
         }
-
-        // 2. 부품번호 검증 - 사용자가 직접 입력한 부품번호 사용
-
-        String partNumber = partIncomingDTO.getPartNumber();
-
-        if (partNumber == null || partNumber.trim().isEmpty()) {
-
-            throw new RuntimeException("부품번호는 필수 입력 항목입니다.");
-
-        }
-
-        log.info("부품번호: {}", partNumber);
-
-        // 3. 환율 계산
-
-        calculateExchangeRate(partIncomingDTO);
-
-        // 4. 입고 등록
-
-        int result = partIncomingMapper.insertIncoming(partIncomingDTO);
-
-        if (result == 0) {
-
-            throw new RuntimeException("입고 등록에 실패했습니다.");
-
-        }
-
-        // 5. 부품 위치 정보 저장
-
-        String cabinetLoc = partIncomingDTO.getCabinetLocation();
-
-        String mapLoc = partIncomingDTO.getMapLocation();
-
-        String oldLoc = partIncomingDTO.getLocation(); // 이전 방식 호환
-
-        if ((cabinetLoc != null && !cabinetLoc.trim().isEmpty()) ||
-
-                (mapLoc != null && !mapLoc.trim().isEmpty()) ||
-
-                (oldLoc != null && !oldLoc.trim().isEmpty())) {
-
-            savePartLocation(partNumber, partIncomingDTO.getPartName(), cabinetLoc, mapLoc, oldLoc);
-
-        }
-
-        log.info("입고 등록 완료: 부품번호 {}, 수량 {}", partNumber, partIncomingDTO.getIncomingQuantity());
 
     }
 
@@ -278,21 +304,21 @@ public class PartIncomingServiceImpl implements PartIncomingService {
 
         // location_code 또는 posX/posY 중 하나라도 있으면 저장
         if (!StringUtils.hasText(locationDTO.getLocationCode()) &&
-            (locationDTO.getPosX() == null || locationDTO.getPosY() == null)) {
+                (locationDTO.getPosX() == null || locationDTO.getPosY() == null)) {
             log.warn("위치 정보가 없어 위치 저장을 건너뜁니다. partNumber={}, cabinet={}, map={}", partNumber, cabinetLocation,
                     mapLocation);
             return;
         }
 
-        // 이미 동일한 부품번호와 이름으로 위치가 등록되어 있는지 확인
+        // 이미 해당 부품번호로 위치가 등록되어 있는지 확인
         PartLocationDTO existingLocation = partLocationService.getLocationByPartNumber(partNumber);
-        if (existingLocation != null &&
-            StringUtils.hasText(existingLocation.getPartName()) &&
-            existingLocation.getPartName().equals(partName)) {
-            log.info("동일한 부품번호({})와 이름({})으로 이미 위치가 등록되어 있어 위치 저장을 건너뜁니다.", partNumber, partName);
+        if (existingLocation != null) {
+            // 부품번호가 이미 존재하면 새로운 위치 정보가 있을 때만 업데이트
+            log.info("부품번호({})가 이미 위치 테이블에 존재합니다. 위치 정보 업데이트를 건너뜁니다.", partNumber);
             return;
         }
 
+        // 새로운 부품번호인 경우에만 위치 정보 저장
         partLocationService.saveOrUpdate(locationDTO);
 
         log.info("부품 위치 저장 완료: {} -> 캐비넷:{}, 도면:{}", partNumber, cabinetLocation, mapLocation);
