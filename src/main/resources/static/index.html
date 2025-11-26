@@ -96,7 +96,7 @@
         <h1 style="display: flex; justify-content: space-between; align-items: center;">
             <div style="display: flex; align-items: center; gap: 20px;">
                 <span>재고 관리 시스템</span>
-                <div style="display: flex; gap: 5px; border: 2px solid #007bff; border-radius: 5px; overflow: hidden;">
+                <div style="display: none; gap: 5px; border: 2px solid #007bff; border-radius: 5px; overflow: hidden;">
                     <button id="categoryBtnParts" onclick="switchCategory('parts')"
                         style="padding: 8px 20px; border: none; background: #007bff; color: white; cursor: pointer; font-weight: bold; transition: all 0.3s;">
                         부품
@@ -123,15 +123,35 @@
                 <h2>부품 입고 등록</h2>
             </div>
 
-            <div style="margin-bottom: 10px; display: flex; gap: 10px; align-items: center;">
+            <div style="margin-bottom: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                 <button onclick="addBulkRow()" class="btn">행 추가 (+1개)</button>
                 <button onclick="removeBulkRow()" class="btn btn-gray">행 삭제 (-1개)</button>
                 <button onclick="clearBulkTable()" class="btn btn-gray">전체 초기화</button>
                 <button onclick="openCategoryModal()" class="btn">카테고리 추가</button>
-                <span style="margin-left: 20px; display: flex; align-items: center; gap: 5px;">
-                    <label style="margin: 0; font-weight: bold;">일괄 카테고리:</label>
+                <span
+                    style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; background: #F2F2F2; border: 1px solid #D0D0D0; border-radius: 3px;">
+                    <label style="margin: 0; font-weight: 600; font-size: 12px; color: #333; white-space: nowrap;">일괄
+                        카테고리:</label>
                     <select id="bulkCategorySelect" onchange="applyBulkCategory()"
-                        style="padding: 6px; border: 1px solid #ababab; font-size: 12px;">
+                        style="padding: 4px 6px; border: 1px solid #D0D0D0; font-size: 12px; background: white; min-width: 120px;">
+                        <option value="">개별 선택</option>
+                    </select>
+                </span>
+                <span
+                    style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; background: #F2F2F2; border: 1px solid #D0D0D0; border-radius: 3px;">
+                    <label style="margin: 0; font-weight: 600; font-size: 12px; color: #333; white-space: nowrap;">일괄
+                        결제수단:</label>
+                    <select id="bulkPaymentMethodSelect" onchange="applyBulkPaymentMethod()"
+                        style="padding: 4px 6px; border: 1px solid #D0D0D0; font-size: 12px; background: white; min-width: 120px;">
+                        <option value="">개별 선택</option>
+                    </select>
+                </span>
+                <span
+                    style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; background: #F2F2F2; border: 1px solid #D0D0D0; border-radius: 3px;">
+                    <label style="margin: 0; font-weight: 600; font-size: 12px; color: #333; white-space: nowrap;">일괄
+                        프로젝트:</label>
+                    <select id="bulkProjectSelect" onchange="applyBulkProject()"
+                        style="padding: 4px 6px; border: 1px solid #D0D0D0; font-size: 12px; background: white; min-width: 120px;">
                         <option value="">개별 선택</option>
                     </select>
                 </span>
@@ -141,19 +161,21 @@
                 <table id="bulkInsertTable">
                     <thead>
                         <tr>
-                            <th style="width: 150px;"><span class="required">카테고리</span></th>
-                            <th style="width: 120px;"><span class="required">부품번호</span></th>
-                            <th style="width: 150px;"><span class="required">부품명</span></th>
-                            <th style="width: 100px;">캐비넷 위치</th>
-                            <th style="width: 100px;">도면 위치</th>
-                            <th style="width: 80px;"><span class="required">수량</span></th>
-                            <th style="width: 80px;">단위</th>
-                            <th style="width: 130px;"><span class="required">결제수단</span></th>
-                            <th style="width: 120px;"><span class="required">구매금액(원)</span></th>
+                            <th style="width: 100px;"><span class="required">카테고리</span></th>
+                            <th style="width: 100px;"><span class="required">부품번호</span></th>
+                            <th style="width: 120px;"><span class="required">부품명</span></th>
+                            <th style="width: 150px;"><span class="required">설명</span></th>
+                            <th style="width: 60px;"><span class="required">수량</span></th>
+                            <th style="width: 50px;">단위</th>
+                            <th style="width: 100px;"><span class="required">결제수단</span></th>
+                            <th style="width: 90px;"><span class="required">구매금액(원)</span></th>
                             <th style="width: 100px;"><span class="required">구매일자</span></th>
-                            <th style="width: 200px;"><span class="required">설명</span></th>
-                            <th style="width: 150px;">프로젝트명</th>
-                            <th style="width: 150px;">비고</th>
+                            <th style="width: 100px;">구매업체</th>
+                            <th style="width: 100px;">공급업체</th>
+                            <th style="width: 100px;">프로젝트명</th>
+                            <th style="width: 80px;">캐비넷 위치</th>
+                            <th style="width: 80px;">도면 위치</th>
+                            <th style="width: 120px;">비고</th>
                         </tr>
                     </thead>
                     <tbody id="bulkInsertTableBody">
@@ -187,12 +209,14 @@
                             <th onclick="sortIncomingTable('part_number')" style="cursor: pointer;">부품번호 ▲▼</th>
                             <th onclick="sortIncomingTable('part_name')" style="cursor: pointer;">부품명 ▲▼</th>
                             <th onclick="sortIncomingTable('description')" style="cursor: pointer;">설명 ▲▼</th>
-                            <th onclick="sortIncomingTable('project_name')" style="cursor: pointer;">프로젝트명 ▲▼</th>
                             <th onclick="sortIncomingTable('incoming_quantity')" style="cursor: pointer;">입고수량 ▲▼</th>
                             <th>단위</th>
-                            <th onclick="sortIncomingTable('payment_method_name')" style="cursor: pointer;">결제수단 ▼</th>
+                            <th onclick="sortIncomingTable('payment_method_name')" style="cursor: pointer;">결제수단 ▲▼</th>
                             <th onclick="sortIncomingTable('purchase_price')" style="cursor: pointer;">구매금액(원화) ▲▼</th>
                             <th onclick="sortIncomingTable('purchase_date')" style="cursor: pointer;">구매일자 ▲▼</th>
+                            <th onclick="sortIncomingTable('purchaser')" style="cursor: pointer;">구매업체 ▲▼</th>
+                            <th onclick="sortIncomingTable('supplier')" style="cursor: pointer;">공급업체 ▲▼</th>
+                            <th onclick="sortIncomingTable('project_name')" style="cursor: pointer;">프로젝트명 ▲▼</th>
                             <th onclick="sortIncomingTable('created_at')" style="cursor: pointer;">등록일 ▲▼</th>
                             <th onclick="sortIncomingTable('note')" style="cursor: pointer;">비고 ▲▼</th>
                             <th>사진</th>
@@ -201,7 +225,7 @@
                     </thead>
                     <tbody id="incomingTableBody">
                         <tr>
-                            <td colspan="14" style="text-align: center;">로딩 중...</td>
+                            <td colspan="16" style="text-align: center;">로딩 중...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -388,7 +412,8 @@
             <!-- 저장된 템플릿 목록 -->
             <div id="templateListContainer" style="margin-top: 20px;">
                 <h3>저장된 양식 목록</h3>
-                <div id="templateList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
+                <div id="templateList"
+                    style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
                     <!-- JavaScript로 동적 생성 -->
                 </div>
             </div>
@@ -404,7 +429,8 @@
 
             <!-- 문서 목록 -->
             <div id="generatedDocumentsContainer" style="margin-top: 20px;">
-                <div id="generatedDocumentsList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;">
+                <div id="generatedDocumentsList"
+                    style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;">
                     <!-- JavaScript로 동적 생성 -->
                 </div>
             </div>
@@ -420,7 +446,7 @@
         // 관리자 권한 확인 및 관리자 페이지 버튼 표시
         async function checkAdminRole() {
             try {
-                const response = await fetch('/auth/current-user');
+                const response = await fetch('/livewalk/auth/current-user');
                 const userInfo = await response.json();
                 if (userInfo.isAdmin) {
                     document.getElementById('adminBtn').style.display = 'inline-block';
@@ -482,20 +508,52 @@
     <div id="imageModal"
         style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999;">
         <div
-            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 5px; width: 80%; max-width: 800px; max-height: 80vh; overflow-y: auto;">
-            <h3>부품 사진 관리</h3>
-            <div style="margin-bottom: 15px;">
-                <input type="file" id="modalFileInput" accept="image/*" multiple>
-                <button class="btn" onclick="uploadImageFromModal()">업로드</button>
+            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border: 1px solid #ddd; width: 85%; max-width: 900px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <!-- 헤더 -->
+            <div
+                style="padding: 15px 20px; background: #4472C4; color: white; display: flex; align-items: center; justify-content: space-between;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 600;">부품 사진 관리</h3>
+                <button onclick="closeImageModal()"
+                    style="background: none; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0; width: 24px; height: 24px;">×</button>
             </div>
 
-            <div id="imageListContainer"
-                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;">
-                <!-- 이미지 목록 표시 -->
+            <!-- 업로드 영역 -->
+            <div style="padding: 15px 20px; background: #F2F2F2; border-bottom: 1px solid #ddd;">
+                <div style="display: flex; gap: 10px; align-items: flex-end;">
+                    <div style="flex: 1;">
+                        <label
+                            style="display: block; margin-bottom: 5px; font-weight: 600; color: #333; font-size: 13px;">사진
+                            유형</label>
+                        <select id="imageTypeSelect"
+                            style="width: 100%; padding: 6px 8px; border: 1px solid #D0D0D0; font-size: 13px; background: white;">
+                            <option value="part">부품 사진</option>
+                            <option value="receipt">영수증</option>
+                            <option value="delivery">택배 사진</option>
+                            <option value="etc">기타</option>
+                        </select>
+                    </div>
+                    <div style="flex: 2;">
+                        <label
+                            style="display: block; margin-bottom: 5px; font-weight: 600; color: #333; font-size: 13px;">파일
+                            선택</label>
+                        <input type="file" id="modalFileInput" accept="image/*" multiple
+                            style="width: 100%; padding: 5px; border: 1px solid #D0D0D0; background: white; font-size: 12px;">
+                    </div>
+                    <button class="btn" onclick="uploadImageFromModal()"
+                        style="padding: 7px 16px; background: #4472C4; border: 1px solid #2E5C9A; color: white; font-weight: 600; cursor: pointer; white-space: nowrap; font-size: 13px;">업로드</button>
+                </div>
             </div>
 
-            <div style="margin-top: 20px; text-align: right;">
-                <button class="btn btn-gray" onclick="closeImageModal()">닫기</button>
+            <!-- 이미지 목록 영역 -->
+            <div style="padding: 20px; overflow-y: auto; flex: 1; background: white;">
+                <div id="imageListContainer">
+                    <!-- 이미지 목록 표시 -->
+                </div>
+            </div>
+
+            <!-- 푸터 -->
+            <div style="padding: 12px 20px; border-top: 1px solid #ddd; text-align: right; background: #F2F2F2;">
+                <button class="btn btn-gray" onclick="closeImageModal()" style="padding: 6px 16px;">닫기</button>
             </div>
         </div>
     </div>
@@ -504,19 +562,25 @@
     <div id="categoryModal"
         style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999;">
         <div
-            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 5px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto;">
-            <h3 style="margin-bottom: 20px;">카테고리 관리</h3>
+            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border: 1px solid #ddd; width: 90%; max-width: 700px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <!-- 헤더 -->
+            <div
+                style="padding: 15px 20px; background: #4472C4; color: white; display: flex; align-items: center; justify-content: space-between;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 600;">카테고리 관리</h3>
+                <button onclick="closeCategoryModal()"
+                    style="background: none; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0; width: 24px; height: 24px;">×</button>
+            </div>
 
             <!-- 카테고리 리스트 -->
-            <div style="margin-bottom: 30px;">
-                <h4 style="margin-bottom: 15px; font-size: 16px; font-weight: bold;">카테고리 목록 (전체)</h4>
-                <div class="table-wrapper" style="max-height: 500px; overflow-y: auto;">
+            <div style="padding: 20px; overflow-y: auto; flex: 1; background: white;">
+                <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: #333;">전체 카테고리 목록</h4>
+                <div class="table-wrapper" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd;">
                     <table id="categoryListTable">
-                        <thead>
+                        <thead style="background: #4472C4; color: white;">
                             <tr>
-                                <th style="width: 200px;">이름</th>
-                                <th>설명</th>
-                                <th style="width: 80px;">삭제</th>
+                                <th style="width: 200px; padding: 10px; border-bottom: 1px solid #ddd;">이름</th>
+                                <th style="padding: 10px; border-bottom: 1px solid #ddd;">설명</th>
+                                <th style="width: 80px; padding: 10px; border-bottom: 1px solid #ddd;">삭제</th>
                             </tr>
                         </thead>
                         <tbody id="categoryListBody">
@@ -527,23 +591,30 @@
             </div>
 
             <!-- 카테고리 추가 폼 -->
-            <div style="border-top: 2px solid #e0e0e0; padding-top: 25px; margin-top: 30px;">
-                <h4 style="margin-bottom: 15px; font-size: 16px; font-weight: bold;">카테고리 추가</h4>
+            <div style="padding: 15px 20px; background: #F2F2F2; border-top: 1px solid #ddd;">
+                <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: #333;">새 카테고리 추가</h4>
                 <form id="categoryForm" onsubmit="submitCategory(event)">
-                    <div class="form-row">
-                        <div class="form-group" style="flex: 0 0 200px;">
-                            <label class="required">이름</label>
-                            <input type="text" id="categoryName" placeholder="예: 전자부품" required>
+                    <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+                        <div style="flex: 0 0 200px;">
+                            <label
+                                style="display: block; margin-bottom: 5px; font-weight: 600; color: #333; font-size: 13px;">
+                                <span style="color: #C00000;">*</span> 이름
+                            </label>
+                            <input type="text" id="categoryName" placeholder="예: 전자부품" required
+                                style="width: 100%; padding: 6px 8px; border: 1px solid #D0D0D0; font-size: 13px;">
                         </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label>설명</label>
-                            <input type="text" id="categoryDescription" placeholder="예: 프로젝트 (필수)">
+                        <div style="flex: 1;">
+                            <label
+                                style="display: block; margin-bottom: 5px; font-weight: 600; color: #333; font-size: 13px;">설명</label>
+                            <input type="text" id="categoryDescription" placeholder="예: 프로젝트용 전자부품"
+                                style="width: 100%; padding: 6px 8px; border: 1px solid #D0D0D0; font-size: 13px;">
                         </div>
                     </div>
-                    <div
-                        style="margin-top: 10px; text-align: right; display: flex; gap: 10px; justify-content: flex-end;">
-                        <button type="button" class="btn btn-gray" onclick="closeCategoryModal()">닫기</button>
-                        <button type="submit" class="btn">추가</button>
+                    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                        <button type="button" class="btn btn-gray" onclick="closeCategoryModal()"
+                            style="padding: 6px 16px;">닫기</button>
+                        <button type="submit" class="btn"
+                            style="padding: 6px 16px; background: #4472C4; border: 1px solid #2E5C9A; color: white; font-weight: 600;">추가</button>
                     </div>
                 </form>
             </div>
@@ -560,8 +631,8 @@
             <div style="margin-bottom: 15px;">
                 <label style="display: block; margin-bottom: 5px; font-weight: bold;">파일명</label>
                 <input type="text" id="csvFileName"
-                       style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
-                       placeholder="예: 부품목록_2025-11">
+                    style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
+                    placeholder="예: 부품목록_2025-11">
             </div>
 
             <div style="margin-bottom: 15px;">
@@ -1021,7 +1092,8 @@
             style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 8px; width: 98%; max-width: 1800px; max-height: 95vh; display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
 
             <!-- 헤더 -->
-            <div style="padding: 20px; border-bottom: 2px solid #e0e0e0; display: flex; align-items: center; justify-content: space-between;">
+            <div
+                style="padding: 20px; border-bottom: 2px solid #e0e0e0; display: flex; align-items: center; justify-content: space-between;">
                 <h3 style="margin: 0; font-size: 22px;">문서 양식 에디터</h3>
                 <button type="button" class="btn btn-gray" onclick="closeTemplateEditor()">닫기 ✕</button>
             </div>
@@ -1034,13 +1106,13 @@
                     <div style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; font-weight: bold;">양식 이름:</label>
                         <input type="text" id="templateName" placeholder="예: 기본 견적서"
-                               style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
                     </div>
 
                     <div style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; font-weight: bold;">배경 이미지:</label>
                         <select id="backgroundImageSelect" onchange="handleBackgroundImageChange()"
-                                style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
                             <option value="">-- 배경 없음 --</option>
                         </select>
                     </div>
@@ -1049,19 +1121,22 @@
 
                     <h4>2. 표 설정</h4>
                     <p style="font-size: 13px; color: #666;">여러 개의 표를 추가할 수 있습니다.</p>
-                    <button onclick="enableTableDrawMode()" class="btn" style="width: 100%; margin-bottom: 10px;">📐 표 영역 그리기</button>
+                    <button onclick="enableTableDrawMode()" class="btn" style="width: 100%; margin-bottom: 10px;">📐 표
+                        영역 그리기</button>
 
                     <!-- 표 목록 -->
                     <div style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; font-weight: bold;">생성된 표 목록:</label>
-                        <div id="tablesList" style="max-height: 150px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 8px; background: white;">
+                        <div id="tablesList"
+                            style="max-height: 150px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 8px; background: white;">
                             <p style="color: #666; font-size: 12px;">생성된 표가 없습니다.</p>
                         </div>
                     </div>
 
                     <!-- 표 병합 버튼 -->
                     <div style="margin-bottom: 15px;">
-                        <button onclick="enableTableMergeMode()" class="btn btn-gray" style="width: 100%;">🔗 표 병합 (2개 선택)</button>
+                        <button onclick="enableTableMergeMode()" class="btn btn-gray" style="width: 100%;">🔗 표 병합 (2개
+                            선택)</button>
                     </div>
 
                     <div id="tableConfigPanel" style="display: none;">
@@ -1069,16 +1144,16 @@
                             <label style="display: block; margin-bottom: 5px; font-weight: bold;">표 위치:</label>
                             <div style="display: flex; gap: 10px;">
                                 <div style="flex: 1;">
-                                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 3px;">X 좌표</label>
-                                    <input type="number" id="tableX" min="0" max="794"
-                                           onchange="updateTablePosition()"
-                                           style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+                                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 3px;">X
+                                        좌표</label>
+                                    <input type="number" id="tableX" min="0" max="794" onchange="updateTablePosition()"
+                                        style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
                                 </div>
                                 <div style="flex: 1;">
-                                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 3px;">Y 좌표</label>
-                                    <input type="number" id="tableY" min="0" max="1123"
-                                           onchange="updateTablePosition()"
-                                           style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+                                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 3px;">Y
+                                        좌표</label>
+                                    <input type="number" id="tableY" min="0" max="1123" onchange="updateTablePosition()"
+                                        style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
                                 </div>
                             </div>
                         </div>
@@ -1087,30 +1162,31 @@
                             <label style="display: block; margin-bottom: 5px; font-weight: bold;">표 크기:</label>
                             <div style="display: flex; gap: 10px;">
                                 <div style="flex: 1;">
-                                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 3px;">너비 (W)</label>
-                                    <input type="number" id="tableWidth" min="50" max="794"
-                                           onchange="updateTableSize()"
-                                           style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+                                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 3px;">너비
+                                        (W)</label>
+                                    <input type="number" id="tableWidth" min="50" max="794" onchange="updateTableSize()"
+                                        style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
                                 </div>
                                 <div style="flex: 1;">
-                                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 3px;">높이 (H)</label>
+                                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 3px;">높이
+                                        (H)</label>
                                     <input type="number" id="tableHeight" min="50" max="1123"
-                                           onchange="updateTableSize()"
-                                           style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+                                        onchange="updateTableSize()"
+                                        style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
                                 </div>
                             </div>
                         </div>
 
                         <label style="display: block; margin-bottom: 5px; font-weight: bold;">표 방향:</label>
                         <select id="tableOrientation" onchange="updateTableOrientation(this.value)"
-                                style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px;">
+                            style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px;">
                             <option value="horizontal">가로형 (헤더 위)</option>
                             <option value="vertical">세로형 (헤더 왼쪽)</option>
                         </select>
 
                         <label style="display: block; margin-bottom: 5px; font-weight: bold;">행 높이:</label>
                         <input type="number" id="tableRowHeight" value="30" min="20" max="60"
-                               style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px;">
+                            style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px;">
 
                         <label style="display: block; margin-bottom: 5px; font-weight: bold;">컬럼 설정:</label>
                         <div id="columnsList" style="margin-bottom: 10px;">
@@ -1123,19 +1199,21 @@
 
                     <h4>3. 텍스트 추가</h4>
                     <p style="font-size: 13px; color: #666;">캔버스를 클릭하여 텍스트를 배치하세요.</p>
-                    <button onclick="enableTextAddMode()" class="btn" style="width: 100%; margin-bottom: 10px;">📝 텍스트 추가 모드</button>
+                    <button onclick="enableTextAddMode()" class="btn" style="width: 100%; margin-bottom: 10px;">📝 텍스트
+                        추가 모드</button>
 
                     <hr style="margin: 20px 0;">
 
                     <h4>4. 저장</h4>
-                    <button onclick="saveTemplate()" class="btn" style="width: 100%; background: #28a745; color: white;">💾 양식 저장</button>
+                    <button onclick="saveTemplate()" class="btn"
+                        style="width: 100%; background: #28a745; color: white;">💾 양식 저장</button>
                 </div>
 
                 <!-- 오른쪽 패널 (캔버스) -->
                 <div style="flex: 1; padding: 20px; overflow: auto; background: #f8f8f8;">
                     <div style="text-align: center;">
                         <canvas id="templateEditorCanvas"
-                                style="border: 1px solid #ccc; background: white; cursor: crosshair; max-width: 100%;">
+                            style="border: 1px solid #ccc; background: white; cursor: crosshair; max-width: 100%;">
                         </canvas>
                     </div>
                 </div>
@@ -1163,8 +1241,8 @@
                     <div style="margin-bottom: 20px;">
                         <label style="display: block; margin-bottom: 5px; font-weight: bold;">문서 이름</label>
                         <input type="text" id="generatedDocumentName"
-                               style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;"
-                               placeholder="예: 2025년 1월 부품 리스트">
+                            style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;"
+                            placeholder="예: 2025년 1월 부품 리스트">
                     </div>
 
                     <h4>표 데이터 입력</h4>
@@ -1173,7 +1251,8 @@
                     </div>
 
                     <div style="text-align: right; margin-top: 20px;">
-                        <button type="button" class="btn btn-gray" onclick="closeDocumentGenerator()" style="margin-right: 10px;">취소</button>
+                        <button type="button" class="btn btn-gray" onclick="closeDocumentGenerator()"
+                            style="margin-right: 10px;">취소</button>
                         <button type="button" class="btn" onclick="saveGeneratedDocument()">💾 문서 생성</button>
                     </div>
                 </div>
@@ -1183,7 +1262,7 @@
                     <h4 style="margin-top: 0;">미리보기</h4>
                     <div style="text-align: center;">
                         <canvas id="documentPreviewCanvas"
-                                style="border: 1px solid #ccc; background: white; max-width: 100%;">
+                            style="border: 1px solid #ccc; background: white; max-width: 100%;">
                         </canvas>
                     </div>
                 </div>
@@ -1206,8 +1285,7 @@
 
             <!-- 캔버스 -->
             <div style="overflow: auto; padding: 20px; text-align: center; background: #f8f8f8;">
-                <canvas id="documentViewCanvas"
-                        style="border: 1px solid #ccc; background: white; max-width: 100%;">
+                <canvas id="documentViewCanvas" style="border: 1px solid #ccc; background: white; max-width: 100%;">
                 </canvas>
             </div>
         </div>

@@ -230,6 +230,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     enableEnterKeySearch('usageSearchInput', searchUsage);
     enableEnterKeySearch('inventorySearchInput', searchInventory);
     enableEnterKeySearch('gridSearchInput', searchGrid);
+    enableEnterKeySearch('lowStockThreshold', loadLowStock);
 
     // 초기 카테고리 설정
     switchCategory('parts');
@@ -509,13 +510,15 @@ async function sortIncomingTable(column) {
         'part_number': 1,
         'part_name': 2,
         'description': 3,
-        'project_name': 4,
-        'incoming_quantity': 5,
-        'payment_method_name': 7,
-        'purchase_price': 8,
-        'purchase_date': 9,
-        'created_at': 10,
-        'note': 11
+        'incoming_quantity': 4,
+        'payment_method_name': 6,
+        'purchase_price': 7,
+        'purchase_date': 8,
+        'purchaser': 9,
+        'supplier': 10,
+        'project_name': 11,
+        'created_at': 12,
+        'note': 13
     };
     if (columnIndex[column] !== undefined && headers[columnIndex[column]]) {
         headers[columnIndex[column]].style.backgroundColor = '#e3f2fd';
@@ -550,7 +553,7 @@ async function displayIncomingList(incomingList) {
     const tbody = document.getElementById('incomingTableBody');
 
     if (incomingList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="14" style="text-align: center;">입고 내역이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" style="text-align: center;">입고 내역이 없습니다.</td></tr>';
         return;
     }
 
@@ -573,12 +576,14 @@ async function displayIncomingList(incomingList) {
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'partNumber', '${escapeHtml(incoming.partNumber || '')}')">${incoming.partNumber || '-'}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'partName', '${escapeHtml(incoming.partName)}')">${incoming.partName || '-'}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'description', '${escapeHtml(incoming.description || '')}')">${incoming.description || '-'}</td>
-                <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'projectName', '${escapeHtml(incoming.projectName || '')}')">${incoming.projectName || '-'}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'incomingQuantity', ${incoming.incomingQuantity})">${incoming.incomingQuantity}</td>
                 <td>${incoming.unit || '-'}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'paymentMethodId', ${incoming.paymentMethodId != null ? incoming.paymentMethodId : 'null'}, null, '${escapeHtml(incoming.paymentMethodName || '')}')">${incoming.paymentMethodName || '-'}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'purchasePrice', ${incoming.purchasePrice})">${formatNumber(incoming.purchasePrice)} 원</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'purchaseDate', '${incoming.purchaseDate}')">${formatDate(incoming.purchaseDate)}</td>
+                <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'purchaser', '${escapeHtml(incoming.purchaser || '')}')">${incoming.purchaser || '-'}</td>
+                <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'supplier', '${escapeHtml(incoming.supplier || '')}')">${incoming.supplier || '-'}</td>
+                <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'projectName', '${escapeHtml(incoming.projectName || '')}')">${incoming.projectName || '-'}</td>
                 <td>${formatDateTime(incoming.createdAt)}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'note', '${escapeHtml(incoming.note || '')}')">${incoming.note || '-'}</td>
                 <td><button class="btn-small" onclick="openImageModal(${incoming.incomingId})">🖼 사진${imageCount > 0 ? ' ' + imageCount + '개' : ''}</button></td>
@@ -1364,6 +1369,19 @@ function showMessage(text, type) {
     }, 3000);
 }
 
+// 검색 패널 토글 함수
+function toggleSearchPanel(panelId, buttonElement) {
+    const panel = document.getElementById(panelId);
+
+    if (panel.style.display === 'none' || panel.style.display === '') {
+        panel.style.display = 'block';
+        buttonElement.textContent = '검색 ▲';
+    } else {
+        panel.style.display = 'none';
+        buttonElement.textContent = '검색 ▼';
+    }
+}
+
 // 수량 입력 시 음수(-) 방지
 ['incomingQuantity', 'quantityUsed', 'lowStockThreshold'].forEach(id => {
     const input = document.getElementById(id);
@@ -1673,15 +1691,56 @@ async function loadImages(incomingId) {
             return;
         }
 
-        container.innerHTML = images.map(img => `
-            <div style="position: relative; border: 1px solid #ddd; padding: 5px;">
-                <img src="${img.imageUrl}" style="width: 100%; height: 150px; object-fit: cover; cursor: pointer;" onclick="window.open('${img.imageUrl}', '_blank')">
-                <div style="display: flex; gap: 5px; margin-top: 5px;">
-                    <button class="btn-small" style="flex: 1;" onclick="downloadImage('${img.imageUrl}', '${img.fileName}')">다운로드</button>
-                    <button class="btn-small" style="flex: 1; background-color: #dc3545;" onclick="deleteImage(${img.imageId})">삭제</button>
+        // 영수증과 나머지 이미지 분리
+        const receiptImages = images.filter(img => img.imageType === 'receipt');
+        const otherImages = images.filter(img => img.imageType !== 'receipt');
+
+        const renderImageCard = (img) => {
+            const typeLabel = img.imageType === 'receipt' ? '🧾 영수증' :
+                             img.imageType === 'delivery' ? '📦 택배' :
+                             img.imageType === 'part' ? '📷 부품' : '📄 기타';
+            const borderColor = img.imageType === 'receipt' ? '#ff9800' : '#ddd';
+            return `
+                <div style="position: relative; border: 2px solid ${borderColor}; padding: 5px; border-radius: 4px; min-width: 200px; flex-shrink: 0;">
+                    <div style="position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,0.9); padding: 3px 8px; border-radius: 3px; font-size: 11px; font-weight: bold; z-index: 1;">
+                        ${typeLabel}
+                    </div>
+                    <img src="${img.imageUrl}" style="width: 200px; height: 150px; object-fit: cover; cursor: pointer;" onclick="window.open('${img.imageUrl}', '_blank')">
+                    <div style="display: flex; gap: 5px; margin-top: 5px;">
+                        <button class="btn-small" style="flex: 1;" onclick="downloadImage('${img.imageUrl}', '${img.fileName}')">다운로드</button>
+                        <button class="btn-small" style="flex: 1; background-color: #dc3545;" onclick="deleteImage(${img.imageId})">삭제</button>
+                    </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        };
+
+        let html = '';
+
+        // 나머지 사진 목록 (영수증 제외)
+        if (otherImages.length > 0) {
+            html += `
+                <div style="margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 10px; padding-bottom: 5px; border-bottom: 2px solid #4CAF50;">📷 부품/택배/기타 사진</h4>
+                    <div style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px;">
+                        ${otherImages.map(renderImageCard).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // 영수증 목록
+        if (receiptImages.length > 0) {
+            html += `
+                <div style="margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 10px; padding-bottom: 5px; border-bottom: 2px solid #ff9800;">🧾 영수증</h4>
+                    <div style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px;">
+                        ${receiptImages.map(renderImageCard).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html;
     } catch (error) {
         showMessage('이미지 조회 오류: ' + error.message, 'error');
     }
@@ -1699,12 +1758,13 @@ async function uploadImageFromModal() {
     // 여러 파일 업로드
     let successCount = 0;
     let failCount = 0;
+    const imageType = document.getElementById('imageTypeSelect').value || 'part';
 
     for (let i = 0; i < fileInput.files.length; i++) {
         const formData = new FormData();
         formData.append('file', fileInput.files[i]);
         formData.append('incomingId', currentIncomingIdForImage);
-        formData.append('imageType', 'part');
+        formData.append('imageType', imageType);
 
         try {
             const response = await fetch('/livewalk/part-images/upload', {
@@ -2343,13 +2403,7 @@ function addBulkRow() {
         </td>
         <td><input type="text" class="bulk-input bulk-part-number" placeholder="부품번호" required></td>
         <td><input type="text" class="bulk-input bulk-part-name" placeholder="부품명"></td>
-        <td><input type="text" class="bulk-input bulk-cabinet-location" placeholder="예: A-1" maxlength="10"></td>
-        <td style="padding: 2px;">
-            <div style="display: flex; gap: 3px; align-items: center;">
-                <input type="text" class="bulk-input bulk-map-location" placeholder="예: 8-A" maxlength="10" style="flex: 1; min-width: 50px;">
-                <button type="button" onclick="openLocationPicker(this)" class="btn-small" style="padding: 3px 8px; font-size: 11px; white-space: nowrap;">배치</button>
-            </div>
-        </td>
+        <td><input type="text" class="bulk-input bulk-description" placeholder="설명"></td>
         <td><input type="number" class="bulk-input bulk-quantity" placeholder="수량" min="1"></td>
         <td><input type="text" class="bulk-input bulk-unit" value="EA"></td>
         <td>
@@ -2359,11 +2413,19 @@ function addBulkRow() {
         </td>
         <td><input type="number" class="bulk-input bulk-price" placeholder="금액" min="0" step="0.01"></td>
         <td><input type="date" class="bulk-input bulk-date"></td>
-        <td><input type="text" class="bulk-input bulk-description" placeholder="설명"></td>
+        <td><input type="text" class="bulk-input bulk-purchaser" placeholder="구매업체"></td>
+        <td><input type="text" class="bulk-input bulk-supplier" placeholder="공급업체"></td>
         <td>
             <select class="bulk-input bulk-project-name">
                 <option value="">선택</option>
             </select>
+        </td>
+        <td><input type="text" class="bulk-input bulk-cabinet-location" placeholder="예: A-1" maxlength="10"></td>
+        <td style="padding: 2px;">
+            <div style="display: flex; gap: 3px; align-items: center;">
+                <input type="text" class="bulk-input bulk-map-location" placeholder="예: 8-A" maxlength="10" style="flex: 1; min-width: 50px;">
+                <button type="button" onclick="openLocationPicker(this)" class="btn-small" style="padding: 3px 8px; font-size: 11px; white-space: nowrap;">배치</button>
+            </div>
         </td>
         <td><input type="text" class="bulk-input bulk-note" placeholder="비고(실제 파트넘버)"></td>
     `;
@@ -2380,6 +2442,27 @@ function addBulkRow() {
     loadCategoriesForBulk();
     loadPaymentMethodsForBulk();
     loadProjectsForBulk();
+
+    // 일괄 선택된 값들이 있으면 새 행에 자동 적용
+    const bulkCategoryValue = document.getElementById('bulkCategorySelect')?.value;
+    const bulkPaymentMethodValue = document.getElementById('bulkPaymentMethodSelect')?.value;
+    const bulkProjectValue = document.getElementById('bulkProjectSelect')?.value;
+
+    // 선택 값들을 설정하기 전에 드롭다운이 로드될 때까지 잠시 대기
+    setTimeout(() => {
+        if (bulkCategoryValue) {
+            const categorySelect = tr.querySelector('.bulk-category');
+            if (categorySelect) categorySelect.value = bulkCategoryValue;
+        }
+        if (bulkPaymentMethodValue) {
+            const paymentMethodSelect = tr.querySelector('.bulk-payment-method');
+            if (paymentMethodSelect) paymentMethodSelect.value = bulkPaymentMethodValue;
+        }
+        if (bulkProjectValue) {
+            const projectSelect = tr.querySelector('.bulk-project-name');
+            if (projectSelect) projectSelect.value = bulkProjectValue;
+        }
+    }, 100);
 }
 
 // 행 삭제 (마지막 행)
@@ -2447,6 +2530,27 @@ async function loadPaymentMethodsForBulk() {
             });
         }
     });
+
+    // 일괄 결제수단 선택 드롭다운 채우기
+    const bulkPaymentMethodSelect = document.getElementById('bulkPaymentMethodSelect');
+    if (bulkPaymentMethodSelect) {
+        const currentValue = bulkPaymentMethodSelect.value;
+        // 기존 옵션 제거 (첫 번째 "개별 선택" 제외)
+        while (bulkPaymentMethodSelect.children.length > 1) {
+            bulkPaymentMethodSelect.removeChild(bulkPaymentMethodSelect.lastChild);
+        }
+        // 새로운 옵션 추가
+        paymentMethodsData.forEach(method => {
+            const option = document.createElement('option');
+            option.value = method.categoryId;
+            option.textContent = method.categoryName;
+            bulkPaymentMethodSelect.appendChild(option);
+        });
+        // 이전 선택 값이 있으면 복원
+        if (currentValue && bulkPaymentMethodSelect.querySelector(`option[value="${currentValue}"]`)) {
+            bulkPaymentMethodSelect.value = currentValue;
+        }
+    }
 }
 
 async function loadProjectsForBulk() {
@@ -2464,6 +2568,27 @@ async function loadProjectsForBulk() {
             });
         }
     });
+
+    // 일괄 프로젝트 선택 드롭다운 채우기
+    const bulkProjectSelect = document.getElementById('bulkProjectSelect');
+    if (bulkProjectSelect) {
+        const currentValue = bulkProjectSelect.value;
+        // 기존 옵션 제거 (첫 번째 "개별 선택" 제외)
+        while (bulkProjectSelect.children.length > 1) {
+            bulkProjectSelect.removeChild(bulkProjectSelect.lastChild);
+        }
+        // 새로운 옵션 추가
+        projectsData.forEach(project => {
+            const option = document.createElement('option');
+            option.value = project.categoryName;
+            option.textContent = project.categoryName;
+            bulkProjectSelect.appendChild(option);
+        });
+        // 이전 선택 값이 있으면 복원
+        if (currentValue && bulkProjectSelect.querySelector(`option[value="${currentValue}"]`)) {
+            bulkProjectSelect.value = currentValue;
+        }
+    }
 }
 
 // 일괄 카테고리 적용
@@ -2480,6 +2605,36 @@ function applyBulkCategory() {
     });
 
     showMessage('모든 행에 카테고리가 일괄 적용되었습니다.', 'success');
+}
+
+function applyBulkPaymentMethod() {
+    const bulkPaymentMethodId = document.getElementById('bulkPaymentMethodSelect').value;
+
+    if (!bulkPaymentMethodId) {
+        return; // "개별 선택"인 경우 아무것도 하지 않음
+    }
+
+    // 모든 행의 결제수단을 선택된 값으로 변경
+    document.querySelectorAll('.bulk-payment-method').forEach(select => {
+        select.value = bulkPaymentMethodId;
+    });
+
+    showMessage('모든 행에 결제수단이 일괄 적용되었습니다.', 'success');
+}
+
+function applyBulkProject() {
+    const bulkProject = document.getElementById('bulkProjectSelect').value;
+
+    if (!bulkProject) {
+        return; // "개별 선택"인 경우 아무것도 하지 않음
+    }
+
+    // 모든 행의 프로젝트를 선택된 값으로 변경
+    document.querySelectorAll('.bulk-project-name').forEach(select => {
+        select.value = bulkProject;
+    });
+
+    showMessage('모든 행에 프로젝트가 일괄 적용되었습니다.', 'success');
 }
 
 // 테이블 초기화
@@ -2536,9 +2691,11 @@ async function submitBulkInsert() {
         const date = row.querySelector('.bulk-date').value;
         const description = row.querySelector('.bulk-description').value.trim();
         const projectName = row.querySelector('.bulk-project-name').value.trim();
+        const supplier = row.querySelector('.bulk-supplier').value.trim();
+        const purchaser = row.querySelector('.bulk-purchaser').value.trim();
         const note = row.querySelector('.bulk-note').value.trim();
 
-        console.log('행 데이터:', {partNumber, categoryId, partName, cabinetLocation, mapLocation, quantity, paymentMethodId, price, date, description, projectName});
+        console.log('행 데이터:', {partNumber, categoryId, partName, cabinetLocation, mapLocation, quantity, paymentMethodId, price, date, description, projectName, supplier, purchaser});
 
         // 필수 항목: 부품번호, 카테고리, 부품명, 수량, 금액, 구매일자, 설명
         if (partNumber && categoryId && paymentMethodId && partName && quantity && price && date && description) {
@@ -2556,6 +2713,8 @@ async function submitBulkInsert() {
                 purchaseDate: date,
                 description: description,
                 projectName: projectName || null,
+                supplier: supplier || null,
+                purchaser: purchaser || null,
                 note: note,
                 createdBy: 'system'
             };

@@ -37,6 +37,7 @@ public class PartIncomingDTO {
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate purchaseDate;
     private String supplier;
+    private String purchaser;
     private String invoiceNumber;
 
     // 기타

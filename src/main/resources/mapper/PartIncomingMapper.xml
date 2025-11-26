@@ -23,6 +23,7 @@
         <result property="originalPrice" column="original_price"/>
         <result property="purchaseDate" column="purchase_date"/>
         <result property="supplier" column="supplier"/>
+        <result property="purchaser" column="purchaser"/>
         <result property="invoiceNumber" column="invoice_number"/>
         <result property="note" column="note"/>
         <result property="createdBy" column="created_by"/>
@@ -46,6 +47,7 @@
             original_price,
             purchase_date,
             supplier,
+            purchaser,
             invoice_number,
             note,
             created_by
@@ -64,6 +66,7 @@
             #{originalPrice},
             #{purchaseDate},
             #{supplier},
+            #{purchaser},
             #{invoiceNumber},
             #{note},
             #{createdBy}
@@ -271,6 +274,7 @@
             original_price = #{originalPrice},
             purchase_date = #{purchaseDate},
             supplier = #{supplier},
+            purchaser = #{purchaser},
             invoice_number = #{invoiceNumber},
             note = #{note}
         WHERE incoming_id = #{incomingId}
