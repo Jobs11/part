@@ -26,6 +26,8 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class PartIncomingController {
 
+    // 한글 주석 테스트: 주석이 제대로 보이는지 확인합니다.
+
     private final PartIncomingService partIncomingService;
 
     /**
