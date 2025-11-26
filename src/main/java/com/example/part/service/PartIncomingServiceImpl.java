@@ -282,9 +282,18 @@ public class PartIncomingServiceImpl implements PartIncomingService {
 
             String[] parts = normalized.split("-");
 
-            locationDTO.setPosX(parts[0]);
+            String posX = parts[0];
+            Integer posY = Integer.parseInt(parts[1]);
 
-            locationDTO.setPosY(Integer.parseInt(parts[1]));
+            PartLocationDTO occupied = partLocationService.getLocationByCabinet(posX, posY);
+            if (occupied != null && !partNumber.equals(occupied.getPartNumber())) {
+                throw new IllegalArgumentException(String.format("캐비넷 %s-%s은 이미 부품 %s에 할당되어 있습니다.", posX, posY,
+                        occupied.getPartNumber()));
+            }
+
+            locationDTO.setPosX(posX);
+
+            locationDTO.setPosY(posY);
 
         }
 

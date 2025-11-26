@@ -31,6 +31,15 @@
         SELECT * FROM part_location WHERE part_number = #{partNumber} LIMIT 1
     </select>
 
+    <!-- 캐비넷 위치 기준 조회 -->
+    <select id="findByCabinetPosition" resultMap="partLocationResultMap">
+        SELECT *
+        FROM part_location
+        WHERE pos_x = #{posX}
+          AND pos_y = #{posY}
+        LIMIT 1
+    </select>
+
     <!-- 등록 (INSERT) -->
     <insert id="insertLocation" parameterType="com.example.part.dto.PartLocationDTO" useGeneratedKeys="true" keyProperty="locationId">
         INSERT INTO part_location (location_code, part_number, part_name, pos_x, pos_y, note)

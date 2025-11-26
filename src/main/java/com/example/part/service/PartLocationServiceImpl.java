@@ -31,6 +31,11 @@ public class PartLocationServiceImpl implements PartLocationService {
     }
 
     @Override
+    public PartLocationDTO getLocationByCabinet(String posX, Integer posY) {
+        return partLocationMapper.findByCabinetPosition(posX, posY);
+    }
+
+    @Override
     public boolean saveOrUpdate(PartLocationDTO dto) {
         PartLocationDTO existing = partLocationMapper.findByCode(dto.getLocationCode());
         if (existing == null) {
