@@ -377,21 +377,36 @@
             </div>
         </div>
 
-        <!-- 문서 관리 섹션 -->
+        <!-- 문서 양식 에디터 섹션 -->
         <div class="section docs-section" style="display: none;">
             <div class="section-header">
-                <h2>문서 양식 생성</h2>
-                <button onclick="openDocumentCreateForm()" class="btn">📄 새 양식 생성</button>
+                <h2>문서 양식 에디터</h2>
+                <button onclick="openTemplateEditor()" class="btn">📝 새 양식 만들기</button>
             </div>
-            <p style="color: #666; font-size: 14px;">이미지나 PDF를 업로드하여 문서 양식을 생성할 수 있습니다.</p>
+            <p style="color: #666; font-size: 14px;">배경 이미지를 선택하고 표와 텍스트를 배치하여 양식을 만드세요.</p>
+
+            <!-- 저장된 템플릿 목록 -->
+            <div id="templateListContainer" style="margin-top: 20px;">
+                <h3>저장된 양식 목록</h3>
+                <div id="templateList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
+                    <!-- JavaScript로 동적 생성 -->
+                </div>
+            </div>
+
         </div>
 
+        <!-- 생성된 문서 목록 섹션 -->
         <div class="section docs-section" style="display: none;">
             <div class="section-header">
-                <h2>생성된 문서 양식 목록</h2>
+                <h2>생성된 문서</h2>
             </div>
-            <div id="documentsListContainer">
-                <!-- JavaScript에서 동적으로 생성됨 -->
+            <p style="color: #666; font-size: 14px;">양식으로 생성된 문서를 확인하고 관리하세요.</p>
+
+            <!-- 문서 목록 -->
+            <div id="generatedDocumentsContainer" style="margin-top: 20px;">
+                <div id="generatedDocumentsList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;">
+                    <!-- JavaScript로 동적 생성 -->
+                </div>
             </div>
         </div>
 
@@ -400,6 +415,7 @@
     </div>
 
     <script src="js/main.js?v=32"></script>
+    <script src="js/template-editor.js"></script>
     <script>
         // 관리자 권한 확인 및 관리자 페이지 버튼 표시
         async function checkAdminRole() {
@@ -540,6 +556,13 @@
         <div
             style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 5px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto;">
             <h3 style="margin-bottom: 15px;">CSV 다운로드 - 컬럼 선택</h3>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">파일명</label>
+                <input type="text" id="csvFileName"
+                       style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
+                       placeholder="예: 부품목록_2025-11">
+            </div>
 
             <div style="margin-bottom: 15px;">
                 <button onclick="selectAllColumns()" class="btn btn-small" style="margin-right: 5px;">전체 선택</button>
@@ -987,6 +1010,205 @@
                 <div style="overflow-x: auto;">
                     <div id="cabinetGridContainer" style="display: inline-block; min-width: 100%;"></div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 템플릿 에디터 모달 -->
+    <div id="templateEditorModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000;">
+        <div
+            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 8px; width: 98%; max-width: 1800px; max-height: 95vh; display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+
+            <!-- 헤더 -->
+            <div style="padding: 20px; border-bottom: 2px solid #e0e0e0; display: flex; align-items: center; justify-content: space-between;">
+                <h3 style="margin: 0; font-size: 22px;">문서 양식 에디터</h3>
+                <button type="button" class="btn btn-gray" onclick="closeTemplateEditor()">닫기 ✕</button>
+            </div>
+
+            <!-- 본문 -->
+            <div style="display: flex; flex: 1; overflow: hidden;">
+                <!-- 왼쪽 패널 (설정) -->
+                <div style="width: 350px; padding: 20px; border-right: 1px solid #ddd; overflow-y: auto;">
+                    <h4>1. 기본 정보</h4>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">양식 이름:</label>
+                        <input type="text" id="templateName" placeholder="예: 기본 견적서"
+                               style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">배경 이미지:</label>
+                        <select id="backgroundImageSelect" onchange="handleBackgroundImageChange()"
+                                style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="">-- 배경 없음 --</option>
+                        </select>
+                    </div>
+
+                    <hr style="margin: 20px 0;">
+
+                    <h4>2. 표 설정</h4>
+                    <p style="font-size: 13px; color: #666;">여러 개의 표를 추가할 수 있습니다.</p>
+                    <button onclick="enableTableDrawMode()" class="btn" style="width: 100%; margin-bottom: 10px;">📐 표 영역 그리기</button>
+
+                    <!-- 표 목록 -->
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">생성된 표 목록:</label>
+                        <div id="tablesList" style="max-height: 150px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 8px; background: white;">
+                            <p style="color: #666; font-size: 12px;">생성된 표가 없습니다.</p>
+                        </div>
+                    </div>
+
+                    <!-- 표 병합 버튼 -->
+                    <div style="margin-bottom: 15px;">
+                        <button onclick="enableTableMergeMode()" class="btn btn-gray" style="width: 100%;">🔗 표 병합 (2개 선택)</button>
+                    </div>
+
+                    <div id="tableConfigPanel" style="display: none;">
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">표 위치:</label>
+                            <div style="display: flex; gap: 10px;">
+                                <div style="flex: 1;">
+                                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 3px;">X 좌표</label>
+                                    <input type="number" id="tableX" min="0" max="794"
+                                           onchange="updateTablePosition()"
+                                           style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                                <div style="flex: 1;">
+                                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 3px;">Y 좌표</label>
+                                    <input type="number" id="tableY" min="0" max="1123"
+                                           onchange="updateTablePosition()"
+                                           style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">표 크기:</label>
+                            <div style="display: flex; gap: 10px;">
+                                <div style="flex: 1;">
+                                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 3px;">너비 (W)</label>
+                                    <input type="number" id="tableWidth" min="50" max="794"
+                                           onchange="updateTableSize()"
+                                           style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                                <div style="flex: 1;">
+                                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 3px;">높이 (H)</label>
+                                    <input type="number" id="tableHeight" min="50" max="1123"
+                                           onchange="updateTableSize()"
+                                           style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">표 방향:</label>
+                        <select id="tableOrientation" onchange="updateTableOrientation(this.value)"
+                                style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px;">
+                            <option value="horizontal">가로형 (헤더 위)</option>
+                            <option value="vertical">세로형 (헤더 왼쪽)</option>
+                        </select>
+
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">행 높이:</label>
+                        <input type="number" id="tableRowHeight" value="30" min="20" max="60"
+                               style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px;">
+
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">컬럼 설정:</label>
+                        <div id="columnsList" style="margin-bottom: 10px;">
+                            <!-- 컬럼 목록 -->
+                        </div>
+                        <button onclick="addColumn()" class="btn btn-gray" style="width: 100%;">+ 컬럼 추가</button>
+                    </div>
+
+                    <hr style="margin: 20px 0;">
+
+                    <h4>3. 텍스트 추가</h4>
+                    <p style="font-size: 13px; color: #666;">캔버스를 클릭하여 텍스트를 배치하세요.</p>
+                    <button onclick="enableTextAddMode()" class="btn" style="width: 100%; margin-bottom: 10px;">📝 텍스트 추가 모드</button>
+
+                    <hr style="margin: 20px 0;">
+
+                    <h4>4. 저장</h4>
+                    <button onclick="saveTemplate()" class="btn" style="width: 100%; background: #28a745; color: white;">💾 양식 저장</button>
+                </div>
+
+                <!-- 오른쪽 패널 (캔버스) -->
+                <div style="flex: 1; padding: 20px; overflow: auto; background: #f8f8f8;">
+                    <div style="text-align: center;">
+                        <canvas id="templateEditorCanvas"
+                                style="border: 1px solid #ccc; background: white; cursor: crosshair; max-width: 100%;">
+                        </canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 문서 생성 모달 -->
+    <div id="documentGeneratorModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000;">
+        <div
+            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 8px; width: 95%; max-width: 1400px; max-height: 95vh; display: flex; flex-direction: column;">
+            <!-- 헤더 -->
+            <div style="padding: 20px; border-bottom: 2px solid #e0e0e0;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <h3 style="margin: 0;">문서 생성</h3>
+                    <button type="button" class="btn btn-gray" onclick="closeDocumentGenerator()">닫기 ✕</button>
+                </div>
+            </div>
+
+            <!-- 컨텐츠 - 좌우 분할 -->
+            <div style="overflow: hidden; display: flex; flex: 1;">
+                <!-- 왼쪽 패널 (데이터 입력) -->
+                <div style="width: 450px; padding: 20px; overflow-y: auto; border-right: 2px solid #e0e0e0;">
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">문서 이름</label>
+                        <input type="text" id="generatedDocumentName"
+                               style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;"
+                               placeholder="예: 2025년 1월 부품 리스트">
+                    </div>
+
+                    <h4>표 데이터 입력</h4>
+                    <div id="documentTableContainer">
+                        <!-- JavaScript로 동적 생성 -->
+                    </div>
+
+                    <div style="text-align: right; margin-top: 20px;">
+                        <button type="button" class="btn btn-gray" onclick="closeDocumentGenerator()" style="margin-right: 10px;">취소</button>
+                        <button type="button" class="btn" onclick="saveGeneratedDocument()">💾 문서 생성</button>
+                    </div>
+                </div>
+
+                <!-- 오른쪽 패널 (미리보기) -->
+                <div style="flex: 1; padding: 20px; overflow: auto; background: #f8f8f8;">
+                    <h4 style="margin-top: 0;">미리보기</h4>
+                    <div style="text-align: center;">
+                        <canvas id="documentPreviewCanvas"
+                                style="border: 1px solid #ccc; background: white; max-width: 100%;">
+                        </canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 문서 보기 모달 -->
+    <div id="documentViewModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000;">
+        <div
+            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 8px; width: 90%; max-width: 850px; max-height: 95vh; display: flex; flex-direction: column;">
+            <!-- 헤더 -->
+            <div style="padding: 20px; border-bottom: 2px solid #e0e0e0;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <h3 style="margin: 0;">생성된 문서</h3>
+                    <button type="button" class="btn btn-gray" onclick="closeDocumentView()">닫기 ✕</button>
+                </div>
+            </div>
+
+            <!-- 캔버스 -->
+            <div style="overflow: auto; padding: 20px; text-align: center; background: #f8f8f8;">
+                <canvas id="documentViewCanvas"
+                        style="border: 1px solid #ccc; background: white; max-width: 100%;">
+                </canvas>
             </div>
         </div>
     </div>

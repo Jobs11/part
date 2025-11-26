@@ -2713,6 +2713,18 @@ function openCsvColumnModal(csvType, data, allColumns) {
     currentCsvData = data;
     currentCsvColumns = allColumns;
 
+    // 기본 파일명 설정
+    const today = new Date().toISOString().split('T')[0];
+    let defaultFileName = '';
+    if (csvType === 'incoming') {
+        defaultFileName = `입고목록_${today}`;
+    } else if (csvType === 'usage') {
+        defaultFileName = `출고목록_${today}`;
+    } else if (csvType === 'inventory') {
+        defaultFileName = `재고목록_${today}`;
+    }
+    document.getElementById('csvFileName').value = defaultFileName;
+
     const columnList = document.getElementById('csvColumnList');
     columnList.innerHTML = '';
 
@@ -2784,22 +2796,17 @@ function confirmCsvDownload() {
     });
 
     const csvContent = convertToCSV(selectedColumns, filteredData);
-    const today = new Date().toISOString().split('T')[0];
 
-    let filename = '';
-    switch (currentCsvType) {
-        case 'incoming':
-            filename = `입고리스트_${today}.csv`;
-            break;
-        case 'inventory':
-            filename = `재고현황_${today}.csv`;
-            break;
-        case 'lowstock':
-            filename = `재고부족_${today}.csv`;
-            break;
-        case 'usage':
-            filename = `출고내역_${today}.csv`;
-            break;
+    // 사용자가 입력한 파일명 사용
+    let filename = document.getElementById('csvFileName').value.trim();
+    if (!filename) {
+        showMessage('파일명을 입력하세요.', 'error');
+        return;
+    }
+
+    // .csv 확장자가 없으면 추가
+    if (!filename.endsWith('.csv')) {
+        filename += '.csv';
     }
 
     downloadCSV(filename, csvContent);
@@ -4555,6 +4562,16 @@ function switchCategory(category) {
 
         // 문서 목록 로드
         loadAllDocuments();
+
+        // 템플릿 목록 로드
+        if (typeof loadTemplateList === 'function') {
+            loadTemplateList();
+        }
+
+        // 생성된 문서 목록 로드
+        if (typeof loadGeneratedDocuments === 'function') {
+            loadGeneratedDocuments();
+        }
     }
 }
 
@@ -6129,3 +6146,4 @@ function closeCabinetGrid() {
     document.getElementById('cabinetGridModal').style.display = 'none';
     document.getElementById('cabinetGridContainer').innerHTML = '';
 }
+

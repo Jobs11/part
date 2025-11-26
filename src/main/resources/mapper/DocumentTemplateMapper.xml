@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.part.mapper.DocumentTemplateMapper">
+
+    <!-- ResultMap -->
+    <resultMap id="templateResultMap" type="com.example.part.dto.DocumentTemplateDTO">
+        <id property="templateId" column="template_id"/>
+        <result property="templateName" column="template_name"/>
+        <result property="backgroundImageId" column="background_image_id"/>
+        <result property="tableConfig" column="table_config"/>
+        <result property="fixedTexts" column="fixed_texts"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <!-- 전체 템플릿 조회 -->
+    <select id="selectAllTemplates" resultMap="templateResultMap">
+        SELECT *
+        FROM document_template
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- ID로 템플릿 조회 -->
+    <select id="findById" resultMap="templateResultMap">
+        SELECT *
+        FROM document_template
+        WHERE template_id = #{templateId}
+    </select>
+
+    <!-- 템플릿 저장 -->
+    <insert id="insertTemplate" parameterType="com.example.part.dto.DocumentTemplateDTO"
+            useGeneratedKeys="true" keyProperty="templateId">
+        INSERT INTO document_template (
+            template_name,
+            background_image_id,
+            table_config,
+            fixed_texts,
+            created_by
+        ) VALUES (
+            #{templateName},
+            #{backgroundImageId},
+            #{tableConfig},
+            #{fixedTexts},
+            #{createdBy}
+        )
+    </insert>
+
+    <!-- 템플릿 수정 -->
+    <update id="updateTemplate" parameterType="com.example.part.dto.DocumentTemplateDTO">
+        UPDATE document_template
+        SET
+            template_name = #{templateName},
+            background_image_id = #{backgroundImageId},
+            table_config = #{tableConfig},
+            fixed_texts = #{fixedTexts}
+        WHERE template_id = #{templateId}
+    </update>
+
+    <!-- 템플릿 삭제 -->
+    <delete id="deleteTemplate">
+        DELETE FROM document_template
+        WHERE template_id = #{templateId}
+    </delete>
+
+</mapper>

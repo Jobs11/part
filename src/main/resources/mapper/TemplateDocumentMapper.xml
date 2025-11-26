@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.part.mapper.TemplateDocumentMapper">
+
+    <!-- ResultMap -->
+    <resultMap id="documentResultMap" type="com.example.part.dto.TemplateDocumentDTO">
+        <id property="documentId" column="document_id"/>
+        <result property="templateId" column="template_id"/>
+        <result property="documentName" column="document_name"/>
+        <result property="tableData" column="table_data"/>
+        <result property="generatedBy" column="generated_by"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="templateName" column="template_name"/>
+    </resultMap>
+
+    <!-- 전체 문서 조회 (템플릿명 포함) -->
+    <select id="selectAllDocuments" resultMap="documentResultMap">
+        SELECT
+            gd.*,
+            dt.template_name
+        FROM generated_document gd
+        LEFT JOIN document_template dt ON gd.template_id = dt.template_id
+        ORDER BY gd.created_at DESC
+    </select>
+
+    <!-- ID로 문서 조회 -->
+    <select id="findById" resultMap="documentResultMap">
+        SELECT
+            gd.*,
+            dt.template_name
+        FROM generated_document gd
+        LEFT JOIN document_template dt ON gd.template_id = dt.template_id
+        WHERE gd.document_id = #{documentId}
+    </select>
+
+    <!-- 문서 저장 -->
+    <insert id="insertDocument" parameterType="com.example.part.dto.TemplateDocumentDTO"
+            useGeneratedKeys="true" keyProperty="documentId">
+        INSERT INTO generated_document (
+            template_id,
+            document_name,
+            table_data,
+            generated_by
+        ) VALUES (
+            #{templateId},
+            #{documentName},
+            #{tableData},
+            #{generatedBy}
+        )
+    </insert>
+
+    <!-- 문서 삭제 -->
+    <delete id="deleteDocument">
+        DELETE FROM generated_document
+        WHERE document_id = #{documentId}
+    </delete>
+
+</mapper>

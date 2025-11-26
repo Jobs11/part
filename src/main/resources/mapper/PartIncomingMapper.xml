@@ -353,6 +353,8 @@
             AND (
                 pi.part_number LIKE CONCAT('%', #{keyword}, '%')
                 OR pi.part_name LIKE CONCAT('%', #{keyword}, '%')
+                OR pi.description LIKE CONCAT('%', #{keyword}, '%')
+                OR pi.project_name LIKE CONCAT('%', #{keyword}, '%')
                 OR c.category_name LIKE CONCAT('%', #{keyword}, '%')
                 OR pm.category_name LIKE CONCAT('%', #{keyword}, '%')
             )
@@ -365,6 +367,8 @@
             AND (
                 pi.part_number LIKE CONCAT('%', #{kw}, '%')
                 OR pi.part_name LIKE CONCAT('%', #{kw}, '%')
+                OR pi.description LIKE CONCAT('%', #{kw}, '%')
+                OR pi.project_name LIKE CONCAT('%', #{kw}, '%')
                 OR c.category_name LIKE CONCAT('%', #{kw}, '%')
                 OR pm.category_name LIKE CONCAT('%', #{kw}, '%')
             )
@@ -377,6 +381,8 @@
             AND (
                 COALESCE(pi.part_number, '') NOT LIKE CONCAT('%', #{kw}, '%')
                 AND COALESCE(pi.part_name, '') NOT LIKE CONCAT('%', #{kw}, '%')
+                AND COALESCE(pi.description, '') NOT LIKE CONCAT('%', #{kw}, '%')
+                AND COALESCE(pi.project_name, '') NOT LIKE CONCAT('%', #{kw}, '%')
                 AND COALESCE(c.category_name, '') NOT LIKE CONCAT('%', #{kw}, '%')
                 AND COALESCE(pm.category_name, '') NOT LIKE CONCAT('%', #{kw}, '%')
             )

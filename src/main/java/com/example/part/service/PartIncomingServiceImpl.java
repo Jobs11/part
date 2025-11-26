@@ -445,6 +445,10 @@ public class PartIncomingServiceImpl implements PartIncomingService {
 
                 return "pi.description";
 
+            case "project_name":
+
+                return "pi.project_name";
+
             case "note":
 
                 return "pi.note";
