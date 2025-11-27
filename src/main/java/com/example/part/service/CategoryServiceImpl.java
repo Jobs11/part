@@ -72,6 +72,16 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Transactional
     public void createCategory(CategoryDTO categoryDTO) {
+        // 중복 체크: 같은 이름과 설명을 가진 카테고리가 이미 있는지 확인
+        CategoryDTO existingCategory = categoryMapper.findByNameAndDescription(
+                categoryDTO.getCategoryName(),
+                categoryDTO.getDescription()
+        );
+
+        if (existingCategory != null) {
+            throw new RuntimeException("이미 동일한 이름과 설명을 가진 카테고리가 존재합니다.");
+        }
+
         int result = categoryMapper.insertCategory(categoryDTO);
         if (result == 0) {
             throw new RuntimeException("카테고리 등록에 실패했습니다.");
@@ -89,6 +99,17 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Transactional
     public void updateCategory(CategoryDTO categoryDTO) {
+        // 중복 체크: 다른 카테고리가 같은 이름과 설명을 가지고 있는지 확인
+        CategoryDTO existingCategory = categoryMapper.findByNameAndDescription(
+                categoryDTO.getCategoryName(),
+                categoryDTO.getDescription()
+        );
+
+        // 자기 자신이 아닌 다른 카테고리가 이미 있다면 오류
+        if (existingCategory != null && !existingCategory.getCategoryId().equals(categoryDTO.getCategoryId())) {
+            throw new RuntimeException("이미 동일한 이름과 설명을 가진 카테고리가 존재합니다.");
+        }
+
         int result = categoryMapper.updateCategory(categoryDTO);
         if (result == 0) {
             throw new RuntimeException("카테고리 수정에 실패했습니다.");

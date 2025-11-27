@@ -25,6 +25,10 @@ public interface CategoryMapper {
     // description 따른 카테고리 조회
     List<CategoryDTO> findByDescription(@Param("description") String description);
 
+    // 카테고리 이름과 설명으로 조회 (중복 체크용)
+    CategoryDTO findByNameAndDescription(@Param("categoryName") String categoryName,
+                                        @Param("description") String description);
+
     // 카테고리 등록
     int insertCategory(CategoryDTO categoryDTO);
 

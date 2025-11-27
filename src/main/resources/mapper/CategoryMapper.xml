@@ -56,6 +56,14 @@
         ORDER BY category_name ASC
     </select>
 
+    <!-- 카테고리 이름과 설명으로 조회 (중복 체크용) -->
+    <select id="findByNameAndDescription" resultMap="categoryResultMap">
+        SELECT *
+        FROM category
+        WHERE category_name = #{categoryName}
+        AND description = #{description}
+    </select>
+
     <!-- ✅ 카테고리 등록 -->
     <insert id="insertCategory" parameterType="com.example.part.dto.CategoryDTO">
         INSERT INTO category (

@@ -82,7 +82,7 @@
         FROM part_incoming pi
         LEFT JOIN category c ON pi.category_id = c.category_id
         LEFT JOIN category pm ON pi.payment_method_id = pm.category_id
-        ORDER BY pi.created_at ASC
+        ORDER BY pi.created_at DESC
     </select>
 
     <!-- ✅ incoming_id로 단건 조회 -->

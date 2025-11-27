@@ -37,11 +37,18 @@ public class PartUsageController {
     @PostMapping
     public ResponseEntity<String> registerUsage(@RequestBody PartUsageDTO partUsageDTO,
             org.springframework.security.core.Authentication authentication) {
-        if (authentication != null) {
-            partUsageDTO.setCreatedBy(authentication.getName());
+        try {
+            if (authentication != null) {
+                partUsageDTO.setCreatedBy(authentication.getName());
+            }
+            partUsageService.registerUsage(partUsageDTO);
+            return ResponseEntity.ok("?? ?? ??");
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("재고가 부족합니다")) {
+                return ResponseEntity.badRequest().body(e.getMessage());
+            }
+            throw e;
         }
-        partUsageService.registerUsage(partUsageDTO);
-        return ResponseEntity.ok("?? ?? ??");
     }
 
     /**
@@ -53,12 +60,19 @@ public class PartUsageController {
             @PathVariable("id") int usageId,
             @RequestBody PartUsageDTO partUsageDTO,
             org.springframework.security.core.Authentication authentication) {
-        partUsageDTO.setUsageId(usageId);
-        if (authentication != null) {
-            partUsageDTO.setCreatedBy(authentication.getName());
+        try {
+            partUsageDTO.setUsageId(usageId);
+            if (authentication != null) {
+                partUsageDTO.setCreatedBy(authentication.getName());
+            }
+            partUsageService.updateUsage(partUsageDTO);
+            return ResponseEntity.ok("?? ?? ?? ??");
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("재고가 부족")) {
+                return ResponseEntity.badRequest().body(e.getMessage());
+            }
+            throw e;
         }
-        partUsageService.updateUsage(partUsageDTO);
-        return ResponseEntity.ok("?? ?? ?? ??");
     }
 
 

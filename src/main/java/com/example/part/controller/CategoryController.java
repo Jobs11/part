@@ -79,8 +79,15 @@ public class CategoryController {
      */
     @PostMapping
     public ResponseEntity<String> createCategory(@RequestBody CategoryDTO categoryDTO) {
-        categoryService.createCategory(categoryDTO);
-        return ResponseEntity.ok("카테고리 등록 완료");
+        try {
+            categoryService.createCategory(categoryDTO);
+            return ResponseEntity.ok("카테고리 등록 완료");
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("이미 동일한 이름과 설명을 가진 카테고리가 존재합니다")) {
+                return ResponseEntity.badRequest().body(e.getMessage());
+            }
+            throw e;
+        }
     }
 
     /**
@@ -90,9 +97,16 @@ public class CategoryController {
     public ResponseEntity<String> updateCategory(
             @PathVariable("id") int categoryId,
             @RequestBody CategoryDTO categoryDTO) {
-        categoryDTO.setCategoryId(categoryId);
-        categoryService.updateCategory(categoryDTO);
-        return ResponseEntity.ok("카테고리 수정 완료");
+        try {
+            categoryDTO.setCategoryId(categoryId);
+            categoryService.updateCategory(categoryDTO);
+            return ResponseEntity.ok("카테고리 수정 완료");
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("이미 동일한 이름과 설명을 가진 카테고리가 존재합니다")) {
+                return ResponseEntity.badRequest().body(e.getMessage());
+            }
+            throw e;
+        }
     }
 
     // 부품번호 자동 생성 및 last_number 동기화 엔드포인트 제거됨 - 부품번호를 사용자가 직접 입력함
