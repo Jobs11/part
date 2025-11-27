@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 public class PartLocationServiceImpl implements PartLocationService {
 
     private final PartLocationMapper partLocationMapper;
+    private final AuditLogger auditLogger;
 
     @Override
     public List<PartLocationDTO> getAllLocations() {
@@ -39,14 +40,41 @@ public class PartLocationServiceImpl implements PartLocationService {
     public boolean saveOrUpdate(PartLocationDTO dto) {
         PartLocationDTO existing = partLocationMapper.findByCode(dto.getLocationCode());
         if (existing == null) {
-            return partLocationMapper.insertLocation(dto) > 0;
+            boolean inserted = partLocationMapper.insertLocation(dto) > 0;
+            if (inserted) {
+                auditLogger.log("part_location",
+                        null,
+                        "CREATE",
+                        "part_location 등록: " + dto.getLocationCode(),
+                        null,
+                        null);
+            }
+            return inserted;
         } else {
-            return partLocationMapper.updateLocation(dto) > 0;
+            boolean updated = partLocationMapper.updateLocation(dto) > 0;
+            if (updated) {
+                auditLogger.log("part_location",
+                        null,
+                        "UPDATE",
+                        "part_location 수정: " + dto.getLocationCode(),
+                        null,
+                        null);
+            }
+            return updated;
         }
     }
 
     @Override
     public boolean deleteByCode(String code) {
-        return partLocationMapper.deleteLocation(code) > 0;
+        boolean deleted = partLocationMapper.deleteLocation(code) > 0;
+        if (deleted) {
+            auditLogger.log("part_location",
+                    null,
+                    "DELETE",
+                    "part_location 삭제: " + code,
+                    null,
+                    null);
+        }
+        return deleted;
     }
 }

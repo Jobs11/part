@@ -21,6 +21,7 @@ public class PartUsageServiceImpl implements PartUsageService {
 
     private final PartUsageMapper partUsageMapper;
     private final PartIncomingService partIncomingService;
+    private final AuditLogger auditLogger;
 
     @Override
     @Transactional
@@ -59,6 +60,13 @@ public class PartUsageServiceImpl implements PartUsageService {
                 partUsageDTO.getPartNumber(),
                 partUsageDTO.getQuantityUsed(),
                 partUsageDTO.getUsageLocation());
+
+        auditLogger.log("part_usage",
+                partUsageDTO.getUsageId() != null ? partUsageDTO.getUsageId().longValue() : null,
+                "CREATE",
+                "part_usage 등록: " + partUsageDTO.getPartNumber(),
+                null,
+                null);
     }
 
     @Override
@@ -106,6 +114,13 @@ public class PartUsageServiceImpl implements PartUsageService {
         }
 
         log.info("출고 정보 수정 완료: ID {}", partUsageDTO.getUsageId());
+
+        auditLogger.log("part_usage",
+                partUsageDTO.getUsageId() != null ? partUsageDTO.getUsageId().longValue() : null,
+                "UPDATE",
+                "part_usage 수정: " + (partUsageDTO.getPartNumber() != null ? partUsageDTO.getPartNumber() : ""),
+                null,
+                null);
     }
 
     @Override

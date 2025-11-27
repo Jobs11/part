@@ -1,10 +1,13 @@
 package com.example.part.service;
 
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -13,6 +16,7 @@ import com.example.part.dto.CategoryDTO;
 import com.example.part.dto.PartIncomingDTO;
 import com.example.part.dto.PartLocationDTO;
 import com.example.part.mapper.PartIncomingMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +36,10 @@ public class PartIncomingServiceImpl implements PartIncomingService {
     private final CategoryService categoryService;
 
     private final PartLocationService partLocationService;
+
+    private final AuditLogger auditLogger;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
 
@@ -105,7 +113,8 @@ public class PartIncomingServiceImpl implements PartIncomingService {
 
             String oldLoc = partIncomingDTO.getLocation(); // 이전 방식 호환
             boolean overrideCabinet = Boolean.TRUE.equals(partIncomingDTO.getOverrideCabinet());
-            log.info("Location info - cabinet: [{}], map: [{}], legacy: [{}], override: {}", cabinetLoc, mapLoc, oldLoc, overrideCabinet);
+            log.info("Location info - cabinet: [{}], map: [{}], legacy: [{}], override: {}", cabinetLoc, mapLoc, oldLoc,
+                    overrideCabinet);
 
             if ((cabinetLoc != null && !cabinetLoc.trim().isEmpty()) ||
 
@@ -113,7 +122,8 @@ public class PartIncomingServiceImpl implements PartIncomingService {
 
                     (oldLoc != null && !oldLoc.trim().isEmpty())) {
 
-                savePartLocation(partNumber, partIncomingDTO.getPartName(), cabinetLoc, mapLoc, oldLoc, overrideCabinet);
+                savePartLocation(partNumber, partIncomingDTO.getPartName(), cabinetLoc, mapLoc, oldLoc,
+                        overrideCabinet);
 
             } else {
                 log.info("위치 정보 없음 - 위치 저장 건너뜀");
@@ -165,6 +175,12 @@ public class PartIncomingServiceImpl implements PartIncomingService {
         }
 
         log.info("입고 등록 완료: 부품번호 {}, 수량 {}", partNumber, partIncomingDTO.getIncomingQuantity());
+
+        logAudit("CREATE",
+                partIncomingDTO.getIncomingId() != null ? partIncomingDTO.getIncomingId().longValue() : null,
+                "part_incoming 등록: " + partNumber,
+                null,
+                resolveActor(partIncomingDTO));
 
     }
 
@@ -289,8 +305,9 @@ public class PartIncomingServiceImpl implements PartIncomingService {
             PartLocationDTO occupied = partLocationService.getLocationByCabinet(posX, posY);
             if (occupied != null && !partNumber.equals(occupied.getPartNumber())) {
                 if (!overrideCabinet) {
-                    throw new IllegalArgumentException(String.format("??? %s-%s? ?? ?? %s? ???? ????. ????? ?????.", posX, posY,
-                            occupied.getPartNumber()));
+                    throw new IllegalArgumentException(
+                            String.format("??? %s-%s? ?? ?? %s? ???? ????. ????? ?????.", posX, posY,
+                                    occupied.getPartNumber()));
                 }
                 log.warn("??? {}-{} ?? ??(?? {})? ???? ?????.", posX, posY, occupied.getPartNumber());
                 if (StringUtils.hasText(occupied.getLocationCode())) {
@@ -419,7 +436,9 @@ public class PartIncomingServiceImpl implements PartIncomingService {
 
     public void updateIncoming(PartIncomingDTO partIncomingDTO) {
 
-        // 환율 재계산
+        PartIncomingDTO before = partIncomingMapper.findById(partIncomingDTO.getIncomingId());
+
+        // ??? ????
 
         calculateExchangeRate(partIncomingDTO);
 
@@ -427,11 +446,23 @@ public class PartIncomingServiceImpl implements PartIncomingService {
 
         if (result == 0) {
 
-            throw new RuntimeException("입고 정보 수정에 실패했습니다.");
+            throw new RuntimeException("??? ???? ?????? ??????????.");
 
         }
 
-        log.info("입고 정보 수정 완료: ID {}", partIncomingDTO.getIncomingId());
+        log.info("??? ???? ???? ???: ID {}", partIncomingDTO.getIncomingId());
+
+        PartIncomingDTO after = partIncomingMapper.findById(partIncomingDTO.getIncomingId());
+        String changedFieldsJson = buildChangedFields(before, after);
+
+        // 변경 사항이 있을 때만 감사 로그 적재 (빈 수정 요청 시 중복 로그 방지)
+        if (changedFieldsJson != null) {
+            logAudit("UPDATE",
+                    partIncomingDTO.getIncomingId() != null ? partIncomingDTO.getIncomingId().longValue() : null,
+                    "part_incoming 수정: " + partIncomingDTO.getPartNumber(),
+                    changedFieldsJson,
+                    resolveActor(partIncomingDTO));
+        }
 
     }
 
@@ -529,5 +560,80 @@ public class PartIncomingServiceImpl implements PartIncomingService {
 
         }
 
+    }
+
+    private void logAudit(String action, Long entityId, String summary, String changedFields, String performedBy) {
+        auditLogger.log("part_incoming", entityId, action, summary, changedFields, performedBy);
+    }
+
+    private String buildChangedFields(PartIncomingDTO before, PartIncomingDTO after) {
+        if (before == null || after == null) {
+            return null;
+        }
+
+        Map<String, Map<String, Object>> diff = new LinkedHashMap<>();
+
+        compare(diff, "partNumber", before.getPartNumber(), after.getPartNumber());
+        compare(diff, "categoryId", before.getCategoryId(), after.getCategoryId());
+        compare(diff, "partName", before.getPartName(), after.getPartName());
+        compare(diff, "description", before.getDescription(), after.getDescription());
+        compare(diff, "projectName", before.getProjectName(), after.getProjectName());
+        compare(diff, "unit", before.getUnit(), after.getUnit());
+        compare(diff, "paymentMethodId", before.getPaymentMethodId(), after.getPaymentMethodId());
+        compare(diff, "cabinetLocation", before.getCabinetLocation(), after.getCabinetLocation());
+        compare(diff, "mapLocation", before.getMapLocation(), after.getMapLocation());
+        compare(diff, "location", before.getLocation(), after.getLocation());
+        compare(diff, "overrideCabinet", before.getOverrideCabinet(), after.getOverrideCabinet());
+        compare(diff, "incomingQuantity", before.getIncomingQuantity(), after.getIncomingQuantity());
+        compare(diff, "purchasePrice", before.getPurchasePrice(), after.getPurchasePrice());
+        compare(diff, "currency", before.getCurrency(), after.getCurrency());
+        compare(diff, "exchangeRate", before.getExchangeRate(), after.getExchangeRate());
+        compare(diff, "originalPrice", before.getOriginalPrice(), after.getOriginalPrice());
+        compare(diff, "purchaseDate", before.getPurchaseDate(), after.getPurchaseDate());
+        compare(diff, "supplier", before.getSupplier(), after.getSupplier());
+        compare(diff, "purchaser", before.getPurchaser(), after.getPurchaser());
+        compare(diff, "invoiceNumber", before.getInvoiceNumber(), after.getInvoiceNumber());
+        compare(diff, "note", before.getNote(), after.getNote());
+
+        if (diff.isEmpty()) {
+            return null;
+        }
+
+        try {
+            return objectMapper.writeValueAsString(diff);
+        } catch (Exception e) {
+            log.warn("changed_fields 직렬화 실패: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
+    private void compare(Map<String, Map<String, Object>> diff, String field, Object before, Object after) {
+        if (before == null && after == null) {
+            return;
+        }
+        if (before != null && before.equals(after)) {
+            return;
+        }
+        Map<String, Object> changes = new LinkedHashMap<>();
+        changes.put("before", before);
+        changes.put("after", after);
+        diff.put(field, changes);
+    }
+
+    private String resolveActor(PartIncomingDTO dto) {
+        // 1) 명시 값 우선
+        if (StringUtils.hasText(dto.getCreatedBy())) {
+            return dto.getCreatedBy();
+        }
+        // 2) 현재 인증 사용자
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getName() != null) {
+                return auth.getName();
+            }
+        } catch (Exception ignored) {
+        }
+        // 3) AuditLogger fallback
+        return auditLogger.currentUserOrSystem();
     }
 }

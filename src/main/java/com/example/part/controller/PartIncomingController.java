@@ -35,7 +35,11 @@ public class PartIncomingController {
      * POST /livewalk/incoming
      */
     @PostMapping
-    public ResponseEntity<String> registerIncoming(@RequestBody PartIncomingDTO partIncomingDTO) {
+    public ResponseEntity<String> registerIncoming(@RequestBody PartIncomingDTO partIncomingDTO,
+            org.springframework.security.core.Authentication authentication) {
+        if (authentication != null) {
+            partIncomingDTO.setCreatedBy(authentication.getName());
+        }
         partIncomingService.registerIncoming(partIncomingDTO);
         return ResponseEntity.ok("입고 등록 완료: " + partIncomingDTO.getPartNumber());
     }
@@ -45,7 +49,11 @@ public class PartIncomingController {
      * POST /livewalk/incoming/with-number
      */
     @PostMapping("/with-number")
-    public ResponseEntity<String> registerIncomingWithPartNumber(@RequestBody PartIncomingDTO partIncomingDTO) {
+    public ResponseEntity<String> registerIncomingWithPartNumber(@RequestBody PartIncomingDTO partIncomingDTO,
+            org.springframework.security.core.Authentication authentication) {
+        if (authentication != null) {
+            partIncomingDTO.setCreatedBy(authentication.getName());
+        }
         partIncomingService.registerIncomingWithPartNumber(partIncomingDTO);
         return ResponseEntity.ok("입고 등록 완료: " + partIncomingDTO.getPartNumber());
     }
@@ -255,8 +263,12 @@ public class PartIncomingController {
     @PutMapping("/{id}")
     public ResponseEntity<String> updateIncoming(
             @PathVariable("id") int incomingId,
-            @RequestBody PartIncomingDTO partIncomingDTO) {
+            @RequestBody PartIncomingDTO partIncomingDTO,
+            org.springframework.security.core.Authentication authentication) {
         partIncomingDTO.setIncomingId(incomingId);
+        if (authentication != null) {
+            partIncomingDTO.setCreatedBy(authentication.getName());
+        }
         partIncomingService.updateIncoming(partIncomingDTO);
         return ResponseEntity.ok("입고 정보 수정 완료");
     }

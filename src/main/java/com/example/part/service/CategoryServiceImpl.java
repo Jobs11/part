@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryMapper categoryMapper;
+    private final AuditLogger auditLogger;
 
     // last_number 동기화 로직 제거됨 - 부품번호가 더 이상 카테고리별로 생성되지 않음
 
@@ -76,6 +77,13 @@ public class CategoryServiceImpl implements CategoryService {
             throw new RuntimeException("카테고리 등록에 실패했습니다.");
         }
         log.info("카테고리 등록 완료: {}", categoryDTO.getCategoryName());
+
+        auditLogger.log("category",
+                categoryDTO.getCategoryId() != null ? categoryDTO.getCategoryId().longValue() : null,
+                "CREATE",
+                "category 등록: " + categoryDTO.getCategoryName(),
+                null,
+                null);
     }
 
     @Override
@@ -86,6 +94,13 @@ public class CategoryServiceImpl implements CategoryService {
             throw new RuntimeException("카테고리 수정에 실패했습니다.");
         }
         log.info("카테고리 수정 완료: ID {}", categoryDTO.getCategoryId());
+
+        auditLogger.log("category",
+                categoryDTO.getCategoryId() != null ? categoryDTO.getCategoryId().longValue() : null,
+                "UPDATE",
+                "category 수정: " + categoryDTO.getCategoryName(),
+                null,
+                null);
     }
 
     // generatePartNumber 메서드 제거됨 - 부품번호를 사용자가 직접 입력함
@@ -98,6 +113,13 @@ public class CategoryServiceImpl implements CategoryService {
             throw new RuntimeException("카테고리 비활성화에 실패했습니다.");
         }
         log.info("카테고리 비활성화 완료: ID {}", categoryId);
+
+        auditLogger.log("category",
+                (long) categoryId,
+                "UPDATE",
+                "category 비활성화: " + categoryId,
+                null,
+                null);
     }
 
     @Override
@@ -108,5 +130,12 @@ public class CategoryServiceImpl implements CategoryService {
             throw new RuntimeException("카테고리 삭제에 실패했습니다.");
         }
         log.info("카테고리 삭제 완료: ID {}", categoryId);
+
+        auditLogger.log("category",
+                (long) categoryId,
+                "DELETE",
+                "category 삭제: " + categoryId,
+                null,
+                null);
     }
 }

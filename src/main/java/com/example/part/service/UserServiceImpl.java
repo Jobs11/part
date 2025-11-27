@@ -17,6 +17,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+    private final AuditLogger auditLogger;
 
     @Override
     public UserDTO findByUsername(String username) {
@@ -41,6 +42,13 @@ public class UserServiceImpl implements UserService {
             user.setUserRole("USER");
         }
         userMapper.insertUser(user);
+
+        auditLogger.log("user",
+                user.getUserId() != null ? user.getUserId().longValue() : null,
+                "CREATE",
+                "user 등록: " + user.getUsername(),
+                null,
+                null);
     }
 
     @Override
@@ -66,11 +74,25 @@ public class UserServiceImpl implements UserService {
         }
 
         userMapper.updateUser(user);
+
+        auditLogger.log("user",
+                user.getUserId() != null ? user.getUserId().longValue() : null,
+                "UPDATE",
+                "user 수정: " + user.getUsername(),
+                null,
+                null);
     }
 
     @Override
     @Transactional
     public void deleteUser(Integer userId) {
         userMapper.deleteUser(userId);
+
+        auditLogger.log("user",
+                userId != null ? userId.longValue() : null,
+                "DELETE",
+                "user 삭제: " + userId,
+                null,
+                null);
     }
 }

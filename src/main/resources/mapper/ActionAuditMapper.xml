@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.part.mapper.ActionAuditMapper">
+
+    <insert id="insertAudit" parameterType="com.example.part.dto.ActionAuditDTO">
+        INSERT INTO action_audit (
+            entity_type,
+            entity_id,
+            action,
+            summary,
+            changed_fields,
+            performed_by,
+            performed_ip,
+            user_agent
+        ) VALUES (
+            #{entityType},
+            #{entityId},
+            #{action},
+            #{summary},
+            #{changedFields},
+            #{performedBy},
+            #{performedIp},
+            #{userAgent}
+        )
+    </insert>
+
+    <resultMap id="auditResultMap" type="com.example.part.dto.ActionAuditDTO">
+        <id property="auditId" column="audit_id"/>
+        <result property="entityType" column="entity_type"/>
+        <result property="entityId" column="entity_id"/>
+        <result property="action" column="action"/>
+        <result property="summary" column="summary"/>
+        <result property="changedFields" column="changed_fields"/>
+        <result property="performedBy" column="performed_by"/>
+        <result property="performedIp" column="performed_ip"/>
+        <result property="userAgent" column="user_agent"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <select id="selectRecent" resultMap="auditResultMap" parameterType="int">
+        SELECT
+            audit_id,
+            entity_type,
+            entity_id,
+            action,
+            summary,
+            changed_fields,
+            performed_by,
+            performed_ip,
+            user_agent,
+            created_at
+        FROM action_audit
+        ORDER BY created_at DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

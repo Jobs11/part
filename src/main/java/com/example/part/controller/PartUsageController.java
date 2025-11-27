@@ -35,9 +35,13 @@ public class PartUsageController {
      * POST /livewalk/part-usage
      */
     @PostMapping
-    public ResponseEntity<String> registerUsage(@RequestBody PartUsageDTO partUsageDTO) {
+    public ResponseEntity<String> registerUsage(@RequestBody PartUsageDTO partUsageDTO,
+            org.springframework.security.core.Authentication authentication) {
+        if (authentication != null) {
+            partUsageDTO.setCreatedBy(authentication.getName());
+        }
         partUsageService.registerUsage(partUsageDTO);
-        return ResponseEntity.ok("출고 등록 완료");
+        return ResponseEntity.ok("?? ?? ??");
     }
 
     /**
@@ -47,11 +51,16 @@ public class PartUsageController {
     @PutMapping("/{id}")
     public ResponseEntity<String> updateUsage(
             @PathVariable("id") int usageId,
-            @RequestBody PartUsageDTO partUsageDTO) {
+            @RequestBody PartUsageDTO partUsageDTO,
+            org.springframework.security.core.Authentication authentication) {
         partUsageDTO.setUsageId(usageId);
+        if (authentication != null) {
+            partUsageDTO.setCreatedBy(authentication.getName());
+        }
         partUsageService.updateUsage(partUsageDTO);
-        return ResponseEntity.ok("출고 정보 수정 완료");
+        return ResponseEntity.ok("?? ?? ?? ??");
     }
+
 
     /**
      * 단건 조회

@@ -173,6 +173,35 @@
             </div>
         </div>
 
+        <!-- 감사 로그 -->
+        <div class="section">
+            <div class="section-header">
+                <h2>감사 로그</h2>
+                <button onclick="loadActionAudits()" class="btn">새로고침</button>
+            </div>
+
+            <div style="max-height: 320px; overflow-y: auto;">
+                <table class="user-table" id="auditLogTable">
+                    <thead>
+                        <tr>
+                            <th>시간</th>
+                            <th>엔티티</th>
+                            <th>엔티티 ID</th>
+                            <th>액션</th>
+                            <th>사용자</th>
+                            <th>요약</th>
+                            <th>변경 필드</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditLogTableBody">
+                        <tr>
+                            <td colspan="7" style="text-align: center;">로딩 중...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- 메시지 표시 -->
         <div id="message" class="message"></div>
     </div>
@@ -223,11 +252,25 @@
     <script>
         const USER_API = '/livewalk/users';
         const ACCESS_LOG_API = '/livewalk/access-logs';
+        const AUDIT_API = '/livewalk/action-audit';
+
+        // HTML 이스케이프 (XSS 방지)
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text ? text.replace(/[&<>"']/g, m => map[m]) : '';
+        }
 
         // 페이지 로드 시 회원 목록 및 접속 로그 조회
         document.addEventListener('DOMContentLoaded', function () {
             loadUsers();
             loadAccessLogs();
+            loadActionAudits();
         });
 
         // 회원 목록 조회
@@ -437,6 +480,49 @@
                         title="${log.userAgent || '-'}">${log.userAgent || '-'}</td>
                 </tr>
             `).join('');
+        }
+
+        // 감사 로그 조회
+        async function loadActionAudits(limit = 200) {
+            try {
+                const response = await fetch(`${AUDIT_API}?limit=${limit}`);
+                if (!response.ok) {
+                    throw new Error('감사 로그를 불러올 수 없습니다.');
+                }
+                const logs = await response.json();
+                displayActionAudits(logs);
+            } catch (error) {
+                const tbody = document.getElementById('auditLogTableBody');
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: red;">감사 로그를 불러오는 중 오류가 발생했습니다.</td></tr>`;
+                showMessage('감사 로그를 불러오는 중 오류가 발생했습니다: ' + error.message, 'error');
+            }
+        }
+
+        // 감사 로그 표시
+        function displayActionAudits(logs) {
+            const tbody = document.getElementById('auditLogTableBody');
+            if (!logs || logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">감사 로그가 없습니다.</td></tr>';
+                return;
+            }
+
+            const rows = logs.map(log => {
+                const createdAt = log.createdAt ? log.createdAt.replace('T', ' ').substring(0, 19) : '-';
+                const changed = log.changedFields ? escapeHtml(log.changedFields) : '-';
+                return `
+                    <tr>
+                        <td>${createdAt}</td>
+                        <td>${escapeHtml(log.entityType || '-')}</td>
+                        <td>${log.entityId != null ? log.entityId : '-'}</td>
+                        <td>${escapeHtml(log.action || '-')}</td>
+                        <td>${escapeHtml(log.performedBy || '-')}</td>
+                        <td>${escapeHtml(log.summary || '-')}</td>
+                        <td style="max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${changed}">${changed}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            tbody.innerHTML = rows;
         }
 
         // 로그아웃
