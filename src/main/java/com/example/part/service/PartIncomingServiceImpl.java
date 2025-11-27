@@ -104,7 +104,8 @@ public class PartIncomingServiceImpl implements PartIncomingService {
             String mapLoc = partIncomingDTO.getMapLocation();
 
             String oldLoc = partIncomingDTO.getLocation(); // 이전 방식 호환
-            log.info("위치 정보 - 캐비넷: [{}], 도면: [{}], 이전: [{}]", cabinetLoc, mapLoc, oldLoc);
+            boolean overrideCabinet = Boolean.TRUE.equals(partIncomingDTO.getOverrideCabinet());
+            log.info("Location info - cabinet: [{}], map: [{}], legacy: [{}], override: {}", cabinetLoc, mapLoc, oldLoc, overrideCabinet);
 
             if ((cabinetLoc != null && !cabinetLoc.trim().isEmpty()) ||
 
@@ -112,7 +113,7 @@ public class PartIncomingServiceImpl implements PartIncomingService {
 
                     (oldLoc != null && !oldLoc.trim().isEmpty())) {
 
-                savePartLocation(partNumber, partIncomingDTO.getPartName(), cabinetLoc, mapLoc, oldLoc);
+                savePartLocation(partNumber, partIncomingDTO.getPartName(), cabinetLoc, mapLoc, oldLoc, overrideCabinet);
 
             } else {
                 log.info("위치 정보 없음 - 위치 저장 건너뜀");
@@ -260,7 +261,7 @@ public class PartIncomingServiceImpl implements PartIncomingService {
     }
 
     private void savePartLocation(String partNumber, String partName, String cabinetLocation, String mapLocation,
-            String oldLocation) {
+            String oldLocation, boolean overrideCabinet) {
 
         PartLocationDTO locationDTO = new PartLocationDTO();
 
@@ -287,8 +288,14 @@ public class PartIncomingServiceImpl implements PartIncomingService {
 
             PartLocationDTO occupied = partLocationService.getLocationByCabinet(posX, posY);
             if (occupied != null && !partNumber.equals(occupied.getPartNumber())) {
-                throw new IllegalArgumentException(String.format("캐비넷 %s-%s은 이미 부품 %s에 할당되어 있습니다.", posX, posY,
-                        occupied.getPartNumber()));
+                if (!overrideCabinet) {
+                    throw new IllegalArgumentException(String.format("??? %s-%s? ?? ?? %s? ???? ????. ????? ?????.", posX, posY,
+                            occupied.getPartNumber()));
+                }
+                log.warn("??? {}-{} ?? ??(?? {})? ???? ?????.", posX, posY, occupied.getPartNumber());
+                if (StringUtils.hasText(occupied.getLocationCode())) {
+                    partLocationService.deleteByCode(occupied.getLocationCode());
+                }
             }
 
             locationDTO.setPosX(posX);

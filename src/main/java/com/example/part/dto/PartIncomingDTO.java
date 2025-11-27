@@ -24,6 +24,9 @@ public class PartIncomingDTO {
     private Integer paymentMethodId;
     private String paymentMethodName;
 
+    // 캐비넷 중복시 덮어쓰기 여부 (true면 기존 슬롯 점유 해제 후 등록)
+    private Boolean overrideCabinet;
+
     // 입고 수량
     private Integer incomingQuantity;
 

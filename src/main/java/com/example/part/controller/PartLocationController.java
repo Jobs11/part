@@ -38,6 +38,18 @@ public class PartLocationController {
         return partLocationService.getLocationByPartNumber(partNumber);
     }
 
+    @GetMapping("/check-cabinet")
+    public PartLocationDTO checkCabinetLocation(@RequestParam String posX, @RequestParam Integer posY) {
+        return partLocationService.getLocationByCabinet(posX, posY);
+    }
+
+    @GetMapping("/occupied-cabinets")
+    public List<PartLocationDTO> getOccupiedCabinets() {
+        return partLocationService.getAllLocations().stream()
+                .filter(loc -> loc.getPosX() != null && loc.getPosY() != null)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
     @PostMapping
     public String saveLocation(@RequestBody PartLocationDTO dto) {
         boolean result = partLocationService.saveOrUpdate(dto);
