@@ -151,24 +151,26 @@
                 <button onclick="loadAccessLogs()" class="btn">새로고침</button>
             </div>
 
-            <table class="user-table" id="accessLogTable">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>사용자명</th>
-                        <th>접속 시간</th>
-                        <th>로그아웃 시간</th>
-                        <th>접속 IP</th>
-                        <th>로그아웃 IP</th>
-                        <th>User Agent</th>
-                    </tr>
-                </thead>
-                <tbody id="accessLogTableBody">
-                    <tr>
-                        <td colspan="7" style="text-align: center;">로딩 중...</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div style="max-height: 420px; overflow-y: auto;">
+                <table class="user-table" id="accessLogTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>사용자명</th>
+                            <th>접속 시간</th>
+                            <th>로그아웃 시간</th>
+                            <th>접속 IP</th>
+                            <th>로그아웃 IP</th>
+                            <th>User Agent</th>
+                        </tr>
+                    </thead>
+                    <tbody id="accessLogTableBody">
+                        <tr>
+                            <td colspan="7" style="text-align: center;">로딩 중...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <!-- 메시지 표시 -->

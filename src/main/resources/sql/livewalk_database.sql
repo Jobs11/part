@@ -21,33 +21,33 @@ CREATE TABLE category (
 -- ==========================================
 CREATE TABLE part_incoming (
     incoming_id INT AUTO_INCREMENT PRIMARY KEY COMMENT '입고 ID',
-    
+
     -- 부품 정보
     part_number VARCHAR(20) NOT NULL COMMENT '부품번호 (예: E-0001)',
     category_id INT NOT NULL COMMENT '카테고리 ID',
     part_name VARCHAR(100) NOT NULL COMMENT '부품명 (중복 허용)',
     description TEXT NOT NULL COMMENT '설명 (필수)',
     unit VARCHAR(20) DEFAULT 'EA' COMMENT '단위',
-    
+
     -- 입고 수량
     incoming_quantity INT NOT NULL COMMENT '입고 수량',
-    
+
     -- 금액 정보 (필수)
     purchase_price DECIMAL(15,2) NOT NULL COMMENT '구매 금액 (원화 환산 후)',
     currency VARCHAR(10) DEFAULT 'KRW' COMMENT '통화 (KRW, USD, JPY, EUR, CNY)',
     exchange_rate DECIMAL(10,4) DEFAULT 1.0000 COMMENT '환율 (외화→원화)',
     original_price DECIMAL(15,2) COMMENT '원래 금액 (외화인 경우)',
-    
+
     -- 구매 정보
     purchase_date DATE NOT NULL COMMENT '구매일자 (필수)',
     supplier VARCHAR(100) COMMENT '공급업체',
     invoice_number VARCHAR(50) COMMENT '송장번호',
-    
+
     -- 기타
     note TEXT COMMENT '비고',
     created_by VARCHAR(50) DEFAULT 'system' COMMENT '등록자',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '등록일시',
-    
+
     FOREIGN KEY (category_id) REFERENCES category(category_id),
     INDEX idx_part_number (part_number),
     INDEX idx_category (category_id),
@@ -61,24 +61,24 @@ CREATE TABLE part_incoming (
 -- ==========================================
 CREATE TABLE part_images (
     image_id INT AUTO_INCREMENT PRIMARY KEY COMMENT '이미지 ID',
-    
+
     -- 연결 정보 (입고 ID로 연결)
     incoming_id INT NOT NULL COMMENT '입고 ID',
-    
+
     -- 이미지 정보
     image_type VARCHAR(20) NOT NULL COMMENT '이미지 타입 (delivery:택배, part:부품, etc:기타)',
     image_url VARCHAR(500) NOT NULL COMMENT '이미지 경로 또는 URL',
     storage_type VARCHAR(20) DEFAULT 'local' COMMENT '저장소 타입 (local, cloudinary, s3)',
-    
+
     -- 파일 정보
     file_name VARCHAR(255) COMMENT '원본 파일명',
     file_size BIGINT COMMENT '파일 크기 (bytes)',
     mime_type VARCHAR(50) COMMENT 'MIME 타입 (image/jpeg, image/png)',
-    
+
     -- 정렬/관리
     display_order INT DEFAULT 0 COMMENT '표시 순서',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '등록일시',
-    
+
     FOREIGN KEY (incoming_id) REFERENCES part_incoming(incoming_id) ON DELETE CASCADE,
     INDEX idx_incoming_id (incoming_id),
     INDEX idx_image_type (image_type)
@@ -90,23 +90,23 @@ CREATE TABLE part_images (
 -- ==========================================
 CREATE TABLE part_usage (
     usage_id INT AUTO_INCREMENT PRIMARY KEY COMMENT '사용 ID',
-    
+
     -- 연결 정보
     incoming_id INT NOT NULL COMMENT '입고 ID (어느 입고 건에서 출고했는지)',
     part_number VARCHAR(20) NOT NULL COMMENT '부품번호',
-    
+
     -- 사용 수량
     quantity_used INT NOT NULL COMMENT '사용 수량',
-    
+
     -- 사용 정보
     usage_location VARCHAR(100) NOT NULL COMMENT '사용처',
     used_date DATE NOT NULL COMMENT '사용일',
-    
+
     -- 기타
     note TEXT COMMENT '비고',
     created_by VARCHAR(50) DEFAULT 'system' COMMENT '등록자',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '등록일시',
-    
+
     FOREIGN KEY (incoming_id) REFERENCES part_incoming(incoming_id) ON DELETE CASCADE,
     INDEX idx_incoming_id (incoming_id),
     INDEX idx_part_number (part_number),
@@ -122,7 +122,7 @@ CREATE TABLE part_location (
 
     -- 위치 (칸, 좌표 등)
     location_code VARCHAR(50) NOT NULL UNIQUE COMMENT '위치 코드 (예: A-1, B-3, C-2)',
-    
+
     -- 부품 정보
     part_number VARCHAR(20) COMMENT '부품번호',
     part_name VARCHAR(100) COMMENT '부품명',

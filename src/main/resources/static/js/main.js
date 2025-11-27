@@ -6347,7 +6347,7 @@ async function openPartLocationView(partNumber) {
 
         // 제목 업데이트
         document.getElementById('partLocationViewTitle').innerHTML =
-            `부품 배치도: <span style="color: #007bff;">${location.partName || partNumber}</span>`;
+            `부품 배치도: <span style="color: #fff;">${location.partName || partNumber}</span>`;
 
         // 정보 업데이트
         document.getElementById('partLocationViewInfo').innerHTML =
@@ -6779,7 +6779,7 @@ function openCabinetGridView(partNumber, location) {
 
     // 제목 업데이트
     document.getElementById('cabinetGridTitle').innerHTML =
-        `캐비넷 배치도: <span style="color: #007bff;">${location.partName || partNumber}</span>`;
+        `캐비넷 배치도: <span style="color: #fff;">${location.partName || partNumber}</span>`;
 
     // 정보 업데이트
     const locationText = `${location.posX}-${location.posY}`;
