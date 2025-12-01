@@ -100,17 +100,21 @@ CREATE TABLE `part_usage` (
    `part_number` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '부품번호',
    `quantity_used` int NOT NULL COMMENT '사용 수량',
    `usage_location` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '사용처',
-   `used_date` date NOT NULL COMMENT '사용일',
+
+   -- 여기 변경됨
+   `used_datetime` datetime NOT NULL COMMENT '사용일시',
+
    `note` text COLLATE utf8mb4_unicode_ci COMMENT '비고',
    `created_by` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'system' COMMENT '등록자',
    `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일시',
    PRIMARY KEY (`usage_id`),
    KEY `idx_incoming_id` (`incoming_id`),
    KEY `idx_part_number` (`part_number`),
-   KEY `idx_used_date` (`used_date`),
+   KEY `idx_used_date` (`used_datetime`),
    KEY `idx_usage_location` (`usage_location`),
    CONSTRAINT `part_usage_ibfk_1` FOREIGN KEY (`incoming_id`) REFERENCES `part_incoming` (`incoming_id`) ON DELETE CASCADE
- ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='부품 사용(출고) 이력';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='부품 사용(출고) 이력';
+
 
 CREATE TABLE `part_images` (
    `image_id` int NOT NULL AUTO_INCREMENT COMMENT '이미지 ID',

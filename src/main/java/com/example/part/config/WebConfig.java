@@ -27,5 +27,9 @@ public class WebConfig implements WebMvcConfigurer {
 
         registry.addResourceHandler("/uploads/images/**")
                 .addResourceLocations(location);
+
+        registry.addResourceHandler("/favicon.ico")
+                .addResourceLocations("classpath:/static/images/");
     }
+
 }
