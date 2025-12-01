@@ -297,22 +297,56 @@ public class PartIncomingController {
     public ResponseEntity<?> bulkInsert(@RequestBody List<PartIncomingDTO> incomingList) {
         int successCount = 0;
         int failCount = 0;
+        int skippedCount = 0;
+        List<Integer> successIndices = new java.util.ArrayList<>();
+        List<Integer> failIndices = new java.util.ArrayList<>();
+        List<Integer> skippedIndices = new java.util.ArrayList<>();
 
-        for (PartIncomingDTO dto : incomingList) {
+        for (int i = 0; i < incomingList.size(); i++) {
+            PartIncomingDTO dto = incomingList.get(i);
+
+            // 필수 필드 체크: 부품명과 카테고리가 없으면 건너뛰기 (입력하다 만 행)
+            if (isEmptyOrIncomplete(dto)) {
+                skippedCount++;
+                skippedIndices.add(i);
+                continue;
+            }
+
             try {
                 // 입고 등록 (내부에서 기존 부품 체크 후 번호 생성 또는 재사용)
                 partIncomingService.registerIncoming(dto);
                 successCount++;
+                successIndices.add(i);
             } catch (Exception e) {
                 failCount++;
+                failIndices.add(i);
             }
         }
 
-        Map<String, Integer> result = new HashMap<>();
+        Map<String, Object> result = new HashMap<>();
         result.put("success", successCount);
         result.put("fail", failCount);
+        result.put("skipped", skippedCount);
+        result.put("successIndices", successIndices);
+        result.put("failIndices", failIndices);
+        result.put("skippedIndices", skippedIndices);
 
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 빈 행이거나 필수 데이터가 없는 불완전한 행인지 체크
+     */
+    private boolean isEmptyOrIncomplete(PartIncomingDTO dto) {
+        // 부품명이 없으면 불완전한 행으로 간주
+        if (dto.getPartName() == null || dto.getPartName().trim().isEmpty()) {
+            return true;
+        }
+        // 카테고리가 없으면 불완전한 행으로 간주
+        if (dto.getCategoryId() == null) {
+            return true;
+        }
+        return false;
     }
 
     private boolean isInventoryTextColumn(String column) {

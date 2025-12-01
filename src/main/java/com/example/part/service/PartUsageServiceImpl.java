@@ -64,7 +64,7 @@ public class PartUsageServiceImpl implements PartUsageService {
         auditLogger.log("part_usage",
                 partUsageDTO.getUsageId() != null ? partUsageDTO.getUsageId().longValue() : null,
                 "CREATE",
-                "part_usage 등록: " + partUsageDTO.getPartNumber(),
+                "출고 등록: " + partUsageDTO.getPartNumber(),
                 null,
                 null);
     }
@@ -115,11 +115,44 @@ public class PartUsageServiceImpl implements PartUsageService {
 
         log.info("출고 정보 수정 완료: ID {}", partUsageDTO.getUsageId());
 
+        // 변경 필드 추적
+        StringBuilder changedFields = new StringBuilder("{");
+        boolean hasChanges = false;
+
+        if (requestedQuantity != null && !existing.getQuantityUsed().equals(requestedQuantity)) {
+            changedFields.append(String.format("\"%s\": {\"변경전\": %d, \"변경후\": %d}",
+                    auditLogger.translateFieldName("part_usage", "quantityUsed"),
+                    existing.getQuantityUsed(),
+                    requestedQuantity));
+            hasChanges = true;
+        }
+
+        if (partUsageDTO.getUsageLocation() != null
+                && !existing.getUsageLocation().equals(partUsageDTO.getUsageLocation())) {
+            if (hasChanges) changedFields.append(", ");
+            changedFields.append(String.format("\"%s\": {\"변경전\": \"%s\", \"변경후\": \"%s\"}",
+                    auditLogger.translateFieldName("part_usage", "usageLocation"),
+                    existing.getUsageLocation(),
+                    partUsageDTO.getUsageLocation()));
+            hasChanges = true;
+        }
+
+        if (partUsageDTO.getUsedDate() != null && !existing.getUsedDate().equals(partUsageDTO.getUsedDate())) {
+            if (hasChanges) changedFields.append(", ");
+            changedFields.append(String.format("\"%s\": {\"변경전\": \"%s\", \"변경후\": \"%s\"}",
+                    auditLogger.translateFieldName("part_usage", "usedDate"),
+                    existing.getUsedDate(),
+                    partUsageDTO.getUsedDate()));
+            hasChanges = true;
+        }
+
+        changedFields.append("}");
+
         auditLogger.log("part_usage",
                 partUsageDTO.getUsageId() != null ? partUsageDTO.getUsageId().longValue() : null,
                 "UPDATE",
-                "part_usage 수정: " + (partUsageDTO.getPartNumber() != null ? partUsageDTO.getPartNumber() : ""),
-                null,
+                "출고 수정: " + (partUsageDTO.getPartNumber() != null ? partUsageDTO.getPartNumber() : existing.getPartNumber()),
+                hasChanges ? changedFields.toString() : null,
                 null);
     }
 

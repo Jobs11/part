@@ -12,4 +12,8 @@ public interface MapSpotMapper {
     int insertMapSpots(List<MapSpotDTO> spots);
 
     List<MapSpotDTO> findByImageId(Long imageId);
+
+    int updateMapSpot(MapSpotDTO spot);
+
+    int deleteMapSpots(List<Integer> spotIds);
 }

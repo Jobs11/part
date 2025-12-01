@@ -21,7 +21,7 @@
         <result property="currency" column="currency"/>
         <result property="exchangeRate" column="exchange_rate"/>
         <result property="originalPrice" column="original_price"/>
-        <result property="purchaseDate" column="purchase_date"/>
+        <result property="purchaseDatetime" column="purchase_datetime"/>
         <result property="supplier" column="supplier"/>
         <result property="purchaser" column="purchaser"/>
         <result property="invoiceNumber" column="invoice_number"/>
@@ -45,7 +45,7 @@
             currency,
             exchange_rate,
             original_price,
-            purchase_date,
+            purchase_datetime,
             supplier,
             purchaser,
             invoice_number,
@@ -64,7 +64,7 @@
             #{currency},
             #{exchangeRate},
             #{originalPrice},
-            #{purchaseDate},
+            #{purchaseDatetime},
             #{supplier},
             #{purchaser},
             #{invoiceNumber},
@@ -205,10 +205,10 @@
         </foreach>
 
         <foreach collection="excludeList" item="kw">
-            AND (
-                pi.part_number NOT LIKE CONCAT('%', #{kw}, '%')
-                AND pi.part_name NOT LIKE CONCAT('%', #{kw}, '%')
-                AND c.category_name NOT LIKE CONCAT('%', #{kw}, '%')
+            AND NOT (
+                pi.part_number LIKE CONCAT('%', #{kw}, '%')
+                OR pi.part_name LIKE CONCAT('%', #{kw}, '%')
+                OR c.category_name LIKE CONCAT('%', #{kw}, '%')
             )
         </foreach>
 
@@ -265,6 +265,7 @@
             category_id = #{categoryId},
             part_name = #{partName},
             description = #{description},
+            project_name = #{projectName},
             unit = #{unit},
             payment_method_id = #{paymentMethodId},
             incoming_quantity = #{incomingQuantity},
@@ -272,7 +273,7 @@
             currency = #{currency},
             exchange_rate = #{exchangeRate},
             original_price = #{originalPrice},
-            purchase_date = #{purchaseDate},
+            purchase_datetime = #{purchaseDatetime},
             supplier = #{supplier},
             purchaser = #{purchaser},
             invoice_number = #{invoiceNumber},
@@ -382,13 +383,15 @@
             4) - 제외 검색
             ================================ -->
         <foreach collection="excludeList" item="kw">
-            AND (
-                COALESCE(pi.part_number, '') NOT LIKE CONCAT('%', #{kw}, '%')
-                AND COALESCE(pi.part_name, '') NOT LIKE CONCAT('%', #{kw}, '%')
-                AND COALESCE(pi.description, '') NOT LIKE CONCAT('%', #{kw}, '%')
-                AND COALESCE(pi.project_name, '') NOT LIKE CONCAT('%', #{kw}, '%')
-                AND COALESCE(c.category_name, '') NOT LIKE CONCAT('%', #{kw}, '%')
-                AND COALESCE(pm.category_name, '') NOT LIKE CONCAT('%', #{kw}, '%')
+            AND NOT (
+                COALESCE(pi.part_number, '') LIKE CONCAT('%', #{kw}, '%')
+                OR COALESCE(pi.part_name, '') LIKE CONCAT('%', #{kw}, '%')
+                OR COALESCE(pi.description, '') LIKE CONCAT('%', #{kw}, '%')
+                OR COALESCE(pi.project_name, '') LIKE CONCAT('%', #{kw}, '%')
+                OR COALESCE(c.category_name, '') LIKE CONCAT('%', #{kw}, '%')
+                OR COALESCE(pm.category_name, '') LIKE CONCAT('%', #{kw}, '%')
+                OR CAST(pi.incoming_quantity AS CHAR) LIKE CONCAT('%', #{kw}, '%')
+                OR CAST(pi.purchase_price AS CHAR) LIKE CONCAT('%', #{kw}, '%')
             )
         </foreach>
 

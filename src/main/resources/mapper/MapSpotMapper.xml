@@ -41,4 +41,23 @@
         ORDER BY spot_id ASC
     </select>
 
+    <update id="updateMapSpot" parameterType="com.example.part.dto.MapSpotDTO">
+        UPDATE map_spot
+        SET
+            spot_name = #{spotName},
+            pos_x = #{posX},
+            pos_y = #{posY},
+            radius = #{radius},
+            description = #{description}
+        WHERE spot_id = #{spotId}
+    </update>
+
+    <delete id="deleteMapSpots" parameterType="java.util.List">
+        DELETE FROM map_spot
+        WHERE spot_id IN
+        <foreach collection="list" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
 </mapper>

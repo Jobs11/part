@@ -308,10 +308,11 @@
         </foreach>
 
         <foreach collection="excludeList" item="kw">
-            AND (
-                pu.part_number NOT LIKE CONCAT('%', #{kw}, '%')
-                AND pi.part_name NOT LIKE CONCAT('%', #{kw}, '%')
-                AND pu.usage_location NOT LIKE CONCAT('%', #{kw}, '%')
+            AND NOT (
+                pu.part_number LIKE CONCAT('%', #{kw}, '%')
+                OR pi.part_name LIKE CONCAT('%', #{kw}, '%')
+                OR pu.usage_location LIKE CONCAT('%', #{kw}, '%')
+                OR CAST(pu.quantity_used AS CHAR) LIKE CONCAT('%', #{kw}, '%')
             )
         </foreach>
 

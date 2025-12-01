@@ -45,7 +45,7 @@ public class PartLocationServiceImpl implements PartLocationService {
                 auditLogger.log("part_location",
                         null,
                         "CREATE",
-                        "part_location 등록: " + dto.getLocationCode(),
+                        "배치도 등록: " + dto.getLocationCode(),
                         null,
                         null);
             }
@@ -53,11 +53,56 @@ public class PartLocationServiceImpl implements PartLocationService {
         } else {
             boolean updated = partLocationMapper.updateLocation(dto) > 0;
             if (updated) {
+                // 변경 필드 추적
+                StringBuilder changedFields = new StringBuilder("{");
+                boolean hasChanges = false;
+
+                if (existing.getPartNumber() != null && dto.getPartNumber() != null
+                        && !existing.getPartNumber().equals(dto.getPartNumber())) {
+                    changedFields.append(String.format("\"%s\": {\"변경전\": \"%s\", \"변경후\": \"%s\"}",
+                            auditLogger.translateFieldName("part_location", "partNumber"),
+                            existing.getPartNumber(),
+                            dto.getPartNumber()));
+                    hasChanges = true;
+                }
+
+                if (existing.getPartName() != null && dto.getPartName() != null
+                        && !existing.getPartName().equals(dto.getPartName())) {
+                    if (hasChanges) changedFields.append(", ");
+                    changedFields.append(String.format("\"%s\": {\"변경전\": \"%s\", \"변경후\": \"%s\"}",
+                            auditLogger.translateFieldName("part_location", "partName"),
+                            existing.getPartName(),
+                            dto.getPartName()));
+                    hasChanges = true;
+                }
+
+                if (existing.getPosX() != null && dto.getPosX() != null
+                        && !existing.getPosX().equals(dto.getPosX())) {
+                    if (hasChanges) changedFields.append(", ");
+                    changedFields.append(String.format("\"%s\": {\"변경전\": \"%s\", \"변경후\": \"%s\"}",
+                            "행",
+                            existing.getPosX(),
+                            dto.getPosX()));
+                    hasChanges = true;
+                }
+
+                if (existing.getPosY() != null && dto.getPosY() != null
+                        && !existing.getPosY().equals(dto.getPosY())) {
+                    if (hasChanges) changedFields.append(", ");
+                    changedFields.append(String.format("\"%s\": {\"변경전\": %d, \"변경후\": %d}",
+                            "열",
+                            existing.getPosY(),
+                            dto.getPosY()));
+                    hasChanges = true;
+                }
+
+                changedFields.append("}");
+
                 auditLogger.log("part_location",
                         null,
                         "UPDATE",
-                        "part_location 수정: " + dto.getLocationCode(),
-                        null,
+                        "배치도 수정: " + dto.getLocationCode(),
+                        hasChanges ? changedFields.toString() : null,
                         null);
             }
             return updated;
@@ -71,7 +116,7 @@ public class PartLocationServiceImpl implements PartLocationService {
             auditLogger.log("part_location",
                     null,
                     "DELETE",
-                    "part_location 삭제: " + code,
+                    "배치도 삭제: " + code,
                     null,
                     null);
         }

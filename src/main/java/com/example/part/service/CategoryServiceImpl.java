@@ -91,7 +91,7 @@ public class CategoryServiceImpl implements CategoryService {
         auditLogger.log("category",
                 categoryDTO.getCategoryId() != null ? categoryDTO.getCategoryId().longValue() : null,
                 "CREATE",
-                "category 등록: " + categoryDTO.getCategoryName(),
+                "카테고리 등록: " + categoryDTO.getCategoryName(),
                 null,
                 null);
     }
@@ -99,6 +99,9 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Transactional
     public void updateCategory(CategoryDTO categoryDTO) {
+        // 기존 데이터 조회
+        CategoryDTO before = categoryMapper.findById(categoryDTO.getCategoryId());
+
         // 중복 체크: 다른 카테고리가 같은 이름과 설명을 가지고 있는지 확인
         CategoryDTO existingCategory = categoryMapper.findByNameAndDescription(
                 categoryDTO.getCategoryName(),
@@ -116,11 +119,44 @@ public class CategoryServiceImpl implements CategoryService {
         }
         log.info("카테고리 수정 완료: ID {}", categoryDTO.getCategoryId());
 
+        // 변경 필드 추적
+        StringBuilder changedFields = new StringBuilder("{");
+        boolean hasChanges = false;
+
+        if (!before.getCategoryName().equals(categoryDTO.getCategoryName())) {
+            changedFields.append(String.format("\"%s\": {\"변경전\": \"%s\", \"변경후\": \"%s\"}",
+                    auditLogger.translateFieldName("category", "categoryName"),
+                    before.getCategoryName(),
+                    categoryDTO.getCategoryName()));
+            hasChanges = true;
+        }
+
+        if (!before.getDescription().equals(categoryDTO.getDescription())) {
+            if (hasChanges) changedFields.append(", ");
+            changedFields.append(String.format("\"%s\": {\"변경전\": \"%s\", \"변경후\": \"%s\"}",
+                    auditLogger.translateFieldName("category", "description"),
+                    before.getDescription(),
+                    categoryDTO.getDescription()));
+            hasChanges = true;
+        }
+
+        if (before.getIsActive() != null && categoryDTO.getIsActive() != null
+                && !before.getIsActive().equals(categoryDTO.getIsActive())) {
+            if (hasChanges) changedFields.append(", ");
+            changedFields.append(String.format("\"%s\": {\"변경전\": %s, \"변경후\": %s}",
+                    auditLogger.translateFieldName("category", "isActive"),
+                    before.getIsActive(),
+                    categoryDTO.getIsActive()));
+            hasChanges = true;
+        }
+
+        changedFields.append("}");
+
         auditLogger.log("category",
                 categoryDTO.getCategoryId() != null ? categoryDTO.getCategoryId().longValue() : null,
                 "UPDATE",
-                "category 수정: " + categoryDTO.getCategoryName(),
-                null,
+                "카테고리 수정: " + categoryDTO.getCategoryName(),
+                hasChanges ? changedFields.toString() : null,
                 null);
     }
 
@@ -138,7 +174,7 @@ public class CategoryServiceImpl implements CategoryService {
         auditLogger.log("category",
                 (long) categoryId,
                 "UPDATE",
-                "category 비활성화: " + categoryId,
+                "카테고리 비활성화: " + categoryId,
                 null,
                 null);
     }
@@ -155,7 +191,7 @@ public class CategoryServiceImpl implements CategoryService {
         auditLogger.log("category",
                 (long) categoryId,
                 "DELETE",
-                "category 삭제: " + categoryId,
+                "카테고리 삭제: " + categoryId,
                 null,
                 null);
     }

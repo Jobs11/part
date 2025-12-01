@@ -158,16 +158,25 @@ document.addEventListener('DOMContentLoaded', async function () {
             const data = await response.json();
             const adminBtn = document.getElementById('adminBtn');
             const myProfileBtn = document.getElementById('myProfileBtn');
+            const mapSpotButton = document.getElementById('mapSpotButton');
 
             if (data.isAdmin) {
                 // 관리자: 관리자 페이지 버튼만 표시
                 if (adminBtn) {
                     adminBtn.style.display = 'block';
                 }
+                // 관리자: 도면 좌표 마킹 버튼 표시
+                if (mapSpotButton) {
+                    mapSpotButton.style.display = 'inline-block';
+                }
             } else {
                 // 일반 유저: 내 정보 버튼만 표시
                 if (myProfileBtn) {
                     myProfileBtn.style.display = 'block';
+                }
+                // 일반 유저: 도면 좌표 마킹 버튼 숨김
+                if (mapSpotButton) {
+                    mapSpotButton.style.display = 'none';
                 }
             }
         }
@@ -580,7 +589,7 @@ async function displayIncomingList(incomingList) {
                 <td>${incoming.unit || '-'}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'paymentMethodId', ${incoming.paymentMethodId != null ? incoming.paymentMethodId : 'null'}, null, '${escapeHtml(incoming.paymentMethodName || '')}')">${incoming.paymentMethodName || '-'}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'purchasePrice', ${incoming.purchasePrice})">${formatNumber(incoming.purchasePrice)} 원</td>
-                <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'purchaseDate', '${incoming.purchaseDate}')">${formatDate(incoming.purchaseDate)}</td>
+                <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'purchaseDatetime', '${incoming.purchaseDatetime}')">${formatDateTime(incoming.purchaseDatetime)}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'purchaser', '${escapeHtml(incoming.purchaser || '')}')">${incoming.purchaser || '-'}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'supplier', '${escapeHtml(incoming.supplier || '')}')">${incoming.supplier || '-'}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'projectName', '${escapeHtml(incoming.projectName || '')}')">${incoming.projectName || '-'}</td>
@@ -648,10 +657,12 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
         inputElement = document.createElement('input');
         inputElement.type =
             field === 'incomingQuantity' || field === 'purchasePrice' || field === 'originalPrice' ? 'number' :
-                field === 'purchaseDate' ? 'date' : 'text';
+                field === 'purchaseDatetime' ? 'datetime-local' : 'text';
 
-        if (field === 'purchaseDate' && currentValue) {
-            inputElement.value = currentValue;
+        if (field === 'purchaseDatetime' && currentValue) {
+            // yyyy-MM-dd HH:mm:ss 형식을 yyyy-MM-ddTHH:mm 형식으로 변환
+            const dateValue = currentValue.replace(' ', 'T').substring(0, 16);
+            inputElement.value = dateValue;
         } else {
             inputElement.value = (currentValue === '-' || !currentValue) ? '' : currentValue;
         }
@@ -722,6 +733,9 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
                         showMessage('기존 환율 사용 (환율 조회 오류)', 'info');
                     }
                 }
+            } else if (field === 'purchaseDatetime') {
+                // datetime-local 값을 yyyy-MM-dd HH:mm:ss 형식으로 변환
+                updatedData[field] = newValue ? newValue.replace('T', ' ') + ':00' : null;
             } else {
                 updatedData[field] = newValue;
             }
@@ -765,8 +779,8 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
         if (e.key === 'Escape') {
             if (field === 'categoryId' || field === 'paymentMethodId') {
                 cell.textContent = displayValue || '-';
-            } else if (field === 'purchaseDate') {
-                cell.textContent = formatDate(originalValue);
+            } else if (field === 'purchaseDatetime') {
+                cell.textContent = formatDateTime(originalValue);
             } else if (field === 'purchasePrice') {
                 cell.textContent = formatNumber(originalValue) + ' 원';
             } else if (field === 'originalPrice') {
@@ -2412,7 +2426,7 @@ function addBulkRow() {
             </select>
         </td>
         <td><input type="number" class="bulk-input bulk-price" placeholder="금액" min="0" step="0.01"></td>
-        <td><input type="date" class="bulk-input bulk-date"></td>
+        <td><input type="datetime-local" class="bulk-input bulk-date"></td>
         <td><input type="text" class="bulk-input bulk-purchaser" placeholder="구매업체"></td>
         <td><input type="text" class="bulk-input bulk-supplier" placeholder="공급업체"></td>
         <td>
@@ -2436,8 +2450,14 @@ function addBulkRow() {
     `;
     tbody.appendChild(tr);
 
-    // 날짜 기본값 설정
-    tr.querySelector('.bulk-date').value = new Date().toISOString().split('T')[0];
+    // 날짜 기본값 설정 (시간 포함)
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    tr.querySelector('.bulk-date').value = `${year}-${month}-${day}T${hours}:${minutes}`;
 
     // 캐비닷 위치 입력 정규화 (blur 시 A2 -> A-2)
     attachCabinetNormalizer(tr.querySelector('.bulk-cabinet-location'));
@@ -2794,11 +2814,18 @@ async function submitBulkInsert() {
     const tbody = document.getElementById('bulkInsertTableBody');
     const rows = tbody.querySelectorAll('tr');
     const dataList = [];
+    const incompleteRows = [];
 
     console.log('submitBulkInsert 시작, 행 개수:', rows.length);
 
+    // 기존 에러 표시 제거
+    rows.forEach(row => {
+        row.style.backgroundColor = '';
+    });
+
     // 입력된 행만 수집
-    for (const row of rows) {
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
         const partNumber = row.querySelector('.bulk-part-number').value.trim();
         const categoryId = row.querySelector('.bulk-category').value;
         const partName = row.querySelector('.bulk-part-name').value.trim();
@@ -2817,8 +2844,14 @@ async function submitBulkInsert() {
 
         console.log('행 데이터:', {partNumber, categoryId, partName, cabinetLocation, mapLocation, quantity, paymentMethodId, price, date, description, projectName, supplier, purchaser});
 
-        // 필수 항목: 부품번호, 카테고리, 부품명, 수량, 금액, 구매일자 (설명은 선택)
+        // 하나라도 입력된 경우 (완전히 빈 행이 아닌 경우)
+        const hasAnyInput = partNumber || categoryId || partName || quantity || price || date;
+
+        // 필수 항목: 부품번호, 카테고리, 부품명, 수량, 금액, 구매일자
         if (partNumber && categoryId && paymentMethodId && partName && quantity && price && date) {
+            // datetime-local 값을 yyyy-MM-dd HH:mm:ss 형식으로 변환
+            const formattedDate = date ? date.replace('T', ' ') + ':00' : null;
+
             const data = {
                 partNumber: partNumber,
                 categoryId: parseInt(categoryId),
@@ -2830,7 +2863,7 @@ async function submitBulkInsert() {
                 paymentMethodId: parseInt(paymentMethodId),
                 purchasePrice: parseFloat(price),
                 currency: 'KRW',
-                purchaseDate: date,
+                purchaseDatetime: formattedDate,
                 description: description || '-',
                 projectName: projectName || null,
                 supplier: supplier || null,
@@ -2840,17 +2873,53 @@ async function submitBulkInsert() {
             };
 
             dataList.push(data);
+        } else if (hasAnyInput) {
+            // 일부만 입력된 불완전한 행
+            const missingFields = [];
+            if (!partNumber) missingFields.push('부품번호');
+            if (!categoryId) missingFields.push('카테고리');
+            if (!paymentMethodId) missingFields.push('결제방법');
+            if (!partName) missingFields.push('부품명');
+            if (!quantity) missingFields.push('수량');
+            if (!price) missingFields.push('금액');
+            if (!date) missingFields.push('구매일자');
+
+            incompleteRows.push({
+                rowNumber: i + 1,
+                missingFields: missingFields,
+                row: row
+            });
         }
     }
 
     console.log('수집된 데이터:', dataList);
+    console.log('불완전한 행:', incompleteRows);
 
     if (dataList.length === 0) {
         showMessage('등록할 데이터가 없습니다. 필수 항목을 입력하세요.', 'error');
         return;
     }
 
-    if (!confirm(`${dataList.length}건을 등록하시겠습니까?`)) return;
+    // 불완전한 행이 있는 경우 경고
+    if (incompleteRows.length > 0) {
+        // 불완전한 행 시각적으로 표시 (노란색 배경)
+        incompleteRows.forEach(item => {
+            item.row.style.backgroundColor = '#fff3cd';
+        });
+
+        const warningMessage = `${incompleteRows.length}개 행이 불완전하여 건너뜁니다.\n\n` +
+            incompleteRows.slice(0, 3).map(item =>
+                `${item.rowNumber}번째 행: ${item.missingFields.join(', ')} 누락`
+            ).join('\n') +
+            (incompleteRows.length > 3 ? `\n... 외 ${incompleteRows.length - 3}개` : '') +
+            `\n\n${dataList.length}건을 등록하시겠습니까?`;
+
+        if (!confirm(warningMessage)) {
+            return;
+        }
+    } else {
+        if (!confirm(`${dataList.length}건을 등록하시겠습니까?`)) return;
+    }
 
     console.log('서버 전송 시작');
 
@@ -2866,8 +2935,31 @@ async function submitBulkInsert() {
         if (response.ok) {
             const result = await response.json();
             console.log('등록 결과:', result);
-            showMessage(`등록 완료: ${result.success}건 성공, ${result.fail}건 실패`, 'success');
-            clearBulkTable();
+
+            // 성공한 행만 제거 (역순으로 제거하여 인덱스 꼬임 방지)
+            const tbody = document.getElementById('bulkInsertTableBody');
+            const successIndices = result.successIndices || [];
+            successIndices.sort((a, b) => b - a); // 역순 정렬
+            successIndices.forEach(index => {
+                if (tbody.children[index]) {
+                    tbody.children[index].remove();
+                }
+            });
+
+            // 모든 행이 성공한 경우 빈 행 하나 추가
+            if (tbody.children.length === 0) {
+                addBulkRow();
+            }
+
+            let message = `등록 완료: ${result.success}건 성공`;
+            if (result.fail > 0) {
+                message += `, ${result.fail}건 실패`;
+            }
+            if (result.skipped > 0) {
+                message += `, ${result.skipped}건 건너뜀`;
+            }
+            showMessage(message, 'success');
+
             loadAllIncoming();
             loadInventory();
             loadLowStock();
@@ -3833,6 +3925,7 @@ async function loadExistingMapSpots(imageId) {
         if (!response.ok) throw new Error('좌표 조회 실패');
         const spots = await response.json();
         mapSpotMarkers = (spots || []).map(s => ({
+            spotId: s.spotId,  // 기존 좌표 ID 추가
             x: s.posX,
             y: s.posY,
             name: s.spotName || '',
@@ -4149,39 +4242,78 @@ function clearMapSpotMarkers() {
     updateMapSpotList();
 }
 
-function submitMapSpotMarkers() {
+async function submitMapSpotMarkers() {
     if (!mapSpotSelectedImage) {
         showMessage('이미지를 먼저 선택하세요.', 'warning');
         return;
     }
-    if (mapSpotMarkers.length === 0) {
-        showMessage('등록할 좌표가 없습니다. 이미지를 클릭해 좌표를 추가하세요.', 'warning');
-        return;
-    }
 
-    const payload = mapSpotMarkers.map(marker => ({
-        imageId: mapSpotSelectedImage.imageId,
-        spotName: marker.name || '',
-        posX: marker.x,
-        posY: marker.y,
-        radius: marker.radius || 20,
-        description: marker.desc || ''
-    }));
+    try {
+        // 1. 기존 DB에 있던 좌표 목록 가져오기
+        const response = await fetch(`/livewalk/map-spot/image/${mapSpotSelectedImage.imageId}`);
+        if (!response.ok) throw new Error('기존 좌표 조회 실패');
+        const existingSpots = await response.json();
 
-    fetch('/livewalk/map-spot/bulk', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-    })
-        .then(response => {
-            if (!response.ok) throw new Error('등록 실패');
-            showMessage('좌표가 등록되었습니다.', 'success');
-        })
-        .catch(err => {
-            showMessage('좌표 등록 실패: ' + err.message, 'error');
+        // 2. 현재 메모리에 있는 좌표의 spotId 수집
+        const currentSpotIds = mapSpotMarkers
+            .filter(m => m.spotId)
+            .map(m => m.spotId);
+
+        // 3. 삭제할 좌표 ID 찾기 (기존에 있었으나 현재 메모리에 없는 것)
+        const toDelete = existingSpots
+            .filter(s => !currentSpotIds.includes(s.spotId))
+            .map(s => s.spotId);
+
+        // 4. 수정/추가할 좌표 분류
+        const toUpdate = [];
+        const toInsert = [];
+
+        mapSpotMarkers.forEach(marker => {
+            const data = {
+                spotId: marker.spotId,
+                imageId: mapSpotSelectedImage.imageId,
+                spotName: marker.name || '',
+                posX: marker.x,
+                posY: marker.y,
+                radius: marker.radius || 20,
+                description: marker.desc || ''
+            };
+
+            if (marker.spotId) {
+                // 기존 좌표 (수정)
+                toUpdate.push(data);
+            } else {
+                // 새로운 좌표 (추가)
+                toInsert.push(data);
+            }
         });
+
+        // 5. 서버로 전송
+        const payload = {
+            toDelete: toDelete,
+            toUpdate: toUpdate,
+            toInsert: toInsert
+        };
+
+        const saveResponse = await fetch('/livewalk/map-spot/sync', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!saveResponse.ok) throw new Error('저장 실패');
+
+        showMessage(`좌표 저장 완료 (삭제: ${toDelete.length}, 수정: ${toUpdate.length}, 추가: ${toInsert.length})`, 'success');
+
+        // 6. 저장 후 다시 로드하여 spotId 동기화
+        await loadExistingMapSpots(mapSpotSelectedImage.imageId);
+
+    } catch (err) {
+        showMessage('좌표 저장 실패: ' + err.message, 'error');
+        console.error(err);
+    }
 }
 
 

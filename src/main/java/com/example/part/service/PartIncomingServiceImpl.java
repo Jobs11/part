@@ -589,7 +589,7 @@ public class PartIncomingServiceImpl implements PartIncomingService {
         compare(diff, "currency", before.getCurrency(), after.getCurrency());
         compare(diff, "exchangeRate", before.getExchangeRate(), after.getExchangeRate());
         compare(diff, "originalPrice", before.getOriginalPrice(), after.getOriginalPrice());
-        compare(diff, "purchaseDate", before.getPurchaseDate(), after.getPurchaseDate());
+        compare(diff, "purchaseDatetime", before.getPurchaseDatetime(), after.getPurchaseDatetime());
         compare(diff, "supplier", before.getSupplier(), after.getSupplier());
         compare(diff, "purchaser", before.getPurchaser(), after.getPurchaser());
         compare(diff, "invoiceNumber", before.getInvoiceNumber(), after.getInvoiceNumber());
@@ -615,9 +615,11 @@ public class PartIncomingServiceImpl implements PartIncomingService {
             return;
         }
         Map<String, Object> changes = new LinkedHashMap<>();
-        changes.put("before", before);
-        changes.put("after", after);
-        diff.put(field, changes);
+        changes.put("변경전", before);
+        changes.put("변경후", after);
+        // 필드명을 한글로 변환
+        String koreanFieldName = auditLogger.translateFieldName("part_incoming", field);
+        diff.put(koreanFieldName, changes);
     }
 
     private String resolveActor(PartIncomingDTO dto) {
