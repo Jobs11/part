@@ -14,7 +14,7 @@
         <result property="unit" column="unit"/>
         <result property="quantityUsed" column="quantity_used"/>
         <result property="usageLocation" column="usage_location"/>
-        <result property="usedDate" column="used_date"/>
+        <result property="usedDatetime" column="used_datetime"/>
         <result property="note" column="note"/>
         <result property="createdBy" column="created_by"/>
         <result property="createdAt" column="created_at"/>
@@ -27,7 +27,7 @@
             part_number,
             quantity_used,
             usage_location,
-            used_date,
+            used_datetime,
             note,
             created_by
         ) VALUES (
@@ -35,7 +35,7 @@
             #{partNumber},
             #{quantityUsed},
             #{usageLocation},
-            #{usedDate},
+            #{usedDatetime},
             #{note},
             #{createdBy}
         )
@@ -47,7 +47,7 @@
         SET
             quantity_used = #{quantityUsed},
             usage_location = #{usageLocation},
-            used_date = #{usedDate},
+            used_datetime = #{usedDatetime},
             note = #{note}
         WHERE usage_id = #{usageId}
     </update>
@@ -60,7 +60,7 @@
             pu.part_number,
             pu.quantity_used,
             pu.usage_location,
-            pu.used_date,
+            pu.used_datetime,
             pu.note,
             pu.created_by,
             pu.created_at,
@@ -81,7 +81,7 @@
             pu.part_number,
             pu.quantity_used,
             pu.usage_location,
-            pu.used_date,
+            pu.used_datetime,
             pu.note,
             pu.created_by,
             pu.created_at,
@@ -91,7 +91,7 @@
         FROM part_usage pu
         LEFT JOIN part_incoming pi ON pu.incoming_id = pi.incoming_id
         LEFT JOIN category c ON pi.category_id = c.category_id
-        ORDER BY pu.used_date DESC, pu.created_at DESC
+        ORDER BY pu.used_datetime DESC, pu.created_at DESC
     </select>
 
     <!-- ✅ 검색 기능 (부품명, 사용처, 부품번호 동시 검색) -->
@@ -102,7 +102,7 @@
             pu.part_number,
             pu.quantity_used,
             pu.usage_location,
-            pu.used_date,
+            pu.used_datetime,
             pu.note,
             pu.created_by,
             pu.created_at,
@@ -116,7 +116,7 @@
             pi.part_name LIKE CONCAT('%', #{keyword}, '%')
             OR pu.usage_location LIKE CONCAT('%', #{keyword}, '%')
             OR pu.part_number LIKE CONCAT('%', #{keyword}, '%')
-        ORDER BY pu.used_date DESC
+        ORDER BY pu.used_datetime DESC
     </select>
 
     <!-- ✅ 사용처별 조회 -->
@@ -127,7 +127,7 @@
             pu.part_number,
             pu.quantity_used,
             pu.usage_location,
-            pu.used_date,
+            pu.used_datetime,
             pu.note,
             pu.created_by,
             pu.created_at,
@@ -138,7 +138,7 @@
         LEFT JOIN part_incoming pi ON pu.incoming_id = pi.incoming_id
         LEFT JOIN category c ON pi.category_id = c.category_id
         WHERE pu.usage_location LIKE CONCAT('%', #{usageLocation}, '%')
-        ORDER BY pu.used_date DESC
+        ORDER BY pu.used_datetime DESC
     </select>
 
     <!-- ✅ 부품번호별 조회 -->
@@ -149,7 +149,7 @@
             pu.part_number,
             pu.quantity_used,
             pu.usage_location,
-            pu.used_date,
+            pu.used_datetime,
             pu.note,
             pu.created_by,
             pu.created_at,
@@ -160,7 +160,7 @@
         LEFT JOIN part_incoming pi ON pu.incoming_id = pi.incoming_id
         LEFT JOIN category c ON pi.category_id = c.category_id
         WHERE pu.part_number = #{partNumber}
-        ORDER BY pu.used_date DESC
+        ORDER BY pu.used_datetime DESC
     </select>
 
     <!-- ✅ 카테고리별 조회 -->
@@ -171,7 +171,7 @@
             pu.part_number,
             pu.quantity_used,
             pu.usage_location,
-            pu.used_date,
+            pu.used_datetime,
             pu.note,
             pu.created_by,
             pu.created_at,
@@ -182,7 +182,7 @@
         LEFT JOIN part_incoming pi ON pu.incoming_id = pi.incoming_id
         LEFT JOIN category c ON pi.category_id = c.category_id
         WHERE pi.category_id = #{categoryId}
-        ORDER BY pu.used_date DESC
+        ORDER BY pu.used_datetime DESC
     </select>
 
     <!-- ✅ 기간별 조회 (날짜 필터) -->
@@ -193,7 +193,7 @@
             pu.part_number,
             pu.quantity_used,
             pu.usage_location,
-            pu.used_date,
+            pu.used_datetime,
             pu.note,
             pu.created_by,
             pu.created_at,
@@ -203,8 +203,8 @@
         FROM part_usage pu
         LEFT JOIN part_incoming pi ON pu.incoming_id = pi.incoming_id
         LEFT JOIN category c ON pi.category_id = c.category_id
-        WHERE pu.used_date BETWEEN #{startDate} AND #{endDate}
-        ORDER BY pu.used_date DESC
+        WHERE pu.used_datetime BETWEEN #{startDate} AND #{endDate}
+        ORDER BY pu.used_datetime DESC
     </select>
 
     <!-- ✅ 정렬 (열 이름 + ASC/DESC 동적) -->
@@ -215,7 +215,7 @@
             pu.part_number,
             pu.quantity_used,
             pu.usage_location,
-            pu.used_date,
+            pu.used_datetime,
             pu.note,
             pu.created_by,
             pu.created_at,
@@ -250,7 +250,7 @@
             pu.part_number,
             pu.quantity_used,
             pu.usage_location,
-            pu.used_date,
+            pu.used_datetime,
             pu.note,
             pu.created_by,
             pu.created_at,
@@ -274,7 +274,7 @@
             pu.part_number,
             pu.quantity_used,
             pu.usage_location,
-            pu.used_date,
+            pu.used_datetime,
             pu.note,
             pu.created_by,
             pu.created_at,
@@ -322,7 +322,7 @@
                 ${column} ${order}
             </when>
             <otherwise>
-                pu.used_date DESC, pu.created_at DESC
+                pu.used_datetime DESC, pu.created_at DESC
             </otherwise>
         </choose>
     </select>

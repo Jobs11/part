@@ -324,9 +324,9 @@
                         <label class="required">사용처</label>
                         <input type="text" id="usageLocation" placeholder="사용처" required>
                     </div>
-                    <div class="form-group" style="flex: 0 0 140px;">
-                        <label class="required">사용일</label>
-                        <input type="date" id="usedDate" required>
+                    <div class="form-group" style="flex: 0 0 200px;">
+                        <label class="required">사용일시</label>
+                        <input type="datetime-local" id="usedDate" required>
                     </div>
                     <div class="form-group" style="flex: 1;">
                         <label>비고</label>
@@ -356,7 +356,7 @@
                 <table id="usageTable">
                     <thead>
                         <tr>
-                            <th onclick="sortUsageTable('used_date')" style="cursor: pointer;">사용일 ▲▼</th>
+                            <th onclick="sortUsageTable('used_datetime')" style="cursor: pointer;">사용일시 ▲▼</th>
                             <th onclick="sortUsageTable('part_number')" style="cursor: pointer;">부품번호 ▲▼</th>
                             <th onclick="sortUsageTable('part_name')" style="cursor: pointer;">부품명 ▲▼</th>
                             <th onclick="sortUsageTable('quantity_used')" style="cursor: pointer;">출고수량 ▲▼</th>

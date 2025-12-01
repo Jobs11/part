@@ -7,6 +7,7 @@
     <!-- ResultMap -->
     <resultMap id="partLocationResultMap" type="com.example.part.dto.PartLocationDTO">
         <id property="locationId" column="location_id" />
+        <result property="incomingId" column="incoming_id" />
         <result property="locationCode" column="location_code" />
         <result property="partNumber" column="part_number" />
         <result property="partName" column="part_name" />
@@ -31,6 +32,11 @@
         SELECT * FROM part_location WHERE part_number = #{partNumber} LIMIT 1
     </select>
 
+    <!-- 단일 조회 (입고ID로) -->
+    <select id="findByIncomingId" resultMap="partLocationResultMap" parameterType="int">
+        SELECT * FROM part_location WHERE incoming_id = #{incomingId} LIMIT 1
+    </select>
+
     <!-- 캐비넷 위치 기준 조회 -->
     <select id="findByCabinetPosition" resultMap="partLocationResultMap">
         SELECT *
@@ -42,14 +48,15 @@
 
     <!-- 등록 (INSERT) -->
     <insert id="insertLocation" parameterType="com.example.part.dto.PartLocationDTO" useGeneratedKeys="true" keyProperty="locationId">
-        INSERT INTO part_location (location_code, part_number, part_name, pos_x, pos_y, note)
-        VALUES (#{locationCode}, #{partNumber}, #{partName}, #{posX}, #{posY}, #{note})
+        INSERT INTO part_location (incoming_id, location_code, part_number, part_name, pos_x, pos_y, note)
+        VALUES (#{incomingId}, #{locationCode}, #{partNumber}, #{partName}, #{posX}, #{posY}, #{note})
     </insert>
 
     <!-- 수정 (UPDATE) -->
     <update id="updateLocation" parameterType="com.example.part.dto.PartLocationDTO">
         UPDATE part_location
-        SET part_number = #{partNumber},
+        SET incoming_id = #{incomingId},
+            part_number = #{partNumber},
             part_name = #{partName},
             pos_x = #{posX},
             pos_y = #{posY},

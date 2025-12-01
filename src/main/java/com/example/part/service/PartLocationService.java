@@ -11,6 +11,8 @@ public interface PartLocationService {
 
     PartLocationDTO getLocationByPartNumber(String partNumber);
 
+    PartLocationDTO getLocationByIncomingId(Integer incomingId);
+
     PartLocationDTO getLocationByCabinet(String posX, Integer posY);
 
     boolean saveOrUpdate(PartLocationDTO dto);

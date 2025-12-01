@@ -147,7 +147,15 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (usageForm) usageForm.addEventListener('submit', registerUsage);
 
     if (purchaseDateEl) purchaseDateEl.value = new Date().toISOString().split('T')[0];
-    if (usedDateEl) usedDateEl.value = new Date().toISOString().split('T')[0];
+    if (usedDateEl) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        usedDateEl.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
 
     if (categoryIdEl) categoryIdEl.addEventListener('change', onCategoryChange);
 
@@ -596,7 +604,7 @@ async function displayIncomingList(incomingList) {
                 <td>${formatDateTime(incoming.createdAt)}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'note', '${escapeHtml(incoming.note || '')}')">${incoming.note || '-'}</td>
                 <td><button class="btn-small" onclick="openImageModal(${incoming.incomingId})">🖼 사진${imageCount > 0 ? ' ' + imageCount + '개' : ''}</button></td>
-                <td><button class="btn-small" data-part-number="${escapeHtml(incoming.partNumber)}" onclick="openPartLocationView(this.dataset.partNumber)">📍 배치도</button></td>
+                <td><button class="btn-small" data-incoming-id="${incoming.incomingId}" onclick="openPartLocationViewByIncomingId(${incoming.incomingId})">📍 배치도</button></td>
             </tr>
         `;
     });
@@ -1034,7 +1042,7 @@ async function registerUsage(e) {
         partNumber: document.getElementById('usagePartNumber').value,
         quantityUsed: parseInt(document.getElementById('quantityUsed').value),
         usageLocation: document.getElementById('usageLocation').value,
-        usedDate: document.getElementById('usedDate').value,
+        usedDatetime: document.getElementById('usedDate').value,
         note: document.getElementById('usageNote').value,
         createdBy: 'system'
     };
@@ -1067,7 +1075,13 @@ function clearUsageForm() {
     document.getElementById('usageIncomingId').value = '';
     document.getElementById('usagePartNumber').value = '';
     document.getElementById('usagePartName').value = '';
-    document.getElementById('usedDate').value = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    document.getElementById('usedDate').value = `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 // ==================== 출고 내역 조회 ====================
@@ -1240,7 +1254,7 @@ function displayUsageList(usageList) {
 
     tbody.innerHTML = usageList.map(usage => `
         <tr>
-            <td class="editable" ondblclick="makeUsageEditable(event, ${usage.usageId}, 'usedDate', '${usage.usedDate}')">${formatDate(usage.usedDate)}</td>
+            <td class="editable" ondblclick="makeUsageEditable(event, ${usage.usageId}, 'usedDatetime', '${usage.usedDatetime}')">${formatDateTime(usage.usedDatetime)}</td>
             <td>${usage.partNumber || '-'}</td>
             <td>${usage.partName || '-'}</td>
             <td class="editable" ondblclick="makeUsageEditable(event, ${usage.usageId}, 'quantityUsed', ${usage.quantityUsed})">${usage.quantityUsed}</td>
@@ -1264,10 +1278,18 @@ function makeUsageEditable(event, usageId, field, currentValue) {
     const input = document.createElement('input');
     input.type =
         field === 'quantityUsed' ? 'number' :
-            field === 'usedDate' ? 'date' : 'text';
+            field === 'usedDatetime' ? 'datetime-local' : 'text';
 
-    if (field === 'usedDate' && currentValue) {
-        input.value = currentValue;
+    if (field === 'usedDatetime' && currentValue) {
+        // Convert "yyyy-MM-dd HH:mm:ss" to "yyyy-MM-ddTHH:mm" for datetime-local
+        const parts = currentValue.split(' ');
+        if (parts.length === 2) {
+            const [datePart, timePart] = parts;
+            const [hh, mm] = timePart.split(':');
+            input.value = `${datePart}T${hh}:${mm}`;
+        } else {
+            input.value = currentValue;
+        }
     } else {
         input.value = (currentValue === '-' || !currentValue) ? '' : currentValue;
     }
@@ -1284,8 +1306,8 @@ function makeUsageEditable(event, usageId, field, currentValue) {
     const saveEdit = async () => {
         const newValue = input.value.trim();
         if (newValue === String(originalValue) || (!newValue && !originalValue)) {
-            if (field === 'usedDate') {
-                cell.textContent = formatDate(originalValue);
+            if (field === 'usedDatetime') {
+                cell.textContent = formatDateTime(originalValue);
             } else {
                 cell.textContent = originalValue || '-';
             }
@@ -1307,18 +1329,18 @@ function makeUsageEditable(event, usageId, field, currentValue) {
             });
 
             if (response.ok) {
-                cell.textContent = field === 'usedDate' ? formatDate(newValue) : newValue || '-';
+                cell.textContent = field === 'usedDatetime' ? formatDateTime(newValue) : newValue || '-';
                 showMessage('수정 완료 (재고 자동 반영됨)', 'success');
                 loadAllUsage();
                 loadInventory();
                 loadLowStock();
             } else {
                 const msg = await response.text();
-                cell.textContent = field === 'usedDate' ? formatDate(originalValue) : originalValue || '-';
+                cell.textContent = field === 'usedDatetime' ? formatDateTime(originalValue) : originalValue || '-';
                 showMessage('수정 실패: ' + msg, 'error');
             }
         } catch (error) {
-            cell.textContent = field === 'usedDate' ? formatDate(originalValue) : originalValue || '-';
+            cell.textContent = field === 'usedDatetime' ? formatDateTime(originalValue) : originalValue || '-';
             showMessage('수정 오류: ' + error.message, 'error');
         }
     };
@@ -6390,6 +6412,118 @@ let partLocationViewPartNumber = null;
 /**
  * 부품 배치도 보기 모달 열기 (읽기 전용)
  */
+/**
+ * 입고 ID로 배치도 열기 (입고 리스트용)
+ */
+async function openPartLocationViewByIncomingId(incomingId) {
+    try {
+        // incoming_id로 위치 정보 조회
+        const response = await fetch(`/livewalk/part-locations/incoming/${incomingId}`);
+
+        // 위치 정보가 없는 경우 처리
+        if (!response.ok) {
+            // 입고 정보 조회하여 부품번호/부품명 가져오기
+            try {
+                const incomingResponse = await fetch(`/livewalk/incoming/${incomingId}`);
+                if (incomingResponse.ok) {
+                    const incoming = await incomingResponse.json();
+                    showLocationSelectionDialogForIncoming(incomingId, incoming.partNumber, incoming.partName);
+                } else {
+                    showMessage('입고 정보를 찾을 수 없습니다.', 'error');
+                }
+            } catch (e) {
+                console.error('입고 정보 조회 실패:', e);
+                showMessage('입고 정보 조회 오류', 'error');
+            }
+            return;
+        }
+
+        const location = await response.json();
+
+        // location이 null이거나 비어있는 경우
+        if (!location) {
+            try {
+                const incomingResponse = await fetch(`/livewalk/incoming/${incomingId}`);
+                if (incomingResponse.ok) {
+                    const incoming = await incomingResponse.json();
+                    showLocationSelectionDialogForIncoming(incomingId, incoming.partNumber, incoming.partName);
+                }
+            } catch (e) {
+                console.error('입고 정보 조회 실패:', e);
+            }
+            return;
+        }
+
+        // 부품명 저장
+        currentViewingPartNumber = location.partNumber;
+        currentViewingPartName = location.partName;
+
+        // pos_x, pos_y가 있으면 캐비넷 그리드 방식
+        if (location.posX && location.posY) {
+            openCabinetGridView(location.partNumber, location);
+            return;
+        }
+
+        // locationCode가 있으면 도면 방식
+        const locationCode = location.locationCode;
+
+        if (!locationCode) {
+            showLocationSelectionDialogForIncoming(incomingId, location.partNumber, location.partName);
+            return;
+        }
+
+        // locationCode 파싱 (예: "8-A" -> 층: 8, 구역: A)
+        if (!locationCode.includes('-')) {
+            showMessage('위치 코드 형식이 올바르지 않습니다.', 'error');
+            return;
+        }
+
+        const parts = locationCode.split('-');
+        const floor = parts[0].trim();
+        const zone = parts[1].trim();
+
+        // 모달 열기
+        document.getElementById('partLocationViewModal').style.display = 'block';
+
+        // 제목 업데이트
+        document.getElementById('partLocationViewTitle').innerHTML =
+            `부품 배치도: <span style="color: #fff;">${location.partName || location.partNumber}</span>`;
+
+        // 정보 업데이트
+        document.getElementById('partLocationViewInfo').innerHTML =
+            `부품번호: <strong>${location.partNumber}</strong> | 위치: <strong style="color: #dc3545;">${locationCode}</strong> (${floor}층 ${zone}구역)`;
+
+        // 도면 선택 드롭다운 숨기기
+        const selectContainer = document.querySelector('label[for="partLocationViewSelect"]')?.parentElement;
+        if (selectContainer) {
+            selectContainer.style.display = 'none';
+        }
+
+        // 이미지 목록 로드
+        await loadPartLocationViewImages();
+
+        // 해당 층 이미지 찾기 및 선택
+        const floorImage = partLocationViewImagesCache.find(img =>
+            img.title && img.title.includes(floor + '층')
+        );
+
+        if (floorImage) {
+            const selectEl = document.getElementById('partLocationViewSelect');
+            selectEl.value = floorImage.imageId;
+            await handlePartLocationViewSelect(floorImage.imageId, zone);
+        } else {
+            showMessage(`${floor}층 배치도를 찾을 수 없습니다.`, 'error');
+        }
+
+    } catch (error) {
+        console.error('배치도 조회 오류:', error);
+        showMessage('배치도 조회 오류: ' + error.message, 'error');
+    }
+}
+
+/**
+ * 부품번호로 배치도 열기 (재고현황/출고 리스트용)
+ */
 async function openPartLocationView(partNumber) {
     try {
         partLocationViewPartNumber = partNumber;
@@ -6568,6 +6702,61 @@ function showLocationSelectionDialog(partNumber, partName) {
 }
 
 /**
+ * 입고 ID 기반 위치 선택 대화상자
+ */
+function showLocationSelectionDialogForIncoming(incomingId, partNumber, partName) {
+    const modalHtml = `
+        <div id="locationSelectionModal" style="
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        ">
+            <div style="
+                background: white;
+                padding: 30px;
+                border-radius: 8px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                max-width: 400px;
+                width: 90%;
+            ">
+                <h3 style="margin-top: 0; color: #333;">위치 정보 선택</h3>
+                <p style="color: #666; margin-bottom: 20px;">
+                    입고ID: <strong>${incomingId}</strong><br>
+                    부품번호: <strong>${partNumber}</strong><br>
+                    ${partName ? `부품명: <strong>${partName}</strong><br>` : ''}
+                    <br>
+                    등록된 위치 정보가 없습니다.<br>
+                    위치를 선택하시겠습니까?
+                </p>
+                <div style="display: flex; gap: 10px; flex-direction: column;">
+                    <button onclick="selectLocationTypeForIncoming(${incomingId}, '${partNumber}', '${partName || ''}', 'cabinet')"
+                            style="padding: 12px; background: #4472C4; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                        📦 캐비넷 위치 선택
+                    </button>
+                    <button onclick="selectLocationTypeForIncoming(${incomingId}, '${partNumber}', '${partName || ''}', 'map')"
+                            style="padding: 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                        🗺️ 도면 위치 선택
+                    </button>
+                    <button onclick="closeLocationSelectionDialog()"
+                            style="padding: 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                        취소
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+/**
  * 위치 선택 대화상자 닫기
  */
 function closeLocationSelectionDialog() {
@@ -6587,6 +6776,19 @@ function selectLocationTypeForPart(partNumber, partName, type) {
         openCabinetPickerForPartLocation(partNumber, partName);
     } else if (type === 'map') {
         openMapPickerForPartLocation(partNumber, partName);
+    }
+}
+
+/**
+ * 입고 ID 기반 위치 타입 선택 처리
+ */
+function selectLocationTypeForIncoming(incomingId, partNumber, partName, type) {
+    closeLocationSelectionDialog();
+
+    if (type === 'cabinet') {
+        openCabinetPickerForIncoming(incomingId, partNumber, partName);
+    } else if (type === 'map') {
+        openMapPickerForIncoming(incomingId, partNumber, partName);
     }
 }
 
@@ -6616,10 +6818,37 @@ function openMapPickerForPartLocation(partNumber, partName) {
     loadLocationPickerImages();
 }
 
+/**
+ * 입고 ID 기반 캐비넷 위치 선택
+ */
+async function openCabinetPickerForIncoming(incomingId, partNumber, partName) {
+    currentPartLocationIncomingId = incomingId;
+    currentPartLocationPartNumber = partNumber;
+    currentPartLocationPartName = partName;
+    currentPartLocationMode = 'save-incoming'; // 입고 기반 저장 모드
+
+    document.getElementById('cabinetPickerModal').style.display = 'block';
+    await createCabinetPickerGrid();
+}
+
+/**
+ * 입고 ID 기반 도면 위치 선택
+ */
+function openMapPickerForIncoming(incomingId, partNumber, partName) {
+    currentPartLocationIncomingId = incomingId;
+    currentPartLocationPartNumber = partNumber;
+    currentPartLocationPartName = partName;
+    currentPartLocationMode = 'save-incoming'; // 입고 기반 저장 모드
+
+    document.getElementById('locationPickerModal').style.display = 'block';
+    loadLocationPickerImages();
+}
+
 // 전역 변수 추가
+let currentPartLocationIncomingId = null;
 let currentPartLocationPartNumber = null;
 let currentPartLocationPartName = null;
-let currentPartLocationMode = null; // 'input' 또는 'save'
+let currentPartLocationMode = null; // 'input', 'save', 'save-incoming'
 
 /**
  * 배치도 보기용 이미지 목록 로드

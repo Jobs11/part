@@ -38,6 +38,11 @@ public class PartLocationController {
         return partLocationService.getLocationByPartNumber(partNumber);
     }
 
+    @GetMapping("/incoming/{incomingId}")
+    public PartLocationDTO getLocationByIncomingId(@PathVariable Integer incomingId) {
+        return partLocationService.getLocationByIncomingId(incomingId);
+    }
+
     @GetMapping("/check-cabinet")
     public PartLocationDTO checkCabinetLocation(@RequestParam String posX, @RequestParam Integer posY) {
         return partLocationService.getLocationByCabinet(posX, posY);

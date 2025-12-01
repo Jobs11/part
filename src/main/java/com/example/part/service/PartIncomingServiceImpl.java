@@ -122,8 +122,8 @@ public class PartIncomingServiceImpl implements PartIncomingService {
 
                     (oldLoc != null && !oldLoc.trim().isEmpty())) {
 
-                savePartLocation(partNumber, partIncomingDTO.getPartName(), cabinetLoc, mapLoc, oldLoc,
-                        overrideCabinet);
+                savePartLocation(partIncomingDTO.getIncomingId(), partNumber, partIncomingDTO.getPartName(),
+                        cabinetLoc, mapLoc, oldLoc, overrideCabinet);
 
             } else {
                 log.info("위치 정보 없음 - 위치 저장 건너뜀");
@@ -276,13 +276,13 @@ public class PartIncomingServiceImpl implements PartIncomingService {
 
     }
 
-    private void savePartLocation(String partNumber, String partName, String cabinetLocation, String mapLocation,
-            String oldLocation, boolean overrideCabinet) {
+    private void savePartLocation(Integer incomingId, String partNumber, String partName, String cabinetLocation,
+            String mapLocation, String oldLocation, boolean overrideCabinet) {
 
         PartLocationDTO locationDTO = new PartLocationDTO();
 
+        locationDTO.setIncomingId(incomingId); // FK 설정
         locationDTO.setPartNumber(partNumber);
-
         locationDTO.setPartName(partName);
 
         // ??? ?? ?? (A-1 ?? -> x="A", y="1")
@@ -343,15 +343,15 @@ public class PartIncomingServiceImpl implements PartIncomingService {
             return;
         }
 
-        // 이미 해당 부품번호로 위치가 등록되어 있는지 확인
-        PartLocationDTO existingLocation = partLocationService.getLocationByPartNumber(partNumber);
-        if (existingLocation != null) {
-            // 부품번호가 이미 존재하면 새로운 위치 정보가 있을 때만 업데이트
-            log.info("부품번호({})가 이미 위치 테이블에 존재합니다. 위치 정보 업데이트를 건너뜁니다.", partNumber);
-            return;
-        }
+        // 🔥 주석처리: 이제 입고별 위치 관리이므로 부품번호 중복 체크 불필요
+        // 같은 부품번호를 여러 번 입고하면 각각 다른 위치에 배치할 수 있음
+        // PartLocationDTO existingLocation = partLocationService.getLocationByPartNumber(partNumber);
+        // if (existingLocation != null) {
+        //     log.info("부품번호({})가 이미 위치 테이블에 존재합니다. 위치 정보 업데이트를 건너뜁니다.", partNumber);
+        //     return;
+        // }
 
-        // 새로운 부품번호인 경우에만 위치 정보 저장
+        // 위치 정보 저장 (입고별로 관리)
         partLocationService.saveOrUpdate(locationDTO);
 
         log.info("부품 위치 저장 완료: {} -> 캐비넷:{}, 도면:{}", partNumber, cabinetLocation, mapLocation);
@@ -451,6 +451,14 @@ public class PartIncomingServiceImpl implements PartIncomingService {
         }
 
         log.info("??? ???? ???? ???: ID {}", partIncomingDTO.getIncomingId());
+
+        // 🔥 부품번호 또는 부품명이 변경되었으면 part_location도 업데이트
+        if (!before.getPartNumber().equals(partIncomingDTO.getPartNumber()) ||
+                !before.getPartName().equals(partIncomingDTO.getPartName())) {
+            updatePartLocationInfo(partIncomingDTO.getIncomingId(),
+                    partIncomingDTO.getPartNumber(),
+                    partIncomingDTO.getPartName());
+        }
 
         PartIncomingDTO after = partIncomingMapper.findById(partIncomingDTO.getIncomingId());
         String changedFieldsJson = buildChangedFields(before, after);
@@ -637,5 +645,29 @@ public class PartIncomingServiceImpl implements PartIncomingService {
         }
         // 3) AuditLogger fallback
         return auditLogger.currentUserOrSystem();
+    }
+
+    /**
+     * 입고 정보 수정 시 part_location 테이블의 부품번호/부품명도 함께 업데이트
+     */
+    private void updatePartLocationInfo(Integer incomingId, String newPartNumber, String newPartName) {
+        try {
+            // incoming_id로 위치 정보 조회
+            PartLocationDTO location = partLocationService.getLocationByIncomingId(incomingId);
+
+            if (location != null) {
+                // 부품번호와 부품명 업데이트
+                location.setPartNumber(newPartNumber);
+                location.setPartName(newPartName);
+
+                partLocationService.saveOrUpdate(location);
+                log.info("part_location 업데이트 완료: incomingId={}, partNumber={}, partName={}",
+                        incomingId, newPartNumber, newPartName);
+            } else {
+                log.info("해당 입고ID에 연결된 위치 정보가 없습니다: incomingId={}", incomingId);
+            }
+        } catch (Exception e) {
+            log.warn("part_location 업데이트 중 오류 발생: incomingId={}, 오류={}", incomingId, e.getMessage());
+        }
     }
 }

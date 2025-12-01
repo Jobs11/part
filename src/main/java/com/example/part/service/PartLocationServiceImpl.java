@@ -32,6 +32,11 @@ public class PartLocationServiceImpl implements PartLocationService {
     }
 
     @Override
+    public PartLocationDTO getLocationByIncomingId(Integer incomingId) {
+        return partLocationMapper.findByIncomingId(incomingId);
+    }
+
+    @Override
     public PartLocationDTO getLocationByCabinet(String posX, Integer posY) {
         return partLocationMapper.findByCabinetPosition(posX, posY);
     }
@@ -68,7 +73,8 @@ public class PartLocationServiceImpl implements PartLocationService {
 
                 if (existing.getPartName() != null && dto.getPartName() != null
                         && !existing.getPartName().equals(dto.getPartName())) {
-                    if (hasChanges) changedFields.append(", ");
+                    if (hasChanges)
+                        changedFields.append(", ");
                     changedFields.append(String.format("\"%s\": {\"변경전\": \"%s\", \"변경후\": \"%s\"}",
                             auditLogger.translateFieldName("part_location", "partName"),
                             existing.getPartName(),
@@ -78,7 +84,8 @@ public class PartLocationServiceImpl implements PartLocationService {
 
                 if (existing.getPosX() != null && dto.getPosX() != null
                         && !existing.getPosX().equals(dto.getPosX())) {
-                    if (hasChanges) changedFields.append(", ");
+                    if (hasChanges)
+                        changedFields.append(", ");
                     changedFields.append(String.format("\"%s\": {\"변경전\": \"%s\", \"변경후\": \"%s\"}",
                             "행",
                             existing.getPosX(),
@@ -88,7 +95,8 @@ public class PartLocationServiceImpl implements PartLocationService {
 
                 if (existing.getPosY() != null && dto.getPosY() != null
                         && !existing.getPosY().equals(dto.getPosY())) {
-                    if (hasChanges) changedFields.append(", ");
+                    if (hasChanges)
+                        changedFields.append(", ");
                     changedFields.append(String.format("\"%s\": {\"변경전\": %d, \"변경후\": %d}",
                             "열",
                             existing.getPosY(),

@@ -15,6 +15,8 @@ public interface PartLocationMapper {
 
     PartLocationDTO findByPartNumber(String partNumber);
 
+    PartLocationDTO findByIncomingId(Integer incomingId);
+
     PartLocationDTO findByCabinetPosition(@Param("posX") String posX, @Param("posY") Integer posY);
 
     int insertLocation(PartLocationDTO dto);

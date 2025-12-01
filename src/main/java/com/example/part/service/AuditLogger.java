@@ -182,6 +182,9 @@ public class AuditLogger {
             case "usedDate":
             case "used_date":
                 return "출고일자";
+            case "usedDatetime":
+            case "used_datetime":
+                return "사용일시";
             case "note":
                 return "비고";
             default:

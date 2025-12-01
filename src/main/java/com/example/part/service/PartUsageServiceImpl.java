@@ -100,8 +100,8 @@ public class PartUsageServiceImpl implements PartUsageService {
             partUsageDTO.setUsageLocation(existing.getUsageLocation());
         }
 
-        if (partUsageDTO.getUsedDate() == null) {
-            partUsageDTO.setUsedDate(existing.getUsedDate());
+        if (partUsageDTO.getUsedDatetime() == null) {
+            partUsageDTO.setUsedDatetime(existing.getUsedDatetime());
         }
 
         if (partUsageDTO.getNote() == null) {
@@ -129,7 +129,8 @@ public class PartUsageServiceImpl implements PartUsageService {
 
         if (partUsageDTO.getUsageLocation() != null
                 && !existing.getUsageLocation().equals(partUsageDTO.getUsageLocation())) {
-            if (hasChanges) changedFields.append(", ");
+            if (hasChanges)
+                changedFields.append(", ");
             changedFields.append(String.format("\"%s\": {\"변경전\": \"%s\", \"변경후\": \"%s\"}",
                     auditLogger.translateFieldName("part_usage", "usageLocation"),
                     existing.getUsageLocation(),
@@ -137,12 +138,14 @@ public class PartUsageServiceImpl implements PartUsageService {
             hasChanges = true;
         }
 
-        if (partUsageDTO.getUsedDate() != null && !existing.getUsedDate().equals(partUsageDTO.getUsedDate())) {
-            if (hasChanges) changedFields.append(", ");
+        if (partUsageDTO.getUsedDatetime() != null
+                && !existing.getUsedDatetime().equals(partUsageDTO.getUsedDatetime())) {
+            if (hasChanges)
+                changedFields.append(", ");
             changedFields.append(String.format("\"%s\": {\"변경전\": \"%s\", \"변경후\": \"%s\"}",
                     auditLogger.translateFieldName("part_usage", "usedDate"),
-                    existing.getUsedDate(),
-                    partUsageDTO.getUsedDate()));
+                    existing.getUsedDatetime(),
+                    partUsageDTO.getUsedDatetime()));
             hasChanges = true;
         }
 
@@ -151,7 +154,8 @@ public class PartUsageServiceImpl implements PartUsageService {
         auditLogger.log("part_usage",
                 partUsageDTO.getUsageId() != null ? partUsageDTO.getUsageId().longValue() : null,
                 "UPDATE",
-                "출고 수정: " + (partUsageDTO.getPartNumber() != null ? partUsageDTO.getPartNumber() : existing.getPartNumber()),
+                "출고 수정: " + (partUsageDTO.getPartNumber() != null ? partUsageDTO.getPartNumber()
+                        : existing.getPartNumber()),
                 hasChanges ? changedFields.toString() : null,
                 null);
     }
