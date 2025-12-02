@@ -141,17 +141,29 @@
     <select id="getCurrentInventory" resultType="map">
         SELECT
             pi.part_number,
-            pi.part_name,
-            c.category_name,
-            pi.unit,
+            (SELECT pi2.part_name
+             FROM part_incoming pi2
+             WHERE pi2.part_number = pi.part_number
+             ORDER BY pi2.incoming_id ASC
+             LIMIT 1) AS part_name,
+            (SELECT c2.category_name
+             FROM part_incoming pi3
+             LEFT JOIN category c2 ON pi3.category_id = c2.category_id
+             WHERE pi3.part_number = pi.part_number
+             ORDER BY pi3.incoming_id ASC
+             LIMIT 1) AS category_name,
+            (SELECT pi4.unit
+             FROM part_incoming pi4
+             WHERE pi4.part_number = pi.part_number
+             ORDER BY pi4.incoming_id ASC
+             LIMIT 1) AS unit,
             SUM(pi.incoming_quantity) AS total_incoming,
             COALESCE(SUM(pu.quantity_used), 0) AS total_used,
             (SUM(pi.incoming_quantity) - COALESCE(SUM(pu.quantity_used), 0)) AS current_stock,
             COUNT(DISTINCT pi.incoming_id) AS incoming_count
         FROM part_incoming pi
-        LEFT JOIN category c ON pi.category_id = c.category_id
         LEFT JOIN part_usage pu ON pi.incoming_id = pu.incoming_id
-        GROUP BY pi.part_number, pi.part_name, c.category_name, pi.unit
+        GROUP BY pi.part_number
         ORDER BY pi.part_number
     </select>
 
@@ -159,60 +171,53 @@
     <select id="searchInventoryAdvanced" resultType="map" parameterType="map">
         SELECT
             pi.part_number,
-            pi.part_name,
-            c.category_name,
-            pi.unit,
+            (SELECT pi2.part_name
+             FROM part_incoming pi2
+             WHERE pi2.part_number = pi.part_number
+             ORDER BY pi2.incoming_id ASC
+             LIMIT 1) AS part_name,
+            (SELECT c2.category_name
+             FROM part_incoming pi3
+             LEFT JOIN category c2 ON pi3.category_id = c2.category_id
+             WHERE pi3.part_number = pi.part_number
+             ORDER BY pi3.incoming_id ASC
+             LIMIT 1) AS category_name,
+            (SELECT pi4.unit
+             FROM part_incoming pi4
+             WHERE pi4.part_number = pi.part_number
+             ORDER BY pi4.incoming_id ASC
+             LIMIT 1) AS unit,
             SUM(pi.incoming_quantity) AS total_incoming,
             COALESCE(SUM(pu.quantity_used), 0) AS total_used,
             (SUM(pi.incoming_quantity) - COALESCE(SUM(pu.quantity_used), 0)) AS current_stock,
             COUNT(DISTINCT pi.incoming_id) AS incoming_count
         FROM part_incoming pi
-        LEFT JOIN category c ON pi.category_id = c.category_id
         LEFT JOIN part_usage pu ON pi.incoming_id = pu.incoming_id
         WHERE 1 = 1
 
-        <choose>
-            <when test="columnKey != null and columnKey != '' and keyword != null and keyword != ''">
-                <choose>
-                    <when test="columnKey == 'part_number'">
-                        AND pi.part_number LIKE CONCAT('%', #{keyword}, '%')
-                    </when>
-                    <when test="columnKey == 'part_name'">
-                        AND pi.part_name LIKE CONCAT('%', #{keyword}, '%')
-                    </when>
-                    <when test="columnKey == 'category_name'">
-                        AND c.category_name LIKE CONCAT('%', #{keyword}, '%')
-                    </when>
-                </choose>
-            </when>
-            <otherwise>
-                <if test="keyword != null and keyword != ''">
-                    AND (
-                        pi.part_number LIKE CONCAT('%', #{keyword}, '%')
-                        OR pi.part_name LIKE CONCAT('%', #{keyword}, '%')
-                        OR c.category_name LIKE CONCAT('%', #{keyword}, '%')
-                    )
-                </if>
-            </otherwise>
-        </choose>
+        <if test="columnKey != null and columnKey != '' and keyword != null and keyword != '' and columnKey == 'part_number'">
+            AND pi.part_number LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+
+        <if test="(columnKey == null or columnKey == '') and keyword != null and keyword != ''">
+            AND pi.part_number LIKE CONCAT('%', #{keyword}, '%')
+        </if>
 
         <foreach collection="includeList" item="kw">
-            AND (
-                pi.part_number LIKE CONCAT('%', #{kw}, '%')
-                OR pi.part_name LIKE CONCAT('%', #{kw}, '%')
-                OR c.category_name LIKE CONCAT('%', #{kw}, '%')
-            )
+            AND pi.part_number LIKE CONCAT('%', #{kw}, '%')
         </foreach>
 
         <foreach collection="excludeList" item="kw">
-            AND NOT (
-                pi.part_number LIKE CONCAT('%', #{kw}, '%')
-                OR pi.part_name LIKE CONCAT('%', #{kw}, '%')
-                OR c.category_name LIKE CONCAT('%', #{kw}, '%')
-            )
+            AND NOT (pi.part_number LIKE CONCAT('%', #{kw}, '%'))
         </foreach>
 
-        GROUP BY pi.part_number, pi.part_name, c.category_name, pi.unit
+        GROUP BY pi.part_number
+
+        HAVING 1 = 1
+
+        <if test="columnKey != null and columnKey != '' and keyword != null and keyword != '' and columnKey == 'category_name'">
+            AND category_name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
 
         <!-- 숫자 컬럼 검색 (HAVING 절 사용, LIKE로 포함 검색) -->
         <if test="columnKey != null and columnKey != '' and keyword != null and keyword != ''">

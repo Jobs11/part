@@ -45,7 +45,7 @@ CREATE TABLE `part_incoming` (
    PRIMARY KEY (`incoming_id`),
 
    -- 🔥 UNIQUE: part_number + purchase_datetime
-   UNIQUE KEY `uniq_part_purchase` (`part_number`, `purchase_datetime`),
+   UNIQUE KEY `uniq_part_purchase` (`part_number`, `created_at`),
 
    -- INDEX들
    KEY `idx_part_number` (`part_number`),

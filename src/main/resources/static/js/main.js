@@ -952,20 +952,20 @@ function displayInventory(inventory) {
     const tbody = document.getElementById('inventoryTableBody');
 
     if (inventory.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">재고 데이터가 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">재고 데이터가 없습니다.</td></tr>';
         return;
     }
 
     tbody.innerHTML = inventory.map(item => `
         <tr>
-            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name)}')">${item.part_number}</td>
-            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name)}')">${item.part_name}</td>
-            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name)}')">${item.category_name || '-'}</td>
-            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name)}')"><strong>${item.current_stock}</strong></td>
-            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name)}')">${item.unit || '-'}</td>
-            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name)}')">${item.total_incoming}</td>
-            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name)}')">${item.total_used}</td>
-            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name)}')">${item.incoming_count}</td>
+            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name || '')}')">${item.part_number}</td>
+            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name || '')}')">${item.part_name || '-'}</td>
+            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name || '')}')">${item.category_name || '-'}</td>
+            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name || '')}')"><strong>${item.current_stock}</strong></td>
+            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name || '')}')">${item.unit || '-'}</td>
+            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name || '')}')">${item.total_incoming}</td>
+            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name || '')}')">${item.total_used}</td>
+            <td class="clickable-row" onclick="selectPartForUsage('${item.part_number}', '${escapeHtml(item.part_name || '')}')">${item.incoming_count}</td>
             <td><button class="btn-small" data-part-number="${escapeHtml(item.part_number)}" onclick="event.stopPropagation(); openPartLocationView(this.dataset.partNumber)">📍 배치도</button></td>
         </tr>
     `).join('');
@@ -1049,12 +1049,13 @@ async function registerUsage(e) {
         return;
     }
 
+    const usedDateValue = document.getElementById('usedDate').value;
     const usageData = {
         incomingId: parseInt(incomingId),
         partNumber: document.getElementById('usagePartNumber').value,
         quantityUsed: parseInt(document.getElementById('quantityUsed').value),
         usageLocation: document.getElementById('usageLocation').value,
-        usedDatetime: document.getElementById('usedDate').value,
+        usedDatetime: usedDateValue ? usedDateValue + ':00' : null,  // 초 추가
         note: document.getElementById('usageNote').value,
         createdBy: 'system'
     };
@@ -2825,37 +2826,54 @@ async function checkCabinetDuplicate(inputEl) {
 
 // 경고 메시지 표시
 function showWarningMessage(inputEl, message) {
-    removeWarningMessage(inputEl);
+    // 입력 필드에 경고 데이터 속성 저장
+    inputEl.setAttribute('data-warning', message);
 
-    const warning = document.createElement('div');
-    warning.className = 'cabinet-warning';
-    warning.style.cssText = `
-        position: absolute;
-        background: #fff3cd;
-        border: 1px solid #ff9800;
-        color: #856404;
-        padding: 4px 8px;
-        font-size: 11px;
-        border-radius: 3px;
-        white-space: nowrap;
-        z-index: 1000;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        margin-top: 2px;
-    `;
-    warning.textContent = message;
+    // 행 번호 계산
+    const row = inputEl.closest('tr');
+    const rowIndex = Array.from(row.parentNode.children).indexOf(row) + 1;
+    inputEl.setAttribute('data-row-index', rowIndex);
 
-    const td = inputEl.closest('td');
-    td.style.position = 'relative';
-    td.appendChild(warning);
+    // 테이블 아래 경고 영역 업데이트
+    updateCabinetWarningArea();
 }
 
 // 경고 메시지 제거
 function removeWarningMessage(inputEl) {
-    const td = inputEl.closest('td');
-    const existing = td.querySelector('.cabinet-warning');
-    if (existing) {
-        existing.remove();
+    inputEl.removeAttribute('data-warning');
+    inputEl.removeAttribute('data-row-index');
+
+    // 테이블 아래 경고 영역 업데이트
+    updateCabinetWarningArea();
+}
+
+// 테이블 아래 경고 영역 업데이트
+function updateCabinetWarningArea() {
+    const warningArea = document.getElementById('cabinetWarningArea');
+    const warningList = document.getElementById('cabinetWarningList');
+
+    if (!warningArea || !warningList) return;
+
+    // 모든 경고 메시지 수집
+    const warningInputs = document.querySelectorAll('.bulk-cabinet-location[data-warning]');
+
+    if (warningInputs.length === 0) {
+        warningArea.style.display = 'none';
+        warningList.innerHTML = '';
+        return;
     }
+
+    // 경고 메시지 목록 생성
+    let html = '';
+    warningInputs.forEach((input) => {
+        const rowIndex = input.getAttribute('data-row-index');
+        const message = input.getAttribute('data-warning');
+        const location = input.value;
+        html += `<div style="margin-bottom: 3px;">• <strong>${rowIndex}번째 행 (${location}):</strong> ${message}</div>`;
+    });
+
+    warningList.innerHTML = html;
+    warningArea.style.display = 'block';
 }
 
 async function submitBulkInsert() {
@@ -2871,7 +2889,9 @@ async function submitBulkInsert() {
         row.style.backgroundColor = '';
     });
 
-    // 입력된 행만 수집
+    // 입력된 행만 수집 (실제 행 인덱스를 함께 저장)
+    const rowIndexMap = []; // dataList 인덱스 -> 실제 행 인덱스 매핑
+
     for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         const partNumber = row.querySelector('.bulk-part-number').value.trim();
@@ -2920,6 +2940,7 @@ async function submitBulkInsert() {
                 createdBy: 'system'
             };
 
+            rowIndexMap.push(i); // dataList의 현재 인덱스에 대한 실제 행 인덱스 저장
             dataList.push(data);
         } else if (hasAnyInput) {
             // 일부만 입력된 불완전한 행
@@ -2984,13 +3005,18 @@ async function submitBulkInsert() {
             const result = await response.json();
             console.log('등록 결과:', result);
 
-            // 성공한 행만 제거 (역순으로 제거하여 인덱스 꼬임 방지)
+            // 성공한 행만 제거 (rowIndexMap을 사용하여 실제 행 인덱스로 변환)
             const tbody = document.getElementById('bulkInsertTableBody');
             const successIndices = result.successIndices || [];
-            successIndices.sort((a, b) => b - a); // 역순 정렬
-            successIndices.forEach(index => {
-                if (tbody.children[index]) {
-                    tbody.children[index].remove();
+
+            // dataList 인덱스를 실제 행 인덱스로 변환
+            const actualRowIndices = successIndices.map(dataIndex => rowIndexMap[dataIndex]);
+
+            // 역순으로 정렬하여 제거 (인덱스 꼬임 방지)
+            actualRowIndices.sort((a, b) => b - a);
+            actualRowIndices.forEach(rowIndex => {
+                if (tbody.children[rowIndex]) {
+                    tbody.children[rowIndex].remove();
                 }
             });
 
