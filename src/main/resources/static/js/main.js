@@ -2589,6 +2589,8 @@ function removeBulkRow() {
     const tbody = document.getElementById('bulkInsertTableBody');
     if (tbody.children.length > 1) {
         tbody.removeChild(tbody.lastChild);
+        // 행 삭제 후 캐비넷 중복 경고 다시 업데이트
+        updateCabinetWarningArea();
     } else {
         showMessage('최소 1개의 행은 유지되어야 합니다.', 'info');
     }
@@ -2761,6 +2763,12 @@ function clearBulkTable() {
     const tbody = document.getElementById('bulkInsertTableBody');
     tbody.innerHTML = '';
     addBulkRow();
+
+    // 경고 영역 초기화
+    const warningArea = document.getElementById('cabinetWarningArea');
+    const warningList = document.getElementById('cabinetWarningList');
+    if (warningArea) warningArea.style.display = 'none';
+    if (warningList) warningList.innerHTML = '';
 }
 
 // 일괄 등록 실행
