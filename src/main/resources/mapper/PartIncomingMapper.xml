@@ -250,14 +250,26 @@
     <select id="selectLowStock" resultType="map" parameterType="int">
         SELECT
             pi.part_number,
-            pi.part_name,
-            c.category_name,
-            pi.unit,
+            (SELECT pi2.part_name
+             FROM part_incoming pi2
+             WHERE pi2.part_number = pi.part_number
+             ORDER BY pi2.incoming_id ASC
+             LIMIT 1) AS part_name,
+            (SELECT c2.category_name
+             FROM part_incoming pi3
+             LEFT JOIN category c2 ON pi3.category_id = c2.category_id
+             WHERE pi3.part_number = pi.part_number
+             ORDER BY pi3.incoming_id ASC
+             LIMIT 1) AS category_name,
+            (SELECT pi4.unit
+             FROM part_incoming pi4
+             WHERE pi4.part_number = pi.part_number
+             ORDER BY pi4.incoming_id ASC
+             LIMIT 1) AS unit,
             (SUM(pi.incoming_quantity) - COALESCE(SUM(pu.quantity_used), 0)) AS current_stock
         FROM part_incoming pi
-        LEFT JOIN category c ON pi.category_id = c.category_id
         LEFT JOIN part_usage pu ON pi.incoming_id = pu.incoming_id
-        GROUP BY pi.part_number, pi.part_name, c.category_name, pi.unit
+        GROUP BY pi.part_number
         HAVING current_stock &lt;= #{threshold}
         ORDER BY current_stock ASC
     </select>

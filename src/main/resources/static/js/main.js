@@ -2497,9 +2497,11 @@ function addBulkRow() {
     const minutes = String(now.getMinutes()).padStart(2, '0');
     tr.querySelector('.bulk-date').value = `${year}-${month}-${day}T${hours}:${minutes}`;
 
-    // 캐비닷 위치 입력 정규화 (blur 시 A2 -> A-2)
+    // 캐비닛 위치 입력 정규화 (blur 시 A2 -> A-2)
     attachCabinetNormalizer(tr.querySelector('.bulk-cabinet-location'));
 
+    // 도면 위치 입력 정규화 (blur 시 8A -> 8-A)
+    attachMapNormalizer(tr.querySelector('.bulk-map-location'));
 
     // 카테고리 로드
     loadCategoriesForBulk();
@@ -2718,6 +2720,17 @@ function normalizeCabinetLocationValue(value) {
     return trimmed;
 }
 
+function normalizeMapLocationValue(value) {
+    if (!value) return '';
+    const trimmed = value.trim().toUpperCase();
+    // 이미 숫자-알파벳 형식이면 그대로 반환
+    if (/^\d+-[A-Z]{1,2}$/.test(trimmed)) return trimmed;
+    // 숫자알파벳 형식이면 숫자-알파벳으로 변환
+    const match = /^(\d+)([A-Z]{1,2})$/.exec(trimmed);
+    if (match) return `${match[1]}-${match[2]}`;
+    return trimmed;
+}
+
 function attachCabinetNormalizer(inputEl) {
     if (!inputEl) return;
 
@@ -2747,6 +2760,30 @@ function attachCabinetNormalizer(inputEl) {
 
         // 중복 체크
         await checkCabinetDuplicate(inputEl);
+    };
+
+    inputEl.addEventListener('input', inputHandler);
+    inputEl.addEventListener('blur', blurHandler);
+}
+
+function attachMapNormalizer(inputEl) {
+    if (!inputEl) return;
+
+    // input 이벤트: 정규화 처리
+    const inputHandler = () => {
+        const normalized = normalizeMapLocationValue(inputEl.value);
+        if (inputEl.value !== normalized) {
+            inputEl.value = normalized;
+            inputEl.selectionStart = inputEl.selectionEnd = normalized.length;
+        }
+    };
+
+    // blur 이벤트: 정규화
+    const blurHandler = () => {
+        const normalized = normalizeMapLocationValue(inputEl.value);
+        if (inputEl.value !== normalized) {
+            inputEl.value = normalized;
+        }
     };
 
     inputEl.addEventListener('input', inputHandler);
