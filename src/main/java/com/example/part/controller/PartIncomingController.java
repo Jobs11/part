@@ -125,10 +125,13 @@ public class PartIncomingController {
                 String[] tokens = trimmedKeyword.split("\\s+");
 
                 for (String t : tokens) {
+                    String payload = t.length() > 1 ? t.substring(1) : "";
+
                     if (t.startsWith("+") && t.length() > 1) {
-                        includeList.add(t.substring(1)); // +센서 → 센서
+                        includeList.add(payload); // +센서 → 센서, +2 → 2
                     } else if (t.startsWith("-") && t.length() > 1) {
-                        excludeList.add(t.substring(1)); // -불량 → 불량
+                        // -키워드는 모두 제외 리스트로 (숫자도 동일하게 제외)
+                        excludeList.add(payload); // -불량 → 불량, -21 → 21 포함 데이터 제외
                     } else if (!t.isEmpty()) {
                         if (baseKeywordBuilder.length() > 0) {
                             baseKeywordBuilder.append(" ");
@@ -209,10 +212,12 @@ public class PartIncomingController {
                 String[] tokens = trimmedKeyword.split("\\s+");
 
                 for (String token : tokens) {
+                    String payload = token.length() > 1 ? token.substring(1) : "";
+
                     if (token.startsWith("+") && token.length() > 1) {
-                        includeList.add(token.substring(1));
+                        includeList.add(payload);
                     } else if (token.startsWith("-") && token.length() > 1) {
-                        excludeList.add(token.substring(1));
+                        excludeList.add(payload); // 숫자/텍스트 동일하게 제외 처리
                     } else if (!token.isEmpty()) {
                         if (baseKeywordBuilder.length() > 0) {
                             baseKeywordBuilder.append(" ");

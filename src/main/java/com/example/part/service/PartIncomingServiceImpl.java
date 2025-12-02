@@ -546,9 +546,9 @@ public class PartIncomingServiceImpl implements PartIncomingService {
 
                 return "pi.purchase_price";
 
-            case "purchase_date":
+            case "purchase_datetime":
 
-                return "pi.purchase_date";
+                return "pi.purchase_datetime";
 
             case "supplier":
 

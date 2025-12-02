@@ -1318,6 +1318,9 @@ function makeUsageEditable(event, usageId, field, currentValue) {
             const bodyData = {};
             if (field === 'quantityUsed') {
                 bodyData[field] = parseInt(newValue);
+            } else if (field === 'usedDatetime') {
+                // datetime-local 값을 yyyy-MM-dd HH:mm:ss 형식으로 변환
+                bodyData[field] = newValue ? newValue.replace('T', ' ') + ':00' : null;
             } else {
                 bodyData[field] = newValue;
             }
@@ -1351,7 +1354,7 @@ function makeUsageEditable(event, usageId, field, currentValue) {
     input.addEventListener('blur', saveEdit);
     input.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            cell.textContent = field === 'usedDate' ? formatDate(originalValue) : originalValue || '-';
+            cell.textContent = field === 'usedDatetime' ? formatDateTime(originalValue) : originalValue || '-';
         }
     });
 }
@@ -4368,16 +4371,20 @@ function openCabinetPicker(buttonElement) {
     const row = buttonElement.closest('tr');
     cabinetPickerTargetInput = row.querySelector('.bulk-cabinet-location');
 
+    // 현재 행의 부품번호 추출
+    const partNumberInput = row.querySelector('.bulk-part-number');
+    const currentPartNumber = partNumberInput ? partNumberInput.value.trim() : null;
+
     // 입력 모드로 설정
     currentPartLocationMode = null;
-    currentPartLocationPartNumber = null;
+    currentPartLocationPartNumber = currentPartNumber;  // 부품번호 저장
     currentPartLocationPartName = null;
 
     // 모달 열기
     document.getElementById('cabinetPickerModal').style.display = 'block';
 
-    // 그리드 생성 (선택 모드)
-    createCabinetPickerGrid();
+    // 그리드 생성 (선택 모드) - 부품번호 전달
+    createCabinetPickerGrid(currentPartNumber);
 }
 
 function closeCabinetPicker() {
@@ -4386,7 +4393,7 @@ function closeCabinetPicker() {
 }
 
 // 캐비넷 선택용 그리드 생성 (클릭 가능)
-async function createCabinetPickerGrid() {
+async function createCabinetPickerGrid(highlightPartNumber = null) {
     const container = document.getElementById('cabinetPickerContainer');
     const rows = 32;  // 세로 (숫자)
     const cols = 27;  // 가로 (영어)
@@ -4439,12 +4446,23 @@ async function createCabinetPickerGrid() {
             const occupied = occupiedMap.get(locationCode);
 
             if (occupied) {
-                // 이미 등록된 위치 - 빨간색 배경, 선택 불가
+                // 이미 등록된 위치
                 const partInfo = occupied.partNumber || '점유';
-                html += `<td
-                    style="border: 1px solid #ddd; padding: 6px; text-align: center; cursor: not-allowed; font-size: 9px; min-width: 40px; background: #ffebee; color: #c62828; font-weight: bold;"
-                    title="이미 등록됨: ${occupied.partNumber} (${occupied.partName || ''})"
-                >${partInfo}</td>`;
+                const isSamePart = highlightPartNumber && occupied.partNumber === highlightPartNumber;
+
+                if (isSamePart) {
+                    // 동일한 부품번호 - 노란색/금색 배경으로 강조 표기
+                    html += `<td
+                        style="border: 2px solid #ff9800; padding: 6px; text-align: center; cursor: not-allowed; font-size: 9px; min-width: 40px; background: #fff3cd; color: #856404; font-weight: bold; box-shadow: 0 0 8px rgba(255, 152, 0, 0.5);"
+                        title="🔍 동일 부품: ${occupied.partNumber} (${occupied.partName || ''})"
+                    >${partInfo}</td>`;
+                } else {
+                    // 다른 부품번호 - 빨간색 배경, 선택 불가
+                    html += `<td
+                        style="border: 1px solid #ddd; padding: 6px; text-align: center; cursor: not-allowed; font-size: 9px; min-width: 40px; background: #ffebee; color: #c62828; font-weight: bold;"
+                        title="이미 등록됨: ${occupied.partNumber} (${occupied.partName || ''})"
+                    >${partInfo}</td>`;
+                }
             } else {
                 // 비어있는 위치 - 클릭 가능
                 html += `<td

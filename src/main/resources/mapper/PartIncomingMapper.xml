@@ -328,10 +328,14 @@
         SELECT
             pi.*,
             c.category_name AS category_name,
-            pm.category_name AS payment_method_name
+            pm.category_name AS payment_method_name,
+            pl.pos_x,
+            pl.pos_y,
+            pl.location_code
         FROM part_incoming pi
         LEFT JOIN category c ON pi.category_id = c.category_id
         LEFT JOIN category pm ON pi.payment_method_id = pm.category_id
+        LEFT JOIN part_location pl ON pi.incoming_id = pl.incoming_id
         WHERE 1 = 1
 
         <!-- ================================
@@ -340,7 +344,10 @@
         <if test="column != null and column != '' and keyword != null and keyword != ''">
             <choose>
                 <!-- 숫자 컬럼도 LIKE로 포함 검색 -->
-                <when test="column == 'incoming_quantity' or column == 'purchase_price'">
+                <when test="column == 'incoming_quantity'
+                        or column == 'purchase_price'
+                        or column == 'pi.incoming_quantity'
+                        or column == 'pi.purchase_price'">
                     AND CAST(${column} AS CHAR) LIKE CONCAT('%', #{keyword}, '%')
                 </when>
                 <!-- 텍스트 컬럼은 LIKE 검색 -->
@@ -362,6 +369,7 @@
                 OR pi.project_name LIKE CONCAT('%', #{keyword}, '%')
                 OR c.category_name LIKE CONCAT('%', #{keyword}, '%')
                 OR pm.category_name LIKE CONCAT('%', #{keyword}, '%')
+                OR COALESCE(pl.location_code, CONCAT(pl.pos_x, '-', pl.pos_y)) LIKE CONCAT('%', #{keyword}, '%')
             )
         </if>
 
@@ -376,6 +384,9 @@
                 OR pi.project_name LIKE CONCAT('%', #{kw}, '%')
                 OR c.category_name LIKE CONCAT('%', #{kw}, '%')
                 OR pm.category_name LIKE CONCAT('%', #{kw}, '%')
+                OR CAST(pi.incoming_quantity AS CHAR) LIKE CONCAT('%', #{kw}, '%')
+                OR CAST(pi.purchase_price AS CHAR) LIKE CONCAT('%', #{kw}, '%')
+                OR COALESCE(pl.location_code, CONCAT(pl.pos_x, '-', pl.pos_y)) LIKE CONCAT('%', #{kw}, '%')
             )
         </foreach>
 
@@ -392,6 +403,7 @@
                 OR COALESCE(pm.category_name, '') LIKE CONCAT('%', #{kw}, '%')
                 OR CAST(pi.incoming_quantity AS CHAR) LIKE CONCAT('%', #{kw}, '%')
                 OR CAST(pi.purchase_price AS CHAR) LIKE CONCAT('%', #{kw}, '%')
+                OR COALESCE(pl.location_code, CONCAT(pl.pos_x, '-', pl.pos_y)) LIKE CONCAT('%', #{kw}, '%')
             )
         </foreach>
 
