@@ -118,6 +118,159 @@ public class PartLocationServiceImpl implements PartLocationService {
     }
 
     @Override
+    public boolean saveOrUpdateByIncomingId(PartLocationDTO dto) {
+        if (dto.getIncomingId() == null) {
+            throw new IllegalArgumentException("입고일련번호가 필요합니다.");
+        }
+
+        PartLocationDTO existing = partLocationMapper.findByIncomingId(dto.getIncomingId());
+        System.out.println("🔍 [saveOrUpdateByIncomingId] incoming_id=" + dto.getIncomingId() + ", existing=" + (existing != null ? "존재함 (id=" + existing.getLocationId() + ")" : "null"));
+
+        if (existing == null) {
+            // INSERT
+            boolean inserted = partLocationMapper.insertLocation(dto) > 0;
+            if (inserted) {
+                auditLogger.log("part_location",
+                        null,
+                        "CREATE",
+                        "배치도 등록 (입고ID: " + dto.getIncomingId() + "): " + dto.getLocationCode(),
+                        null,
+                        null);
+            }
+            return inserted;
+        } else {
+            // UPDATE (incoming_id 기준)
+            boolean updated = partLocationMapper.updateLocationByIncomingId(dto) > 0;
+            if (updated) {
+                // 변경 필드 추적
+                StringBuilder changedFields = new StringBuilder("{");
+                boolean hasChanges = false;
+
+                if (existing.getLocationCode() != null && dto.getLocationCode() != null
+                        && !existing.getLocationCode().equals(dto.getLocationCode())) {
+                    changedFields.append(String.format("\"%s\": {\"변경전\": \"%s\", \"변경후\": \"%s\"}",
+                            "위치코드",
+                            existing.getLocationCode(),
+                            dto.getLocationCode()));
+                    hasChanges = true;
+                }
+
+                if (existing.getPosX() != null && dto.getPosX() != null
+                        && !existing.getPosX().equals(dto.getPosX())) {
+                    if (hasChanges)
+                        changedFields.append(", ");
+                    changedFields.append(String.format("\"%s\": {\"변경전\": \"%s\", \"변경후\": \"%s\"}",
+                            "행",
+                            existing.getPosX(),
+                            dto.getPosX()));
+                    hasChanges = true;
+                }
+
+                if (existing.getPosY() != null && dto.getPosY() != null
+                        && !existing.getPosY().equals(dto.getPosY())) {
+                    if (hasChanges)
+                        changedFields.append(", ");
+                    changedFields.append(String.format("\"%s\": {\"변경전\": %d, \"변경후\": %d}",
+                            "열",
+                            existing.getPosY(),
+                            dto.getPosY()));
+                    hasChanges = true;
+                }
+
+                changedFields.append("}");
+
+                auditLogger.log("part_location",
+                        null,
+                        "UPDATE",
+                        "배치도 수정 (입고ID: " + dto.getIncomingId() + "): " + dto.getLocationCode(),
+                        hasChanges ? changedFields.toString() : null,
+                        null);
+            }
+            return updated;
+        }
+    }
+
+    @Override
+    public boolean insertByIncomingId(PartLocationDTO dto) {
+        if (dto.getIncomingId() == null) {
+            throw new IllegalArgumentException("입고일련번호가 필요합니다.");
+        }
+
+        // INSERT만 수행
+        boolean inserted = partLocationMapper.insertLocation(dto) > 0;
+        if (inserted) {
+            auditLogger.log("part_location",
+                    null,
+                    "CREATE",
+                    "배치도 등록 (입고ID: " + dto.getIncomingId() + "): " + dto.getLocationCode(),
+                    null,
+                    null);
+        }
+        return inserted;
+    }
+
+    @Override
+    public boolean updateByIncomingId(PartLocationDTO dto) {
+        if (dto.getIncomingId() == null) {
+            throw new IllegalArgumentException("입고일련번호가 필요합니다.");
+        }
+
+        PartLocationDTO existing = partLocationMapper.findByIncomingId(dto.getIncomingId());
+        if (existing == null) {
+            throw new IllegalArgumentException("입고ID " + dto.getIncomingId() + "에 해당하는 위치 정보가 없습니다.");
+        }
+
+        // UPDATE만 수행
+        boolean updated = partLocationMapper.updateLocationByIncomingId(dto) > 0;
+        if (updated) {
+            // 변경 필드 추적
+            StringBuilder changedFields = new StringBuilder("{");
+            boolean hasChanges = false;
+
+            if (existing.getLocationCode() != null && dto.getLocationCode() != null
+                    && !existing.getLocationCode().equals(dto.getLocationCode())) {
+                changedFields.append(String.format("\"%s\": {\"변경전\": \"%s\", \"변경후\": \"%s\"}",
+                        "위치코드",
+                        existing.getLocationCode(),
+                        dto.getLocationCode()));
+                hasChanges = true;
+            }
+
+            if (existing.getPosX() != null && dto.getPosX() != null
+                    && !existing.getPosX().equals(dto.getPosX())) {
+                if (hasChanges)
+                    changedFields.append(", ");
+                changedFields.append(String.format("\"%s\": {\"변경전\": \"%s\", \"변경후\": \"%s\"}",
+                        "행",
+                        existing.getPosX(),
+                        dto.getPosX()));
+                hasChanges = true;
+            }
+
+            if (existing.getPosY() != null && dto.getPosY() != null
+                    && !existing.getPosY().equals(dto.getPosY())) {
+                if (hasChanges)
+                    changedFields.append(", ");
+                changedFields.append(String.format("\"%s\": {\"변경전\": %d, \"변경후\": %d}",
+                        "열",
+                        existing.getPosY(),
+                        dto.getPosY()));
+                hasChanges = true;
+            }
+
+            changedFields.append("}");
+
+            auditLogger.log("part_location",
+                    null,
+                    "UPDATE",
+                    "배치도 수정 (입고ID: " + dto.getIncomingId() + "): " + dto.getLocationCode(),
+                    hasChanges ? changedFields.toString() : null,
+                    null);
+        }
+        return updated;
+    }
+
+    @Override
     public boolean deleteByCode(String code) {
         boolean deleted = partLocationMapper.deleteLocation(code) > 0;
         if (deleted) {

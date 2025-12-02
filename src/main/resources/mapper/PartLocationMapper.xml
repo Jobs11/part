@@ -64,6 +64,18 @@
         WHERE location_code = #{locationCode}
     </update>
 
+    <!-- 입고ID 기반 수정 (UPDATE) -->
+    <update id="updateLocationByIncomingId" parameterType="com.example.part.dto.PartLocationDTO">
+        UPDATE part_location
+        SET location_code = #{locationCode},
+            part_number = #{partNumber},
+            part_name = #{partName},
+            pos_x = #{posX},
+            pos_y = #{posY},
+            note = #{note}
+        WHERE incoming_id = #{incomingId}
+    </update>
+
     <!-- 삭제 -->
     <delete id="deleteLocation" parameterType="string">
         DELETE FROM part_location WHERE location_code = #{locationCode}

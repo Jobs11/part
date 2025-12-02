@@ -4451,10 +4451,13 @@ async function createCabinetPickerGrid(highlightPartNumber = null) {
                 const isSamePart = highlightPartNumber && occupied.partNumber === highlightPartNumber;
 
                 if (isSamePart) {
-                    // 동일한 부품번호 - 노란색/금색 배경으로 강조 표기
+                    // 동일한 부품번호 - 노란색/금색 배경으로 강조 표기, 선택 가능
                     html += `<td
-                        style="border: 2px solid #ff9800; padding: 6px; text-align: center; cursor: not-allowed; font-size: 9px; min-width: 40px; background: #fff3cd; color: #856404; font-weight: bold; box-shadow: 0 0 8px rgba(255, 152, 0, 0.5);"
-                        title="🔍 동일 부품: ${occupied.partNumber} (${occupied.partName || ''})"
+                        style="border: 2px solid #ff9800; padding: 6px; text-align: center; cursor: pointer; font-size: 9px; min-width: 40px; background: #fff3cd; color: #856404; font-weight: bold; box-shadow: 0 0 8px rgba(255, 152, 0, 0.5);"
+                        onclick="selectCabinetPosition('${posX}', ${posY})"
+                        onmouseover="this.style.background='#ffe082'"
+                        onmouseout="this.style.background='#fff3cd'"
+                        title="🔍 동일 부품: ${occupied.partNumber} (${occupied.partName || ''}) - 클릭하여 선택 가능"
                     >${partInfo}</td>`;
                 } else {
                     // 다른 부품번호 - 빨간색 배경, 선택 불가
@@ -4486,8 +4489,55 @@ async function createCabinetPickerGrid(highlightPartNumber = null) {
 async function selectCabinetPosition(posX, posY) {
     const locationCode = `${posX}-${posY}`;
 
-    // 저장 모드인 경우 (배치도에서 위치 등록)
-    if (currentPartLocationMode === 'save') {
+    // 입고 기반 저장 모드 (배치도에서 위치 변경 - incoming_id 포함)
+    if (currentPartLocationMode === 'save-incoming') {
+        const incomingId = currentPartLocationIncomingId;
+        const partNumber = currentPartLocationPartNumber;
+        const partName = currentPartLocationPartName;
+
+        if (!incomingId || !partNumber) {
+            showMessage('입고 정보가 없습니다.', 'error');
+            return;
+        }
+
+        try {
+            const locationDTO = {
+                incomingId: incomingId,  // 입고일련번호 포함
+                partNumber: partNumber,
+                partName: partName,
+                posX: posX,
+                posY: posY,
+                locationCode: null  // 캐비넷 방식이므로 도면 위치 null
+            };
+
+            // incoming_id 기반 INSERT or UPDATE (배치도에서 위치 지정/변경)
+            const response = await fetch('/livewalk/part-locations/by-incoming', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(locationDTO)
+            });
+
+            if (response.ok) {
+                showMessage(`캐비넷 위치 ${posX}-${posY} 저장 완료`, 'success');
+                closeCabinetPicker();
+                // 초기화
+                currentPartLocationMode = null;
+                currentPartLocationIncomingId = null;
+                currentPartLocationPartNumber = null;
+                currentPartLocationPartName = null;
+                // 저장 후 바로 배치도 열기
+                openCabinetGridView(partNumber, locationDTO);
+            } else {
+                const errorText = await response.text();
+                showMessage('위치 저장 실패: ' + errorText, 'error');
+            }
+        } catch (error) {
+            console.error('위치 저장 오류:', error);
+            showMessage('위치 저장 오류: ' + error.message, 'error');
+        }
+    }
+    // 저장 모드인 경우 (배치도에서 위치 등록 - 부품번호로 incoming_id 조회)
+    else if (currentPartLocationMode === 'save') {
         const partNumber = currentPartLocationPartNumber;
         const partName = currentPartLocationPartName;
 
@@ -4497,33 +4547,33 @@ async function selectCabinetPosition(posX, posY) {
         }
 
         try {
-            // 기존 위치 정보가 있는지 확인하고 삭제
-            const checkResponse = await fetch(`/livewalk/part-locations/part?partNumber=${encodeURIComponent(partNumber)}`);
-            if (checkResponse.ok) {
-                const text = await checkResponse.text();
-                if (text) {
-                    try {
-                        const existingLocation = JSON.parse(text);
-                        if (existingLocation && existingLocation.locationCode) {
-                            // 기존 위치 삭제
-                            await fetch(`/livewalk/part-locations/${existingLocation.locationCode}`, {
-                                method: 'DELETE'
-                            });
-                        }
-                    } catch (e) {
-                        console.log('기존 위치 확인 오류:', e);
-                    }
-                }
+            // partNumber로 incoming_id 조회
+            const searchResponse = await fetch(`/livewalk/part-incoming/search?keyword=${encodeURIComponent(partNumber)}&page=1&size=1`);
+            if (!searchResponse.ok) {
+                showMessage('입고 데이터를 찾을 수 없습니다.', 'error');
+                return;
             }
 
+            const searchData = await searchResponse.json();
+            if (!searchData.content || searchData.content.length === 0) {
+                showMessage('해당 부품번호의 입고 데이터가 없습니다.', 'error');
+                return;
+            }
+
+            const incomingId = searchData.content[0].incomingId;
+            console.log('📌 부품번호로 incoming_id 조회 성공:', incomingId);
+
             const locationDTO = {
+                incomingId: incomingId,
                 partNumber: partNumber,
                 partName: partName,
                 posX: posX,
-                posY: posY
+                posY: posY,
+                locationCode: `${posX}-${posY}`
             };
 
-            const response = await fetch('/livewalk/part-locations', {
+            // incoming_id 기반 INSERT or UPDATE
+            const response = await fetch('/livewalk/part-locations/by-incoming', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(locationDTO)
@@ -4787,8 +4837,55 @@ async function handleLocationPickerCanvasClick(event) {
         // 층-구역이름 형식으로 입력
         const locationCode = floor ? `${floor}-${clickedMarker.name}` : clickedMarker.name;
 
+        // 입고 기반 저장 모드 (배치도에서 위치 변경 - incoming_id 포함)
+        if (currentPartLocationMode === 'save-incoming') {
+            const incomingId = currentPartLocationIncomingId;
+            const partNumber = currentPartLocationPartNumber;
+            const partName = currentPartLocationPartName;
+
+            if (!incomingId || !partNumber) {
+                showMessage('입고 정보가 없습니다.', 'error');
+                return;
+            }
+
+            try {
+                const locationDTO = {
+                    incomingId: incomingId,  // 입고일련번호 포함
+                    partNumber: partNumber,
+                    partName: partName,
+                    locationCode: locationCode,
+                    posX: null,  // 도면 방식이므로 캐비넷 위치 null
+                    posY: null
+                };
+
+                // incoming_id 기반 INSERT or UPDATE (배치도에서 위치 지정/변경)
+                const response = await fetch('/livewalk/part-locations/by-incoming', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(locationDTO)
+                });
+
+                if (response.ok) {
+                    showMessage(`도면 위치 ${locationCode} 저장 완료`, 'success');
+                    closeLocationPicker();
+                    // 초기화
+                    currentPartLocationMode = null;
+                    currentPartLocationIncomingId = null;
+                    currentPartLocationPartNumber = null;
+                    currentPartLocationPartName = null;
+                    // 저장 후 바로 배치도 열기
+                    openPartLocationViewByIncomingId(incomingId);
+                } else {
+                    const errorText = await response.text();
+                    showMessage('위치 저장 실패: ' + errorText, 'error');
+                }
+            } catch (error) {
+                console.error('위치 저장 오류:', error);
+                showMessage('위치 저장 오류: ' + error.message, 'error');
+            }
+        }
         // 저장 모드인 경우 (배치도에서 위치 등록)
-        if (currentPartLocationMode === 'save') {
+        else if (currentPartLocationMode === 'save') {
             const partNumber = currentPartLocationPartNumber;
             const partName = currentPartLocationPartName;
 
@@ -4798,32 +4895,31 @@ async function handleLocationPickerCanvasClick(event) {
             }
 
             try {
-                // 기존 위치 정보가 있는지 확인하고 삭제
-                const checkResponse = await fetch(`/livewalk/part-locations/part?partNumber=${encodeURIComponent(partNumber)}`);
-                if (checkResponse.ok) {
-                    const text = await checkResponse.text();
-                    if (text) {
-                        try {
-                            const existingLocation = JSON.parse(text);
-                            if (existingLocation && existingLocation.locationCode) {
-                                // 기존 위치 삭제
-                                await fetch(`/livewalk/part-locations/${existingLocation.locationCode}`, {
-                                    method: 'DELETE'
-                                });
-                            }
-                        } catch (e) {
-                            console.log('기존 위치 확인 오류:', e);
-                        }
-                    }
+                // partNumber로 incoming_id 조회
+                const searchResponse = await fetch(`/livewalk/part-incoming/search?keyword=${encodeURIComponent(partNumber)}&page=1&size=1`);
+                if (!searchResponse.ok) {
+                    showMessage('입고 데이터를 찾을 수 없습니다.', 'error');
+                    return;
                 }
 
+                const searchData = await searchResponse.json();
+                if (!searchData.content || searchData.content.length === 0) {
+                    showMessage('해당 부품번호의 입고 데이터가 없습니다.', 'error');
+                    return;
+                }
+
+                const incomingId = searchData.content[0].incomingId;
+                console.log('📌 도면 위치 - incoming_id 조회 성공:', incomingId);
+
                 const locationDTO = {
+                    incomingId: incomingId,
                     partNumber: partNumber,
                     partName: partName,
                     locationCode: locationCode
                 };
 
-                const response = await fetch('/livewalk/part-locations', {
+                // incoming_id 기반 INSERT or UPDATE
+                const response = await fetch('/livewalk/part-locations/by-incoming', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(locationDTO)
@@ -6438,9 +6534,25 @@ async function openPartLocationViewByIncomingId(incomingId) {
         // incoming_id로 위치 정보 조회
         const response = await fetch(`/livewalk/part-locations/incoming/${incomingId}`);
 
-        // 위치 정보가 없는 경우 처리
         if (!response.ok) {
-            // 입고 정보 조회하여 부품번호/부품명 가져오기
+            showMessage('위치 정보 조회 오류', 'error');
+            return;
+        }
+
+        // 응답 텍스트 확인 (빈 응답 처리)
+        const text = await response.text();
+        let location = null;
+
+        try {
+            location = text ? JSON.parse(text) : null;
+        } catch (parseError) {
+            console.log('JSON 파싱 실패, 빈 응답으로 처리:', parseError);
+            location = null;
+        }
+
+        // location이 null이거나 비어있는 경우 (위치 정보가 등록되지 않음)
+        if (!location) {
+            console.log('📍 위치 정보 없음 - 등록 다이얼로그 표시');
             try {
                 const incomingResponse = await fetch(`/livewalk/incoming/${incomingId}`);
                 if (incomingResponse.ok) {
@@ -6456,25 +6568,10 @@ async function openPartLocationViewByIncomingId(incomingId) {
             return;
         }
 
-        const location = await response.json();
-
-        // location이 null이거나 비어있는 경우
-        if (!location) {
-            try {
-                const incomingResponse = await fetch(`/livewalk/incoming/${incomingId}`);
-                if (incomingResponse.ok) {
-                    const incoming = await incomingResponse.json();
-                    showLocationSelectionDialogForIncoming(incomingId, incoming.partNumber, incoming.partName);
-                }
-            } catch (e) {
-                console.error('입고 정보 조회 실패:', e);
-            }
-            return;
-        }
-
         // 부품명 저장
         currentViewingPartNumber = location.partNumber;
         currentViewingPartName = location.partName;
+        currentViewingIncomingId = location.incomingId; // incoming_id 저장
 
         // pos_x, pos_y가 있으면 캐비넷 그리드 방식
         if (location.posX && location.posY) {
@@ -6816,11 +6913,22 @@ function selectLocationTypeForIncoming(incomingId, partNumber, partName, type) {
 async function openCabinetPickerForPartLocation(partNumber, partName) {
     currentPartLocationPartNumber = partNumber;
     currentPartLocationPartName = partName;
-    currentPartLocationMode = 'save'; // 저장 모드 플래그
+
+    // 배치도에서 저장된 incoming_id 사용 (배치도 변경 시)
+    if (currentViewingIncomingId) {
+        currentPartLocationIncomingId = currentViewingIncomingId;
+        currentPartLocationMode = 'save-incoming'; // incoming_id 기반 저장 모드
+        console.log('📌 배치도 변경 - incoming_id 사용:', currentPartLocationIncomingId);
+    } else {
+        // incoming_id가 없으면 일반 저장 모드 (새로운 위치 등록)
+        currentPartLocationMode = 'save';
+        currentPartLocationIncomingId = null;
+        console.log('📌 새로운 위치 등록 - 일반 저장 모드');
+    }
 
     // 기존 캐비넷 피커 모달 재활용
     document.getElementById('cabinetPickerModal').style.display = 'block';
-    await createCabinetPickerGrid();
+    await createCabinetPickerGrid(partNumber); // 부품번호 전달하여 동일 부품 강조
 }
 
 /**
@@ -6846,7 +6954,7 @@ async function openCabinetPickerForIncoming(incomingId, partNumber, partName) {
     currentPartLocationMode = 'save-incoming'; // 입고 기반 저장 모드
 
     document.getElementById('cabinetPickerModal').style.display = 'block';
-    await createCabinetPickerGrid();
+    await createCabinetPickerGrid(partNumber); // 부품번호 전달하여 동일 부품 강조
 }
 
 /**
@@ -7118,6 +7226,7 @@ function drawPartLocationViewMarkers(highlightZone = null) {
 function editMapLocation() {
     const partNumber = partLocationViewPartNumber || currentViewingPartNumber;
     const partName = currentViewingPartName;
+    const incomingId = currentViewingIncomingId;
 
     if (!partNumber) {
         showMessage('부품번호 정보가 없습니다.', 'error');
@@ -7127,8 +7236,12 @@ function editMapLocation() {
     // 현재 모달 닫기
     closePartLocationView();
 
-    // 위치 선택 대화상자 표시
-    showLocationSelectionDialog(partNumber, partName);
+    // incoming_id가 있으면 입고 기반 위치 변경, 없으면 일반 위치 변경
+    if (incomingId) {
+        showLocationSelectionDialogForIncoming(incomingId, partNumber, partName);
+    } else {
+        showLocationSelectionDialog(partNumber, partName);
+    }
 }
 
 function closePartLocationView() {
@@ -7137,6 +7250,10 @@ function closePartLocationView() {
     partLocationViewBaseImageData = null;
     partLocationViewMarkers = [];
     partLocationViewPartNumber = null;
+    // 변수 초기화
+    currentViewingPartNumber = null;
+    currentViewingPartName = null;
+    currentViewingIncomingId = null;
 }
 
 // ==================== 캐비넷 그리드 배치도 ====================
@@ -7147,11 +7264,13 @@ function closePartLocationView() {
 // 현재 보고 있는 배치도의 부품 정보 저장
 let currentViewingPartNumber = null;
 let currentViewingPartName = null;
+let currentViewingIncomingId = null;
 
 function openCabinetGridView(partNumber, location) {
     // 현재 부품 정보 저장
     currentViewingPartNumber = partNumber;
     currentViewingPartName = location.partName;
+    currentViewingIncomingId = location.incomingId; // incoming_id 저장
 
     // 모달 열기
     document.getElementById('cabinetGridModal').style.display = 'block';
@@ -7235,6 +7354,7 @@ function createCabinetGrid(highlightX, highlightY) {
 function editCabinetLocation() {
     const partNumber = currentViewingPartNumber;
     const partName = currentViewingPartName;
+    const incomingId = currentViewingIncomingId;
 
     if (!partNumber) {
         showMessage('부품번호 정보가 없습니다.', 'error');
@@ -7244,8 +7364,12 @@ function editCabinetLocation() {
     // 현재 모달 닫기
     closeCabinetGrid();
 
-    // 위치 선택 대화상자 표시
-    showLocationSelectionDialog(partNumber, partName);
+    // incoming_id가 있으면 입고 기반 위치 변경, 없으면 일반 위치 변경
+    if (incomingId) {
+        showLocationSelectionDialogForIncoming(incomingId, partNumber, partName);
+    } else {
+        showLocationSelectionDialog(partNumber, partName);
+    }
 }
 
 /**
@@ -7254,5 +7378,9 @@ function editCabinetLocation() {
 function closeCabinetGrid() {
     document.getElementById('cabinetGridModal').style.display = 'none';
     document.getElementById('cabinetGridContainer').innerHTML = '';
+    // 변수 초기화
+    currentViewingPartNumber = null;
+    currentViewingPartName = null;
+    currentViewingIncomingId = null;
 }
 

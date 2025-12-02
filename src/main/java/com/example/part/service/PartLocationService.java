@@ -17,5 +17,11 @@ public interface PartLocationService {
 
     boolean saveOrUpdate(PartLocationDTO dto);
 
+    boolean saveOrUpdateByIncomingId(PartLocationDTO dto);
+
+    boolean insertByIncomingId(PartLocationDTO dto);
+
+    boolean updateByIncomingId(PartLocationDTO dto);
+
     boolean deleteByCode(String code);
 }

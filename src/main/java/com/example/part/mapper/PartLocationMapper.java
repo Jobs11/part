@@ -23,5 +23,7 @@ public interface PartLocationMapper {
 
     int updateLocation(PartLocationDTO dto);
 
+    int updateLocationByIncomingId(PartLocationDTO dto);
+
     int deleteLocation(String locationCode);
 }

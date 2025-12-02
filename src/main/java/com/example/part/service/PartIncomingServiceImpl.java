@@ -343,16 +343,8 @@ public class PartIncomingServiceImpl implements PartIncomingService {
             return;
         }
 
-        // 🔥 주석처리: 이제 입고별 위치 관리이므로 부품번호 중복 체크 불필요
-        // 같은 부품번호를 여러 번 입고하면 각각 다른 위치에 배치할 수 있음
-        // PartLocationDTO existingLocation = partLocationService.getLocationByPartNumber(partNumber);
-        // if (existingLocation != null) {
-        //     log.info("부품번호({})가 이미 위치 테이블에 존재합니다. 위치 정보 업데이트를 건너뜁니다.", partNumber);
-        //     return;
-        // }
-
-        // 위치 정보 저장 (입고별로 관리)
-        partLocationService.saveOrUpdate(locationDTO);
+        // 🔥 입고 등록 시에는 INSERT만 수행
+        partLocationService.insertByIncomingId(locationDTO);
 
         log.info("부품 위치 저장 완료: {} -> 캐비넷:{}, 도면:{}", partNumber, cabinetLocation, mapLocation);
 
