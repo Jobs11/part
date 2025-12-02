@@ -327,12 +327,23 @@ public class PartIncomingController {
                 failCount++;
                 failIndices.add(i);
 
+                // 에러 메시지 처리
+                String errorMessage = e.getMessage();
+
+                // 중복 키 오류 감지
+                if (e.getCause() != null && e.getCause().getMessage() != null) {
+                    String causeMessage = e.getCause().getMessage();
+                    if (causeMessage.contains("Duplicate entry") && causeMessage.contains("uniq_part_purchase")) {
+                        errorMessage = "동일한 부품번호가 같은 시간에 이미 등록되어 있습니다. 잠시 후 다시 시도하거나 구매일자를 변경하세요.";
+                    }
+                }
+
                 // 실패 상세 정보 저장
                 Map<String, Object> failDetail = new HashMap<>();
                 failDetail.put("index", i);
                 failDetail.put("partNumber", dto.getPartNumber());
                 failDetail.put("partName", dto.getPartName());
-                failDetail.put("error", e.getMessage());
+                failDetail.put("error", errorMessage);
                 failDetails.add(failDetail);
             }
         }
