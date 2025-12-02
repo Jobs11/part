@@ -530,7 +530,7 @@ async function sortIncomingTable(column) {
         'incoming_quantity': 4,
         'payment_method_name': 6,
         'purchase_price': 7,
-        'purchase_date': 8,
+        'purchase_datetime': 8,  // 구매일자
         'purchaser': 9,
         'supplier': 10,
         'project_name': 11,
@@ -1209,7 +1209,7 @@ async function sortUsageTable(column) {
     // 클릭된 컬럼 강조
     const headers = document.querySelectorAll('#usageTable th');
     const columnIndex = {
-        'used_date': 0,
+        'used_datetime': 0,  // 사용일시
         'part_number': 1,
         'part_name': 2,
         'quantity_used': 3,
@@ -6617,7 +6617,7 @@ async function openPartLocationViewByIncomingId(incomingId) {
 
         // 제목 업데이트
         document.getElementById('partLocationViewTitle').innerHTML =
-            `부품 배치도: <span style="color: #fff;">${location.partName || location.partNumber}</span>`;
+            `부품 배치도: <span style="color: #fff;">${location.partNumber}</span>`;
 
         // 정보 업데이트
         document.getElementById('partLocationViewInfo').innerHTML =
@@ -6743,7 +6743,7 @@ async function openPartLocationView(partNumber) {
 
         // 제목 업데이트
         document.getElementById('partLocationViewTitle').innerHTML =
-            `부품 배치도: <span style="color: #fff;">${location.partName || partNumber}</span>`;
+            `부품 배치도: <span style="color: #fff;">${partNumber}</span>`;
 
         // 정보 업데이트
         document.getElementById('partLocationViewInfo').innerHTML =
@@ -7292,7 +7292,7 @@ function openCabinetGridView(partNumber, location) {
 
     // 제목 업데이트
     document.getElementById('cabinetGridTitle').innerHTML =
-        `캐비넷 배치도: <span style="color: #fff;">${location.partName || partNumber}</span>`;
+        `캐비넷 배치도: <span style="color: #fff;">${partNumber}</span>`;
 
     // 정보 업데이트
     const locationText = `${location.posX}-${location.posY}`;
