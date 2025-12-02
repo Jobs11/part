@@ -126,6 +126,7 @@ let categoriesData = [];
 let paymentMethodsData = [];
 let projectsData = [];
 let inventoryData = [];
+let lowStockData = [];
 let currentInventorySearchKeyword = '';
 let currentInventorySearchColumn = '';
 let currentIncomingSortColumn = null;
@@ -237,6 +238,11 @@ document.addEventListener('DOMContentLoaded', async function () {
         })
         .finally(() => {
             addBulkRow();
+            // 카테고리 로드 후 PCB 필터를 기본값으로 설정
+            const inventoryFilter = document.getElementById('inventoryCategoryFilter');
+            if (inventoryFilter) {
+                inventoryFilter.value = 'PCB';
+            }
         });
     loadAllIncoming();
     loadInventory();
@@ -261,6 +267,7 @@ async function loadCategories() {
 
         categoriesData = await response.json();
 
+        // 입고 등록 드롭다운
         const select = document.getElementById('categoryId');
         if (select) {
             select.innerHTML = '<option value="">선택하세요</option>';
@@ -270,6 +277,19 @@ async function loadCategories() {
                 option.value = category.categoryId;
                 option.textContent = category.categoryName;
                 select.appendChild(option);
+            });
+        }
+
+        // 재고 현황 필터 드롭다운 (재고 부족 부품도 함께 필터링)
+        const inventoryFilter = document.getElementById('inventoryCategoryFilter');
+        if (inventoryFilter) {
+            inventoryFilter.innerHTML = '<option value="">전체 카테고리</option>';
+
+            categoriesData.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.categoryName;
+                option.textContent = category.categoryName;
+                inventoryFilter.appendChild(option);
             });
         }
     } catch (error) {
@@ -823,7 +843,14 @@ async function loadInventory() {
         if (!response.ok) throw new Error('재고 조회 실패');
 
         inventoryData = await response.json();
-        displayInventory(inventoryData);
+
+        // 카테고리 필터 적용
+        const selectedCategory = document.getElementById('inventoryCategoryFilter')?.value;
+        const filteredData = selectedCategory
+            ? inventoryData.filter(item => item.category_name === selectedCategory)
+            : inventoryData;
+
+        displayInventory(filteredData);
     } catch (error) {
         showMessage('재고 조회 오류: ' + error.message, 'error');
     }
@@ -979,9 +1006,16 @@ async function loadLowStock() {
         const response = await fetch(`${INCOMING_API}/low-stock?threshold=${threshold}`);
         if (!response.ok) throw new Error('재고 부족 조회 실패');
 
-        const lowStock = await response.json();
-        displayLowStock(lowStock);
-        showMessage(`${threshold}개 이하 부품: ${lowStock.length}건`, 'info');
+        lowStockData = await response.json();
+
+        // 카테고리 필터 적용
+        const selectedCategory = document.getElementById('inventoryCategoryFilter')?.value;
+        const filteredData = selectedCategory
+            ? lowStockData.filter(item => item.category_name === selectedCategory)
+            : lowStockData;
+
+        displayLowStock(filteredData);
+        showMessage(`${threshold}개 이하 부품: ${filteredData.length}건`, 'info');
     } catch (error) {
         showMessage('재고 부족 조회 오류: ' + error.message, 'error');
     }
@@ -1004,6 +1038,27 @@ function displayLowStock(lowStock) {
             <td>${item.unit || '-'}</td>
         </tr>
     `).join('');
+}
+
+// 카테고리 필터 변경 시 현재재고와 재고부족을 동시에 필터링
+function filterInventoryByCategory() {
+    const selectedCategory = document.getElementById('inventoryCategoryFilter').value;
+
+    // 현재 재고 현황 필터링
+    if (inventoryData.length > 0) {
+        const filteredInventory = selectedCategory
+            ? inventoryData.filter(item => item.category_name === selectedCategory)
+            : inventoryData;
+        displayInventory(filteredInventory);
+    }
+
+    // 재고 부족 부품 필터링
+    if (lowStockData.length > 0) {
+        const filteredLowStock = selectedCategory
+            ? lowStockData.filter(item => item.category_name === selectedCategory)
+            : lowStockData;
+        displayLowStock(filteredLowStock);
+    }
 }
 
 // ==================== 출고 등록 ====================
@@ -1089,12 +1144,11 @@ function clearUsageForm() {
     document.getElementById('usagePartNumber').value = '';
     document.getElementById('usagePartName').value = '';
     const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    document.getElementById('usedDate').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+    // datetime-local 형식: YYYY-MM-DDTHH:mm (toISOString 사용으로 안전한 날짜 문자열 생성)
+    const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16);
+    document.getElementById('usedDate').value = localDateTime;
 }
 
 // ==================== 출고 내역 조회 ====================
@@ -3107,9 +3161,15 @@ async function openCategoryModal() {
     await loadCategoryList();
 }
 
-function closeCategoryModal() {
+async function closeCategoryModal() {
     document.getElementById('categoryModal').style.display = 'none';
     document.getElementById('categoryForm').reset();
+
+    // 모달 닫을 때 전체 데이터 새로고침
+    await loadCategories(); // 전체 카테고리 새로고침
+    loadCategoriesForBulk(); // 입고 등록 드롭다운 새로고침
+    loadAllIncoming(); // 입고 내역 새로고침
+    loadInventory(); // 재고 현황 새로고침
 }
 
 async function loadCategoryList() {

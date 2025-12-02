@@ -3,6 +3,7 @@ package com.example.part.dto;
 import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import lombok.Data;
 
@@ -21,6 +22,7 @@ public class PartUsageDTO {
     private Integer quantityUsed;
     private String usageLocation;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonDeserialize(using = SafeLocalDateTimeDeserializer.class)
     private LocalDateTime usedDatetime;
 
     // 기타
