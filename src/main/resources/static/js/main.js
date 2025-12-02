@@ -2983,7 +2983,22 @@ async function submitBulkInsert() {
             if (result.skipped > 0) {
                 message += `, ${result.skipped}건 건너뜀`;
             }
-            showMessage(message, 'success');
+
+            // 실패 상세 정보 표시
+            if (result.fail > 0 && result.failDetails && result.failDetails.length > 0) {
+                let failMessage = `\n\n실패한 항목:\n`;
+                result.failDetails.forEach((detail, idx) => {
+                    if (idx < 5) { // 최대 5개만 표시
+                        failMessage += `\n${detail.index + 1}번째 행: ${detail.partNumber} (${detail.partName})\n  ⚠️ ${detail.error}\n`;
+                    }
+                });
+                if (result.failDetails.length > 5) {
+                    failMessage += `\n... 외 ${result.failDetails.length - 5}건`;
+                }
+                alert(failMessage);
+            }
+
+            showMessage(message, result.fail > 0 ? 'warning' : 'success');
 
             loadAllIncoming();
             loadInventory();

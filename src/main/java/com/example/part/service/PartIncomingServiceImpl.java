@@ -306,10 +306,10 @@ public class PartIncomingServiceImpl implements PartIncomingService {
             if (occupied != null && !partNumber.equals(occupied.getPartNumber())) {
                 if (!overrideCabinet) {
                     throw new IllegalArgumentException(
-                            String.format("??? %s-%s? ?? ?? %s? ???? ????. ????? ?????.", posX, posY,
-                                    occupied.getPartNumber()));
+                            String.format("캐비닛 위치 %s-%s는 이미 다른 부품 '%s' (%s)이 사용 중입니다.",
+                                    posX, posY, occupied.getPartNumber(), occupied.getPartName()));
                 }
-                log.warn("??? {}-{} ?? ??(?? {})? ???? ?????.", posX, posY, occupied.getPartNumber());
+                log.warn("캐비닛 위치 {}-{} 기존 데이터(부품 {})를 덮어쓰기 합니다.", posX, posY, occupied.getPartNumber());
                 if (StringUtils.hasText(occupied.getLocationCode())) {
                     partLocationService.deleteByCode(occupied.getLocationCode());
                 }

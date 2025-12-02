@@ -605,9 +605,14 @@
                         </div>
                         <div style="flex: 1;">
                             <label
-                                style="display: block; margin-bottom: 5px; font-weight: 600; color: #333; font-size: 13px;">설명</label>
-                            <input type="text" id="categoryDescription" placeholder="예: 프로젝트용 전자부품"
+                                style="display: block; margin-bottom: 5px; font-weight: 600; color: #333; font-size: 13px;">종류</label>
+                            <select id="categoryDescription"
                                 style="width: 100%; padding: 6px 8px; border: 1px solid #D0D0D0; font-size: 13px;">
+                                <option value="">-- 선택하세요 --</option>
+                                <option value="카테고리">카테고리</option>
+                                <option value="결제수단">결제수단</option>
+                                <option value="프로젝트">프로젝트</option>
+                            </select>
                         </div>
                     </div>
                     <div style="display: flex; gap: 8px; justify-content: flex-end;">

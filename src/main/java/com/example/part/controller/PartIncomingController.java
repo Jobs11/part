@@ -306,6 +306,7 @@ public class PartIncomingController {
         List<Integer> successIndices = new java.util.ArrayList<>();
         List<Integer> failIndices = new java.util.ArrayList<>();
         List<Integer> skippedIndices = new java.util.ArrayList<>();
+        List<Map<String, Object>> failDetails = new java.util.ArrayList<>();
 
         for (int i = 0; i < incomingList.size(); i++) {
             PartIncomingDTO dto = incomingList.get(i);
@@ -325,6 +326,14 @@ public class PartIncomingController {
             } catch (Exception e) {
                 failCount++;
                 failIndices.add(i);
+
+                // 실패 상세 정보 저장
+                Map<String, Object> failDetail = new HashMap<>();
+                failDetail.put("index", i);
+                failDetail.put("partNumber", dto.getPartNumber());
+                failDetail.put("partName", dto.getPartName());
+                failDetail.put("error", e.getMessage());
+                failDetails.add(failDetail);
             }
         }
 
@@ -335,6 +344,7 @@ public class PartIncomingController {
         result.put("successIndices", successIndices);
         result.put("failIndices", failIndices);
         result.put("skippedIndices", skippedIndices);
+        result.put("failDetails", failDetails);
 
         return ResponseEntity.ok(result);
     }
