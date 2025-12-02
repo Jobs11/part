@@ -377,34 +377,52 @@
             3) + 포함 검색
             ================================ -->
         <foreach collection="includeList" item="kw">
-            AND (
-                pi.part_number LIKE CONCAT('%', #{kw}, '%')
-                OR pi.part_name LIKE CONCAT('%', #{kw}, '%')
-                OR pi.description LIKE CONCAT('%', #{kw}, '%')
-                OR pi.project_name LIKE CONCAT('%', #{kw}, '%')
-                OR c.category_name LIKE CONCAT('%', #{kw}, '%')
-                OR pm.category_name LIKE CONCAT('%', #{kw}, '%')
-                OR CAST(pi.incoming_quantity AS CHAR) LIKE CONCAT('%', #{kw}, '%')
-                OR CAST(pi.purchase_price AS CHAR) LIKE CONCAT('%', #{kw}, '%')
-                OR COALESCE(pl.location_code, CONCAT(pl.pos_x, '-', pl.pos_y)) LIKE CONCAT('%', #{kw}, '%')
-            )
+            <choose>
+                <!-- 컬럼이 지정된 경우 해당 컬럼만 검색 -->
+                <when test="column != null and column != ''">
+                    AND ${column} LIKE CONCAT('%', #{kw}, '%')
+                </when>
+                <!-- 컬럼이 없으면 전체 검색 -->
+                <otherwise>
+                    AND (
+                        pi.part_number LIKE CONCAT('%', #{kw}, '%')
+                        OR pi.part_name LIKE CONCAT('%', #{kw}, '%')
+                        OR pi.description LIKE CONCAT('%', #{kw}, '%')
+                        OR pi.project_name LIKE CONCAT('%', #{kw}, '%')
+                        OR c.category_name LIKE CONCAT('%', #{kw}, '%')
+                        OR pm.category_name LIKE CONCAT('%', #{kw}, '%')
+                        OR CAST(pi.incoming_quantity AS CHAR) LIKE CONCAT('%', #{kw}, '%')
+                        OR CAST(pi.purchase_price AS CHAR) LIKE CONCAT('%', #{kw}, '%')
+                        OR COALESCE(pl.location_code, CONCAT(pl.pos_x, '-', pl.pos_y)) LIKE CONCAT('%', #{kw}, '%')
+                    )
+                </otherwise>
+            </choose>
         </foreach>
 
         <!-- ================================
             4) - 제외 검색
             ================================ -->
         <foreach collection="excludeList" item="kw">
-            AND NOT (
-                COALESCE(pi.part_number, '') LIKE CONCAT('%', #{kw}, '%')
-                OR COALESCE(pi.part_name, '') LIKE CONCAT('%', #{kw}, '%')
-                OR COALESCE(pi.description, '') LIKE CONCAT('%', #{kw}, '%')
-                OR COALESCE(pi.project_name, '') LIKE CONCAT('%', #{kw}, '%')
-                OR COALESCE(c.category_name, '') LIKE CONCAT('%', #{kw}, '%')
-                OR COALESCE(pm.category_name, '') LIKE CONCAT('%', #{kw}, '%')
-                OR CAST(pi.incoming_quantity AS CHAR) LIKE CONCAT('%', #{kw}, '%')
-                OR CAST(pi.purchase_price AS CHAR) LIKE CONCAT('%', #{kw}, '%')
-                OR COALESCE(pl.location_code, CONCAT(pl.pos_x, '-', pl.pos_y)) LIKE CONCAT('%', #{kw}, '%')
-            )
+            <choose>
+                <!-- 컬럼이 지정된 경우 해당 컬럼만 제외 -->
+                <when test="column != null and column != ''">
+                    AND NOT (${column} LIKE CONCAT('%', #{kw}, '%'))
+                </when>
+                <!-- 컬럼이 없으면 전체에서 제외 -->
+                <otherwise>
+                    AND NOT (
+                        COALESCE(pi.part_number, '') LIKE CONCAT('%', #{kw}, '%')
+                        OR COALESCE(pi.part_name, '') LIKE CONCAT('%', #{kw}, '%')
+                        OR COALESCE(pi.description, '') LIKE CONCAT('%', #{kw}, '%')
+                        OR COALESCE(pi.project_name, '') LIKE CONCAT('%', #{kw}, '%')
+                        OR COALESCE(c.category_name, '') LIKE CONCAT('%', #{kw}, '%')
+                        OR COALESCE(pm.category_name, '') LIKE CONCAT('%', #{kw}, '%')
+                        OR CAST(pi.incoming_quantity AS CHAR) LIKE CONCAT('%', #{kw}, '%')
+                        OR CAST(pi.purchase_price AS CHAR) LIKE CONCAT('%', #{kw}, '%')
+                        OR COALESCE(pl.location_code, CONCAT(pl.pos_x, '-', pl.pos_y)) LIKE CONCAT('%', #{kw}, '%')
+                    )
+                </otherwise>
+            </choose>
         </foreach>
 
         <!-- ================================

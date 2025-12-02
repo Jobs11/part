@@ -760,6 +760,18 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
                 showMessage('수정 완료', 'success');
                 loadInventory();
                 loadLowStock();
+
+                // 부품번호 수정 시 배치도 변경 대화상자 열기
+                if (field === 'partNumber') {
+                    // 위치 변경 대화상자 바로 열기 (위치가 있든 없든 변경 가능하도록)
+                    try {
+                        const updatedIncoming = await (await fetch(`${INCOMING_API}/${incomingId}`)).json();
+                        showLocationSelectionDialogForIncoming(incomingId, updatedIncoming.partNumber, updatedIncoming.partName);
+                    } catch (error) {
+                        console.error('배치도 변경 오류:', error);
+                        showMessage('배치도 변경 중 오류가 발생했습니다.', 'error');
+                    }
+                }
             } else {
                 const message = await response.text();
                 if (field === 'originalPrice') {
@@ -2760,6 +2772,10 @@ async function checkCabinetDuplicate(inputEl) {
     const posX = match[1];
     const posY = parseInt(match[2]);
 
+    // 현재 행의 부품번호 가져오기
+    const currentRow = inputEl.closest('tr');
+    const currentPartNumber = currentRow?.querySelector('.bulk-part-number')?.value?.trim() || '';
+
     try {
         const response = await fetch(`/livewalk/part-locations/check-cabinet?posX=${posX}&posY=${posY}`);
 
@@ -2776,7 +2792,14 @@ async function checkCabinetDuplicate(inputEl) {
             try {
                 const location = JSON.parse(text);
                 if (location && location.partNumber) {
-                    // 중복된 위치 발견
+                    // 같은 부품번호면 경고 표시 안 함
+                    if (currentPartNumber && location.partNumber === currentPartNumber) {
+                        inputEl.style.borderColor = '';
+                        removeWarningMessage(inputEl);
+                        return;
+                    }
+
+                    // 다른 부품번호 - 중복 경고 표시
                     inputEl.style.borderColor = '#ff9800';
                     inputEl.style.borderWidth = '2px';
                     showWarningMessage(inputEl, `⚠️ 이미 부품번호 "${location.partNumber}" (${location.partName || '이름없음'})이(가) 위치해 있습니다.`);
@@ -6835,6 +6858,12 @@ function showLocationSelectionDialog(partNumber, partName) {
  * 입고 ID 기반 위치 선택 대화상자
  */
 function showLocationSelectionDialogForIncoming(incomingId, partNumber, partName) {
+    // 이미 열려있는 모달이 있으면 제거
+    const existingModal = document.getElementById('locationSelectionModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+
     const modalHtml = `
         <div id="locationSelectionModal" style="
             position: fixed;
@@ -6856,14 +6885,13 @@ function showLocationSelectionDialogForIncoming(incomingId, partNumber, partName
                 max-width: 400px;
                 width: 90%;
             ">
-                <h3 style="margin-top: 0; color: #333;">위치 정보 선택</h3>
+                <h3 style="margin-top: 0; color: #333;">배치도 위치 선택</h3>
                 <p style="color: #666; margin-bottom: 20px;">
                     입고ID: <strong>${incomingId}</strong><br>
                     부품번호: <strong>${partNumber}</strong><br>
                     ${partName ? `부품명: <strong>${partName}</strong><br>` : ''}
                     <br>
-                    등록된 위치 정보가 없습니다.<br>
-                    위치를 선택하시겠습니까?
+                    배치도 위치를 선택해주세요.
                 </p>
                 <div style="display: flex; gap: 10px; flex-direction: column;">
                     <button onclick="selectLocationTypeForIncoming(${incomingId}, '${partNumber}', '${partName || ''}', 'cabinet')"
