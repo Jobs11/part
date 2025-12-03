@@ -651,8 +651,11 @@ public class PartIncomingServiceImpl implements PartIncomingService {
                 // 부품번호와 부품명 업데이트
                 location.setPartNumber(newPartNumber);
                 location.setPartName(newPartName);
+                // incoming_id는 유지
+                location.setIncomingId(incomingId);
 
-                partLocationService.saveOrUpdate(location);
+                // incoming_id 기준으로 업데이트
+                partLocationService.updateByIncomingId(location);
                 log.info("part_location 업데이트 완료: incomingId={}, partNumber={}, partName={}",
                         incomingId, newPartNumber, newPartName);
             } else {

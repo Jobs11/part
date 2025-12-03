@@ -812,11 +812,11 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
         inputElement = document.createElement('input');
         inputElement.type =
             field === 'incomingQuantity' || field === 'purchasePrice' || field === 'originalPrice' ? 'number' :
-                field === 'purchaseDatetime' ? 'datetime-local' : 'text';
+                field === 'purchaseDatetime' ? 'date' : 'text';
 
         if (field === 'purchaseDatetime' && currentValue) {
-            // yyyy-MM-dd HH:mm:ss 형식을 yyyy-MM-ddTHH:mm 형식으로 변환
-            const dateValue = currentValue.replace(' ', 'T').substring(0, 16);
+            // yyyy-MM-dd HH:mm:ss 형식에서 yyyy-MM-dd만 추출
+            const dateValue = currentValue.substring(0, 10);
             inputElement.value = dateValue;
         } else {
             inputElement.value = (currentValue === '-' || !currentValue) ? '' : currentValue;
@@ -889,8 +889,8 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
                     }
                 }
             } else if (field === 'purchaseDatetime') {
-                // datetime-local 값을 yyyy-MM-dd HH:mm:ss 형식으로 변환
-                updatedData[field] = newValue ? newValue.replace('T', ' ') + ':00' : null;
+                // date 값을 yyyy-MM-dd 00:00:00 형식으로 변환
+                updatedData[field] = newValue ? newValue + ' 00:00:00' : null;
             } else {
                 updatedData[field] = newValue;
             }
@@ -1378,7 +1378,7 @@ async function registerUsage(e) {
         partNumber: document.getElementById('usagePartNumber').value,
         quantityUsed: parseInt(document.getElementById('quantityUsed').value),
         usageLocation: document.getElementById('usageLocation').value,
-        usedDatetime: usedDateValue ? usedDateValue + ':00' : null,  // 초 추가
+        usedDatetime: usedDateValue ? usedDateValue + ' 00:00:00' : null,  // 날짜만 입력
         note: document.getElementById('usageNote').value,
         createdBy: 'system'
     };
@@ -1754,18 +1754,12 @@ function makeUsageEditable(event, usageId, field, currentValue) {
     const input = document.createElement('input');
     input.type =
         field === 'quantityUsed' ? 'number' :
-            field === 'usedDatetime' ? 'datetime-local' : 'text';
+            field === 'usedDatetime' ? 'date' : 'text';
 
     if (field === 'usedDatetime' && currentValue) {
-        // Convert "yyyy-MM-dd HH:mm:ss" to "yyyy-MM-ddTHH:mm" for datetime-local
-        const parts = currentValue.split(' ');
-        if (parts.length === 2) {
-            const [datePart, timePart] = parts;
-            const [hh, mm] = timePart.split(':');
-            input.value = `${datePart}T${hh}:${mm}`;
-        } else {
-            input.value = currentValue;
-        }
+        // yyyy-MM-dd HH:mm:ss 형식에서 yyyy-MM-dd만 추출
+        const dateValue = currentValue.substring(0, 10);
+        input.value = dateValue;
     } else {
         input.value = (currentValue === '-' || !currentValue) ? '' : currentValue;
     }
@@ -1795,8 +1789,8 @@ function makeUsageEditable(event, usageId, field, currentValue) {
             if (field === 'quantityUsed') {
                 bodyData[field] = parseInt(newValue);
             } else if (field === 'usedDatetime') {
-                // datetime-local 값을 yyyy-MM-dd HH:mm:ss 형식으로 변환
-                bodyData[field] = newValue ? newValue.replace('T', ' ') + ':00' : null;
+                // date 값을 yyyy-MM-dd 00:00:00 형식으로 변환
+                bodyData[field] = newValue ? newValue + ' 00:00:00' : null;
             } else {
                 bodyData[field] = newValue;
             }
@@ -2943,7 +2937,7 @@ function addBulkRow() {
             </select>
         </td>
         <td><input type="number" class="bulk-input bulk-price" placeholder="금액" min="0" step="0.01"></td>
-        <td><input type="datetime-local" class="bulk-input bulk-date"></td>
+        <td><input type="date" class="bulk-input bulk-date"></td>
         <td><input type="text" class="bulk-input bulk-purchaser" placeholder="구매업체"></td>
         <td><input type="text" class="bulk-input bulk-supplier" placeholder="공급업체"></td>
         <td>
@@ -2967,14 +2961,12 @@ function addBulkRow() {
     `;
     tbody.appendChild(tr);
 
-    // 날짜 기본값 설정 (시간 포함)
+    // 날짜 기본값 설정 (날짜만)
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    tr.querySelector('.bulk-date').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+    tr.querySelector('.bulk-date').value = `${year}-${month}-${day}`;
 
     // 캐비닛 위치 입력 정규화 (blur 시 A2 -> A-2)
     attachCabinetNormalizer(tr.querySelector('.bulk-cabinet-location'));
@@ -3441,8 +3433,8 @@ async function submitBulkInsert() {
 
         // 필수 항목: 부품번호, 카테고리, 부품명, 수량, 금액, 구매일자
         if (partNumber && categoryId && paymentMethodId && partName && quantity && price && date) {
-            // datetime-local 값을 yyyy-MM-dd HH:mm:ss 형식으로 변환
-            const formattedDate = date ? date.replace('T', ' ') + ':00' : null;
+            // date 값을 yyyy-MM-dd 00:00:00 형식으로 변환
+            const formattedDate = date ? date + ' 00:00:00' : null;
 
             const data = {
                 partNumber: partNumber,

@@ -21,7 +21,7 @@ public class PartUsageDTO {
     // 사용 정보
     private Integer quantityUsed;
     private String usageLocation;
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd")
     @JsonDeserialize(using = SafeLocalDateTimeDeserializer.class)
     private LocalDateTime usedDatetime;
 

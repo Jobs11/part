@@ -36,7 +36,7 @@ public class PartIncomingDTO {
     private BigDecimal originalPrice;
 
     // 구매 정보
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDateTime purchaseDatetime;
     private String supplier;
     private String purchaser;
