@@ -500,6 +500,124 @@ async function searchIncomingByColumn(column) {
     }
 }
 
+// 컬럼 순차 자동 검색 함수
+async function searchIncomingWithFallback(searchTerm, selectedColumn) {
+    // 검색 가능한 모든 컬럼 (테이블 순서대로)
+    const searchableColumns = [
+        'category_name',
+        'part_number',
+        'part_name',
+        'description',
+        'incoming_quantity',
+        'payment_method_name',
+        'purchase_price',
+        'purchase_datetime',
+        'purchaser',
+        'supplier',
+        'project_name',
+        'created_at',
+        'note'
+    ];
+
+    const columnNames = {
+        'category_name': '카테고리',
+        'part_number': '부품번호',
+        'part_name': '부품명',
+        'description': '설명',
+        'note': '비고',
+        'incoming_quantity': '입고수량',
+        'payment_method_name': '결제수단',
+        'purchase_price': '구매금액',
+        'purchase_datetime': '구매일자',
+        'purchaser': '구매자',
+        'supplier': '공급자',
+        'project_name': '프로젝트명',
+        'created_at': '등록일'
+    };
+
+    const columnIndex = {
+        'category_name': 0,
+        'part_number': 1,
+        'part_name': 2,
+        'description': 3,
+        'incoming_quantity': 4,
+        'payment_method_name': 6,
+        'purchase_price': 7,
+        'purchase_datetime': 8,
+        'purchaser': 9,
+        'supplier': 10,
+        'project_name': 11,
+        'created_at': 12,
+        'note': 13
+    };
+
+    // 선택된 컬럼이 있으면 먼저 검색
+    if (selectedColumn) {
+        try {
+            const url = `${INCOMING_API}/search-advanced?keyword=${encodeURIComponent(searchTerm)}&column=${selectedColumn}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('검색 실패');
+
+            const incomingList = await response.json();
+
+            if (incomingList.length > 0) {
+                await displayIncomingList(incomingList);
+                showMessage(`${columnNames[selectedColumn]} 컬럼에서 ${incomingList.length}개 검색됨`, 'info');
+                return true;
+            }
+        } catch (error) {
+            console.error(`${selectedColumn} 검색 오류:`, error);
+        }
+    }
+
+    // 선택된 컬럼에서 결과가 없으면 다른 컬럼들을 순차 검색
+    for (const column of searchableColumns) {
+        // 이미 검색한 컬럼은 스킵
+        if (column === selectedColumn) continue;
+
+        try {
+            const url = `${INCOMING_API}/search-advanced?keyword=${encodeURIComponent(searchTerm)}&column=${column}`;
+            const response = await fetch(url);
+            if (!response.ok) continue;
+
+            const incomingList = await response.json();
+
+            if (incomingList.length > 0) {
+                // 찾은 컬럼으로 자동 선택 변경
+                currentIncomingSearchColumn = column;
+
+                // 모든 헤더 초기화
+                document.querySelectorAll('#incomingTable th').forEach(th => {
+                    th.style.backgroundColor = '';
+                    th.style.fontWeight = '';
+                });
+
+                // 찾은 컬럼 헤더 강조
+                const headers = document.querySelectorAll('#incomingTable th');
+                if (columnIndex[column] !== undefined && headers[columnIndex[column]]) {
+                    headers[columnIndex[column]].style.backgroundColor = '#e3f2fd';
+                    headers[columnIndex[column]].style.fontWeight = 'bold';
+                }
+
+                await displayIncomingList(incomingList);
+                const message = selectedColumn
+                    ? `${columnNames[selectedColumn]} 컬럼에서 결과 없음 → ${columnNames[column]} 컬럼에서 ${incomingList.length}개 발견!`
+                    : `${columnNames[column]} 컬럼에서 ${incomingList.length}개 검색됨`;
+                showMessage(message, 'success');
+                return true;
+            }
+        } catch (error) {
+            console.error(`${column} 검색 오류:`, error);
+            continue;
+        }
+    }
+
+    // 모든 컬럼에서 검색했지만 결과 없음
+    await displayIncomingList([]);
+    showMessage('모든 컬럼에서 검색했지만 결과를 찾을 수 없습니다.', 'warning');
+    return false;
+}
+
 async function searchIncoming() {
     const searchTerm = document.getElementById('incomingSearchInput').value.trim();
     currentIncomingSearchKeyword = searchTerm; // 검색어 저장
@@ -510,16 +628,21 @@ async function searchIncoming() {
     }
 
     try {
-        // 백엔드가 keyword에서 + - 를 자동으로 파싱하므로 원본 그대로 전달
         const column = currentIncomingSearchColumn || '';
-        const url = `${INCOMING_API}/search-advanced?keyword=${encodeURIComponent(searchTerm)}&column=${column}`;
 
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('검색 실패');
+        // 컬럼이 선택되었으면 순차 검색 사용
+        if (column) {
+            await searchIncomingWithFallback(searchTerm, column);
+        } else {
+            // 전체 검색 (기존 방식)
+            const url = `${INCOMING_API}/search-advanced?keyword=${encodeURIComponent(searchTerm)}&column=`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('검색 실패');
 
-        const incomingList = await response.json();
-        await displayIncomingList(incomingList);
-        showMessage(`${incomingList.length}개 검색됨`, 'info');
+            const incomingList = await response.json();
+            await displayIncomingList(incomingList);
+            showMessage(`${incomingList.length}개 검색됨`, 'info');
+        }
     } catch (error) {
         showMessage('검색 오류: ' + error.message, 'error');
     }
@@ -861,6 +984,116 @@ async function loadInventory() {
 }
 
 // 재고 검색 (백엔드 고급 검색 연동)
+// 현재재고현황 컬럼 순차 자동 검색 함수
+async function searchInventoryWithFallback(searchTerm, selectedColumn) {
+    // 검색 가능한 모든 컬럼 (테이블 순서대로)
+    const searchableColumns = [
+        'part_number',
+        'part_name',
+        'category_name',
+        'current_stock',
+        'total_incoming',
+        'total_used',
+        'incoming_count'
+    ];
+
+    const columnNames = {
+        'part_number': '부품번호',
+        'part_name': '부품명',
+        'category_name': '카테고리',
+        'current_stock': '현재재고',
+        'total_incoming': '총입고',
+        'total_used': '총출고',
+        'incoming_count': '입고횟수'
+    };
+
+    const columnIndex = {
+        'part_number': 0,
+        'part_name': 1,
+        'category_name': 2,
+        'current_stock': 3,
+        'unit': 4,
+        'total_incoming': 5,
+        'total_used': 6,
+        'incoming_count': 7
+    };
+
+    // 선택된 컬럼이 있으면 먼저 검색
+    if (selectedColumn) {
+        try {
+            const params = new URLSearchParams();
+            params.append('keyword', searchTerm);
+            params.append('column', selectedColumn);
+
+            const response = await fetch(`${INCOMING_API}/inventory/search-advanced?${params.toString()}`);
+            if (!response.ok) throw new Error('검색 실패');
+
+            const inventoryList = await response.json();
+
+            if (inventoryList.length > 0) {
+                inventoryData = inventoryList;
+                displayInventory(inventoryData);
+                showMessage(`${columnNames[selectedColumn]} 컬럼에서 ${inventoryList.length}개 검색됨`, 'info');
+                return true;
+            }
+        } catch (error) {
+            console.error(`${selectedColumn} 검색 오류:`, error);
+        }
+    }
+
+    // 선택된 컬럼에서 결과가 없으면 다른 컬럼들을 순차 검색
+    for (const column of searchableColumns) {
+        // 이미 검색한 컬럼은 스킵
+        if (column === selectedColumn) continue;
+
+        try {
+            const params = new URLSearchParams();
+            params.append('keyword', searchTerm);
+            params.append('column', column);
+
+            const response = await fetch(`${INCOMING_API}/inventory/search-advanced?${params.toString()}`);
+            if (!response.ok) continue;
+
+            const inventoryList = await response.json();
+
+            if (inventoryList.length > 0) {
+                // 찾은 컬럼으로 자동 선택 변경
+                currentInventorySearchColumn = column;
+
+                // 모든 헤더 초기화
+                document.querySelectorAll('#inventoryTable th').forEach(th => {
+                    th.style.backgroundColor = '';
+                    th.style.fontWeight = '';
+                });
+
+                // 찾은 컬럼 헤더 강조
+                const headers = document.querySelectorAll('#inventoryTable th');
+                if (columnIndex[column] !== undefined && headers[columnIndex[column]]) {
+                    headers[columnIndex[column]].style.backgroundColor = '#e3f2fd';
+                    headers[columnIndex[column]].style.fontWeight = 'bold';
+                }
+
+                inventoryData = inventoryList;
+                displayInventory(inventoryData);
+                const message = selectedColumn
+                    ? `${columnNames[selectedColumn]} 컬럼에서 결과 없음 → ${columnNames[column]} 컬럼에서 ${inventoryList.length}개 발견!`
+                    : `${columnNames[column]} 컬럼에서 ${inventoryList.length}개 검색됨`;
+                showMessage(message, 'success');
+                return true;
+            }
+        } catch (error) {
+            console.error(`${column} 검색 오류:`, error);
+            continue;
+        }
+    }
+
+    // 모든 컬럼에서 검색했지만 결과 없음
+    inventoryData = [];
+    displayInventory(inventoryData);
+    showMessage('모든 컬럼에서 검색했지만 결과를 찾을 수 없습니다.', 'warning');
+    return false;
+}
+
 async function searchInventory() {
     const searchTerm = document.getElementById('inventorySearchInput').value.trim();
 
@@ -869,8 +1102,13 @@ async function searchInventory() {
         return;
     }
 
-    // currentInventorySearchColumn이 설정되어 있으면 그 컬럼으로 검색, 아니면 전체 검색
-    await requestInventorySearch(searchTerm, currentInventorySearchColumn);
+    // 컬럼이 선택되었으면 순차 검색 사용
+    if (currentInventorySearchColumn) {
+        await searchInventoryWithFallback(searchTerm, currentInventorySearchColumn);
+    } else {
+        // 전체 검색 (기존 방식)
+        await requestInventorySearch(searchTerm, '');
+    }
 }
 
 // 특정 컬럼 선택 (검색 버튼을 누를 때까지 대기)
@@ -1296,6 +1534,107 @@ async function searchUsageByColumn(column) {
     }
 }
 
+// 사용내역 컬럼 순차 자동 검색 함수
+async function searchUsageWithFallback(searchTerm, selectedColumn) {
+    // 검색 가능한 모든 컬럼 (테이블 순서대로)
+    const searchableColumns = [
+        'used_datetime',
+        'part_number',
+        'part_name',
+        'quantity_used',
+        'unit',
+        'usage_location',
+        'note',
+        'created_at'
+    ];
+
+    const columnNames = {
+        'used_datetime': '사용일시',
+        'part_number': '부품번호',
+        'part_name': '부품명',
+        'quantity_used': '사용수량',
+        'unit': '단위',
+        'usage_location': '사용위치',
+        'note': '비고',
+        'created_at': '등록일시'
+    };
+
+    const columnIndex = {
+        'used_datetime': 0,
+        'part_number': 1,
+        'part_name': 2,
+        'quantity_used': 3,
+        'unit': 4,
+        'usage_location': 5,
+        'note': 6,
+        'created_at': 7
+    };
+
+    // 선택된 컬럼이 있으면 먼저 검색
+    if (selectedColumn) {
+        try {
+            const response = await fetch(`${USAGE_API}/search-advanced?keyword=${encodeURIComponent(searchTerm)}&column=${selectedColumn}&order=${currentUsageSortOrder}`);
+            if (!response.ok) throw new Error('검색 실패');
+
+            const usageList = await response.json();
+
+            if (usageList.length > 0) {
+                displayUsageList(usageList);
+                showMessage(`${columnNames[selectedColumn]} 컬럼에서 ${usageList.length}개 검색됨`, 'info');
+                return true;
+            }
+        } catch (error) {
+            console.error(`${selectedColumn} 검색 오류:`, error);
+        }
+    }
+
+    // 선택된 컬럼에서 결과가 없으면 다른 컬럼들을 순차 검색
+    for (const column of searchableColumns) {
+        // 이미 검색한 컬럼은 스킵
+        if (column === selectedColumn) continue;
+
+        try {
+            const response = await fetch(`${USAGE_API}/search-advanced?keyword=${encodeURIComponent(searchTerm)}&column=${column}&order=${currentUsageSortOrder}`);
+            if (!response.ok) continue;
+
+            const usageList = await response.json();
+
+            if (usageList.length > 0) {
+                // 찾은 컬럼으로 자동 선택 변경
+                currentUsageSearchColumn = column;
+
+                // 모든 헤더 초기화
+                document.querySelectorAll('#usageTable th').forEach(th => {
+                    th.style.backgroundColor = '';
+                    th.style.fontWeight = '';
+                });
+
+                // 찾은 컬럼 헤더 강조
+                const headers = document.querySelectorAll('#usageTable th');
+                if (columnIndex[column] !== undefined && headers[columnIndex[column]]) {
+                    headers[columnIndex[column]].style.backgroundColor = '#e3f2fd';
+                    headers[columnIndex[column]].style.fontWeight = 'bold';
+                }
+
+                displayUsageList(usageList);
+                const message = selectedColumn
+                    ? `${columnNames[selectedColumn]} 컬럼에서 결과 없음 → ${columnNames[column]} 컬럼에서 ${usageList.length}개 발견!`
+                    : `${columnNames[column]} 컬럼에서 ${usageList.length}개 검색됨`;
+                showMessage(message, 'success');
+                return true;
+            }
+        } catch (error) {
+            console.error(`${column} 검색 오류:`, error);
+            continue;
+        }
+    }
+
+    // 모든 컬럼에서 검색했지만 결과 없음
+    displayUsageList([]);
+    showMessage('모든 컬럼에서 검색했지만 결과를 찾을 수 없습니다.', 'warning');
+    return false;
+}
+
 async function searchUsage() {
     const searchTerm = document.getElementById('usageSearchInput').value.trim();
     currentUsageSearchKeyword = searchTerm; // 검색어 저장
@@ -1306,14 +1645,19 @@ async function searchUsage() {
     }
 
     try {
-        // currentUsageSearchColumn이 설정되어 있으면 그 컬럼으로 검색, 아니면 전체 검색
-        const column = currentUsageSearchColumn || currentUsageSortColumn || '';
-        const response = await fetch(`${USAGE_API}/search-advanced?keyword=${encodeURIComponent(searchTerm)}&column=${column}&order=${currentUsageSortOrder}`);
-        if (!response.ok) throw new Error('검색 실패');
+        // 컬럼이 선택되었으면 순차 검색 사용
+        if (currentUsageSearchColumn) {
+            await searchUsageWithFallback(searchTerm, currentUsageSearchColumn);
+        } else {
+            // 전체 검색 (기존 방식)
+            const column = currentUsageSortColumn || '';
+            const response = await fetch(`${USAGE_API}/search-advanced?keyword=${encodeURIComponent(searchTerm)}&column=${column}&order=${currentUsageSortOrder}`);
+            if (!response.ok) throw new Error('검색 실패');
 
-        const usageList = await response.json();
-        displayUsageList(usageList);
-        showMessage(`${usageList.length}개 검색됨`, 'info');
+            const usageList = await response.json();
+            displayUsageList(usageList);
+            showMessage(`${usageList.length}개 검색됨`, 'info');
+        }
     } catch (error) {
         showMessage('검색 오류: ' + error.message, 'error');
     }
