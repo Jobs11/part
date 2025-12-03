@@ -2182,6 +2182,22 @@ let currentIncomingIdForImage = null;
 async function openImageModal(incomingId) {
     currentIncomingIdForImage = incomingId;
     document.getElementById('imageModal').style.display = 'block';
+
+    // 부품 정보 가져와서 제목 업데이트
+    try {
+        const response = await fetch(`${INCOMING_API}/${incomingId}`);
+        if (response.ok) {
+            const incoming = await response.json();
+            const partNumber = incoming.partNumber || '-';
+            document.getElementById('imageModalTitle').textContent = `부품 사진 관리 - ${partNumber}`;
+        } else {
+            document.getElementById('imageModalTitle').textContent = '부품 사진 관리';
+        }
+    } catch (error) {
+        console.error('부품 정보 조회 오류:', error);
+        document.getElementById('imageModalTitle').textContent = '부품 사진 관리';
+    }
+
     await loadImages(incomingId);
 }
 
@@ -4261,7 +4277,10 @@ function displayLibraryImages(images) {
                         <div style="font-size: 11px; color: #999; margin-bottom: 10px;">
                             업로드: ${formatDateTime(img.uploadedAt)}
                         </div>
-                        <button onclick="deleteLibraryImage(${img.imageId}, '${img.title}')" class="btn btn-gray" style="width: 100%; padding: 5px; font-size: 12px;">삭제</button>
+                        <div style="display: flex; gap: 5px;">
+                            <button onclick="downloadLibraryFile('${img.fileName}', '${img.originalName || img.title}')" class="btn" style="flex: 1; padding: 5px; font-size: 12px;">📥 다운로드</button>
+                            <button onclick="deleteLibraryImage(${img.imageId}, '${img.title}')" class="btn btn-gray" style="flex: 1; padding: 5px; font-size: 12px;">삭제</button>
+                        </div>
                     </div>
                 `;
     }).join('')}
@@ -4354,6 +4373,21 @@ async function uploadLibraryImage() {
         loadLibraryImages();
     } catch (error) {
         showMessage('업로드 실패: ' + error.message, 'error');
+    }
+}
+
+// 자료실 파일 다운로드
+function downloadLibraryFile(fileName, originalName) {
+    try {
+        const link = document.createElement('a');
+        link.href = `/uploads/images/${fileName}`;
+        link.download = originalName || fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showMessage('다운로드를 시작합니다.', 'success');
+    } catch (error) {
+        showMessage('다운로드 실패: ' + error.message, 'error');
     }
 }
 

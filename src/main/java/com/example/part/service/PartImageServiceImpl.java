@@ -24,6 +24,9 @@ public class PartImageServiceImpl implements PartImageService {
     @Autowired
     private PartImageMapper partImageMapper;
 
+    @Autowired
+    private AuditLogger auditLogger;
+
     @Value("${file.upload-dir:/var/livewalk/uploads/images}")
     private String uploadDir;
 
@@ -80,6 +83,16 @@ public class PartImageServiceImpl implements PartImageService {
         // DB 저장
         partImageMapper.insertImage(dto);
 
+        // 감사로그 기록
+        auditLogger.log(
+            "part_image",
+            dto.getImageId() != null ? dto.getImageId().longValue() : null,
+            "업로드",
+            String.format("부품 사진 업로드: %s (%s)", originalFilename, imageType),
+            null,
+            null
+        );
+
         return dto;
     }
 
@@ -98,23 +111,40 @@ public class PartImageServiceImpl implements PartImageService {
         // DB에서 이미지 정보 조회
         PartImageDTO image = partImageMapper.selectById(imageId);
 
-        if (image != null && "local".equals(image.getStorageType())) {
-            // 로컬 파일 삭제
-            String imageUrl = image.getImageUrl();
-            if (imageUrl != null && imageUrl.startsWith("/uploads/images/")) {
-                String filename = imageUrl.substring("/uploads/images/".length());
-                Path filePath = Paths.get(uploadDir, filename);
-                try {
-                    Files.deleteIfExists(filePath);
-                } catch (IOException e) {
-                    // 파일 삭제 실패해도 DB는 삭제
-                    e.printStackTrace();
+        String fileName = null;
+        String imageType = null;
+        if (image != null) {
+            fileName = image.getFileName();
+            imageType = image.getImageType();
+
+            if ("local".equals(image.getStorageType())) {
+                // 로컬 파일 삭제
+                String imageUrl = image.getImageUrl();
+                if (imageUrl != null && imageUrl.startsWith("/uploads/images/")) {
+                    String filename = imageUrl.substring("/uploads/images/".length());
+                    Path filePath = Paths.get(uploadDir, filename);
+                    try {
+                        Files.deleteIfExists(filePath);
+                    } catch (IOException e) {
+                        // 파일 삭제 실패해도 DB는 삭제
+                        e.printStackTrace();
+                    }
                 }
             }
         }
 
         // DB에서 삭제
         partImageMapper.deleteImage(imageId);
+
+        // 감사로그 기록
+        auditLogger.log(
+            "part_image",
+            imageId.longValue(),
+            "삭제",
+            String.format("부품 사진 삭제: %s (%s)", fileName != null ? fileName : "알 수 없음", imageType != null ? imageType : "알 수 없음"),
+            null,
+            null
+        );
     }
 
     @Override

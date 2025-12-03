@@ -55,6 +55,10 @@ public class AuditLogger {
                 return "도면 좌표";
             case "user":
                 return "사용자";
+            case "library":
+                return "자료실";
+            case "part_image":
+                return "부품사진";
             default:
                 return entityType;
         }

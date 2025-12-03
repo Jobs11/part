@@ -24,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 public class GeneralImageServiceImpl implements GeneralImageService {
 
     private final GeneralImageMapper generalImageMapper;
+    private final AuditLogger auditLogger;
 
     @Value("${file.upload-dir:/var/livewalk/uploads/images}")
     private String uploadDir;
@@ -77,6 +78,16 @@ public class GeneralImageServiceImpl implements GeneralImageService {
             // DB 저장
             generalImageMapper.insertImage(dto);
 
+            // 감사로그 기록
+            auditLogger.log(
+                "library",
+                dto.getImageId(),
+                "업로드",
+                String.format("자료실 업로드: %s", title),
+                null,
+                null
+            );
+
             return dto;
         } catch (IOException e) {
             throw new RuntimeException("파일 업로드 실패: " + e.getMessage(), e);
@@ -97,7 +108,11 @@ public class GeneralImageServiceImpl implements GeneralImageService {
     @Transactional
     public void deleteImage(Long imageId) {
         GeneralImageDTO image = generalImageMapper.selectImageById(imageId);
+        String title = null;
+
         if (image != null) {
+            title = image.getTitle();
+
             // 실제 파일 삭제
             try {
                 Path filePath = Paths.get(uploadDir, image.getFileName());
@@ -108,6 +123,16 @@ public class GeneralImageServiceImpl implements GeneralImageService {
 
             // DB에서 삭제
             generalImageMapper.deleteImage(imageId);
+
+            // 감사로그 기록
+            auditLogger.log(
+                "library",
+                imageId,
+                "삭제",
+                String.format("자료실 삭제: %s", title != null ? title : "알 수 없음"),
+                null,
+                null
+            );
         }
     }
 
