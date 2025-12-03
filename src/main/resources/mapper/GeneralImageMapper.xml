@@ -15,6 +15,7 @@
         <result property="fileType" column="file_type"/>
         <result property="fieldCoordinates" column="field_coordinates"/>
         <result property="uploadedBy" column="uploaded_by"/>
+        <result property="uploaderName" column="uploader_name"/>
         <result property="uploadedAt" column="uploaded_at"/>
         <result property="isActive" column="is_active"/>
     </resultMap>
@@ -26,9 +27,13 @@
     </insert>
 
     <select id="selectAllImages" resultMap="generalImageResultMap">
-        SELECT * FROM general_images
-        WHERE is_active = 1
-        ORDER BY uploaded_at DESC
+        SELECT
+            gi.*,
+            u.full_name as uploader_name
+        FROM general_images gi
+        LEFT JOIN users u ON gi.uploaded_by = u.user_id
+        WHERE gi.is_active = 1
+        ORDER BY gi.uploaded_at DESC
     </select>
 
     <select id="selectImageById" resultMap="generalImageResultMap" parameterType="long">

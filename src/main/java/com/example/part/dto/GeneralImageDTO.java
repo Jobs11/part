@@ -17,6 +17,7 @@ public class GeneralImageDTO {
     private Long fileSize;
     private String fileType; // "image" 또는 "pdf"
     private Integer uploadedBy;
+    private String uploaderName; // 업로더 이름 (JOIN)
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime uploadedAt;

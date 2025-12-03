@@ -4248,12 +4248,23 @@ async function loadLibraryImages() {
     }
 }
 
-function displayLibraryImages(images) {
+async function displayLibraryImages(images) {
     const container = document.getElementById('libraryListContainer');
 
     if (!images || images.length === 0) {
         container.innerHTML = '<p style="text-align: center; color: #999;">등록된 자료가 없습니다.</p>';
         return;
+    }
+
+    // 현재 사용자 정보 조회
+    let currentUser = null;
+    try {
+        const userResponse = await fetch('/livewalk/auth/current-user');
+        if (userResponse.ok) {
+            currentUser = await userResponse.json();
+        }
+    } catch (error) {
+        console.error('사용자 정보 조회 실패:', error);
     }
 
     container.innerHTML = `
@@ -4269,17 +4280,27 @@ function displayLibraryImages(images) {
                            style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; cursor: pointer;"
                            onclick="window.open('/uploads/images/${img.fileName}', '_blank')">`;
 
+        // 삭제 권한 체크: 본인 또는 관리자만 삭제 가능
+        const canDelete = currentUser && (
+            currentUser.userId === img.uploadedBy ||
+            currentUser.userRole === 'ADMIN'
+        );
+
+        const deleteButtonHtml = canDelete
+            ? `<button onclick="deleteLibraryImage(${img.imageId}, '${img.title}')" class="btn" style="flex: 1; padding: 5px; font-size: 12px; background-color: #dc3545; color: white; border-color: #dc3545;">🗑 삭제</button>`
+            : ``;
+
         return `
                     <div style="border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f9f9f9;">
                         ${previewHtml}
                         <h4 style="margin: 10px 0 5px 0; font-size: 14px;">${img.title} ${isPdf ? '[PDF]' : ''}</h4>
                         <p style="margin: 0 0 10px 0; font-size: 12px; color: #666;">${img.description || ''}</p>
                         <div style="font-size: 11px; color: #999; margin-bottom: 10px;">
-                            업로드: ${formatDateTime(img.uploadedAt)}
+                            업로드: ${formatDateTime(img.uploadedAt)}${img.uploaderName ? '<br>업로더: ' + img.uploaderName : ''}
                         </div>
                         <div style="display: flex; gap: 5px;">
-                            <button onclick="downloadLibraryFile('${img.fileName}', '${img.originalName || img.title}')" class="btn" style="flex: 1; padding: 5px; font-size: 12px;">📥 다운로드</button>
-                            <button onclick="deleteLibraryImage(${img.imageId}, '${img.title}')" class="btn btn-gray" style="flex: 1; padding: 5px; font-size: 12px;">삭제</button>
+                            <button onclick="downloadLibraryFile('${img.fileName}', '${img.originalName || img.title}')" class="btn" style="${canDelete ? 'flex: 1;' : 'width: 100%;'} padding: 5px; font-size: 12px;">📥 다운로드</button>
+                            ${deleteButtonHtml}
                         </div>
                     </div>
                 `;

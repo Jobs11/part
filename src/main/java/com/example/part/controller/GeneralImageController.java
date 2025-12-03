@@ -77,10 +77,41 @@ public class GeneralImageController {
     }
 
     @DeleteMapping("/{imageId}")
-    public ResponseEntity<Map<String, Object>> deleteImage(@PathVariable Long imageId) {
+    public ResponseEntity<Map<String, Object>> deleteImage(
+            @PathVariable Long imageId,
+            Authentication authentication) {
         Map<String, Object> response = new HashMap<>();
 
         try {
+            // 현재 사용자 정보 조회
+            String username = authentication.getName();
+            UserDTO currentUser = userMapper.findByUsername(username);
+
+            if (currentUser == null) {
+                response.put("success", false);
+                response.put("message", "사용자 정보를 찾을 수 없습니다.");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            }
+
+            // 자료 정보 조회
+            GeneralImageDTO image = generalImageService.getImageById(imageId);
+            if (image == null) {
+                response.put("success", false);
+                response.put("message", "자료를 찾을 수 없습니다.");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            }
+
+            // 권한 체크: 본인 또는 관리자만 삭제 가능
+            boolean isOwner = image.getUploadedBy() != null && image.getUploadedBy().equals(currentUser.getUserId());
+            boolean isAdmin = "ADMIN".equals(currentUser.getUserRole());
+
+            if (!isOwner && !isAdmin) {
+                response.put("success", false);
+                response.put("message", "삭제 권한이 없습니다. 본인 또는 관리자만 삭제할 수 있습니다.");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+            }
+
+            // 삭제 실행
             generalImageService.deleteImage(imageId);
             response.put("success", true);
             response.put("message", "자료가 삭제되었습니다.");
