@@ -233,8 +233,12 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // 데이터 로드
     Promise.all([loadCategories(), loadPaymentMethods(), loadProjects()])
+        .then(() => {
+            // 프로젝트 로드 완료 후 출고 프로젝트 드롭다운 초기화
+            loadUsageProjects();
+        })
         .catch(() => {
-            // 데이터 로드 중 �??�류��??�시됨
+            // 데이터 로드 중 오류 무시됨
         })
         .finally(() => {
             addBulkRow();
@@ -1175,6 +1179,41 @@ function clearUsageForm() {
         .toISOString()
         .slice(0, 16);
     document.getElementById('usedDate').value = localDateTime;
+}
+
+// 출고 프로젝트 목록 로드
+async function loadUsageProjects() {
+    try {
+        await loadProjects(); // 프로젝트 데이터 로드
+
+        const usageProjectSelect = document.getElementById('usageProjectSelect');
+        if (usageProjectSelect) {
+            // 기존 옵션 제거 (첫 번째 "프로젝트 선택" 옵션은 유지)
+            while (usageProjectSelect.children.length > 1) {
+                usageProjectSelect.removeChild(usageProjectSelect.lastChild);
+            }
+
+            // 프로젝트 목록 추가
+            projectsData.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.categoryName;
+                option.textContent = project.categoryName;
+                usageProjectSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('출고 프로젝트 목록 로드 오류:', error);
+    }
+}
+
+// 프로젝트 선택 시 사용처에 자동 입력
+function selectUsageProject() {
+    const projectSelect = document.getElementById('usageProjectSelect');
+    const usageLocationInput = document.getElementById('usageLocation');
+
+    if (projectSelect.value) {
+        usageLocationInput.value = projectSelect.value;
+    }
 }
 
 // ==================== 출고 내역 조회 ====================

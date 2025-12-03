@@ -123,37 +123,32 @@
                 <h2>부품 입고 등록</h2>
             </div>
 
-            <div style="margin-bottom: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <div style="margin-bottom: 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                 <button onclick="submitBulkInsert()" class="btn">등록하기</button>
                 <button onclick="addBulkRow()" class="btn">행 추가 (+1개)</button>
                 <button onclick="removeBulkRow()" class="btn btn-gray">행 삭제 (-1개)</button>
                 <button onclick="clearBulkTable()" class="btn btn-gray">전체 초기화</button>
                 <button onclick="openCategoryModal()" class="btn">카테고리 추가</button>
-                <span
-                    style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; background: #F2F2F2; border: 1px solid #D0D0D0; border-radius: 3px;">
-                    <label style="margin: 0; font-weight: 600; font-size: 12px; color: #333; white-space: nowrap;">일괄
-                        카테고리:</label>
+
+                <span style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <label style="margin: 0; font-weight: 500; font-size: 12px; color: #495057;">카테고리</label>
                     <select id="bulkCategorySelect" onchange="applyBulkCategory()"
-                        style="padding: 4px 6px; border: 1px solid #D0D0D0; font-size: 12px; background: white; min-width: 120px;">
-                        <option value="">개별 선택</option>
+                        style="padding: 4px 8px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; background: white; min-width: 110px; cursor: pointer;">
+                        <option value="">선택</option>
                     </select>
                 </span>
-                <span
-                    style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; background: #F2F2F2; border: 1px solid #D0D0D0; border-radius: 3px;">
-                    <label style="margin: 0; font-weight: 600; font-size: 12px; color: #333; white-space: nowrap;">일괄
-                        결제수단:</label>
+                <span style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <label style="margin: 0; font-weight: 500; font-size: 12px; color: #495057;">결제수단</label>
                     <select id="bulkPaymentMethodSelect" onchange="applyBulkPaymentMethod()"
-                        style="padding: 4px 6px; border: 1px solid #D0D0D0; font-size: 12px; background: white; min-width: 120px;">
-                        <option value="">개별 선택</option>
+                        style="padding: 4px 8px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; background: white; min-width: 110px; cursor: pointer;">
+                        <option value="">선택</option>
                     </select>
                 </span>
-                <span
-                    style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; background: #F2F2F2; border: 1px solid #D0D0D0; border-radius: 3px;">
-                    <label style="margin: 0; font-weight: 600; font-size: 12px; color: #333; white-space: nowrap;">일괄
-                        프로젝트:</label>
+                <span style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <label style="margin: 0; font-weight: 500; font-size: 12px; color: #495057;">프로젝트</label>
                     <select id="bulkProjectSelect" onchange="applyBulkProject()"
-                        style="padding: 4px 6px; border: 1px solid #D0D0D0; font-size: 12px; background: white; min-width: 120px;">
-                        <option value="">개별 선택</option>
+                        style="padding: 4px 8px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; background: white; min-width: 110px; cursor: pointer;">
+                        <option value="">선택</option>
                     </select>
                 </span>
             </div>
@@ -337,7 +332,13 @@
                     </div>
                     <div class="form-group" style="flex: 1;">
                         <label class="required">사용처</label>
-                        <input type="text" id="usageLocation" placeholder="사용처" required>
+                        <div style="display: flex; gap: 5px; align-items: stretch;">
+                            <input type="text" id="usageLocation" placeholder="사용처" required style="flex: 1;">
+                            <select id="usageProjectSelect" onchange="selectUsageProject()"
+                                style="width: 150px; padding: 6px 8px; border: 1px solid #ababab; border-radius: 4px; font-size: 12px; box-sizing: border-box; height: auto;">
+                                <option value="">프로젝트 선택</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-group" style="flex: 0 0 200px;">
                         <label class="required">사용일시</label>
