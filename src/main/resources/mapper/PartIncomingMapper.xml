@@ -215,27 +215,40 @@
 
         HAVING 1 = 1
 
+        <if test="columnKey != null and columnKey != '' and keyword != null and keyword != '' and columnKey == 'part_name'">
+            AND part_name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+
         <if test="columnKey != null and columnKey != '' and keyword != null and keyword != '' and columnKey == 'category_name'">
             AND category_name LIKE CONCAT('%', #{keyword}, '%')
         </if>
 
-        <!-- 숫자 컬럼 검색 (HAVING 절 사용, LIKE로 포함 검색) -->
-        <if test="columnKey != null and columnKey != '' and keyword != null and keyword != ''">
-            <choose>
-                <when test="columnKey == 'current_stock'">
-                    HAVING CAST(current_stock AS CHAR) LIKE CONCAT('%', #{keyword}, '%')
-                </when>
-                <when test="columnKey == 'total_incoming'">
-                    HAVING CAST(total_incoming AS CHAR) LIKE CONCAT('%', #{keyword}, '%')
-                </when>
-                <when test="columnKey == 'total_used'">
-                    HAVING CAST(total_used AS CHAR) LIKE CONCAT('%', #{keyword}, '%')
-                </when>
-                <when test="columnKey == 'incoming_count'">
-                    HAVING CAST(incoming_count AS CHAR) LIKE CONCAT('%', #{keyword}, '%')
-                </when>
-            </choose>
+        <if test="columnKey != null and columnKey != '' and keyword != null and keyword != '' and columnKey == 'current_stock'">
+            AND CAST(current_stock AS CHAR) LIKE CONCAT('%', #{keyword}, '%')
         </if>
+
+        <if test="columnKey != null and columnKey != '' and keyword != null and keyword != '' and columnKey == 'total_incoming'">
+            AND CAST(total_incoming AS CHAR) LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+
+        <if test="columnKey != null and columnKey != '' and keyword != null and keyword != '' and columnKey == 'total_used'">
+            AND CAST(total_used AS CHAR) LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+
+        <if test="columnKey != null and columnKey != '' and keyword != null and keyword != '' and columnKey == 'incoming_count'">
+            AND CAST(incoming_count AS CHAR) LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+
+        <!-- + 포함 검색 (part_name) -->
+        <foreach collection="includeList" item="kw">
+            AND part_name LIKE CONCAT('%', #{kw}, '%')
+        </foreach>
+
+        <!-- - 미포함 검색 (part_name) -->
+        <foreach collection="excludeList" item="kw">
+            AND NOT (part_name LIKE CONCAT('%', #{kw}, '%'))
+        </foreach>
+
         ORDER BY
         <choose>
             <when test="orderColumn != null and orderColumn != ''">

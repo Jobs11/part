@@ -920,7 +920,7 @@ async function requestInventorySearch(searchTerm, column) {
     }
 }
 
-function sortInventoryTable(column) {
+async function sortInventoryTable(column) {
     if (currentInventorySortColumn === column) {
         currentInventorySortOrder = currentInventorySortOrder === 'asc' ? 'desc' : 'asc';
     } else {
@@ -953,26 +953,52 @@ function sortInventoryTable(column) {
         headers[columnIndex[column]].style.fontWeight = 'bold';
     }
 
-    const sortedData = [...inventoryData].sort((a, b) => {
-        let valA = a[column];
-        let valB = b[column];
+    // 검색어가 있는지 확인
+    const searchTerm = document.getElementById('inventorySearchInput')?.value.trim() || '';
 
-        if (typeof valA === 'number' && typeof valB === 'number') {
-            return currentInventorySortOrder === 'asc' ? valA - valB : valB - valA;
+    if (searchTerm) {
+        // 검색어가 있으면 서버에 검색 + 정렬 요청
+        try {
+            currentInventorySearchKeyword = searchTerm;
+
+            const params = new URLSearchParams();
+            params.append('keyword', searchTerm);
+            params.append('column', column);
+            params.append('sortColumn', column);
+            params.append('order', currentInventorySortOrder);
+
+            const response = await fetch(`${INCOMING_API}/inventory/search-advanced?${params.toString()}`);
+            if (!response.ok) throw new Error('검색+정렬 실패');
+
+            inventoryData = await response.json();
+            displayInventory(inventoryData);
+            showMessage(`${column} 기준 ${currentInventorySortOrder === 'asc' ? '오름차순' : '내림차순'} 정렬 (검색: ${inventoryData.length}건)`, 'info');
+        } catch (error) {
+            showMessage('검색+정렬 오류: ' + error.message, 'error');
         }
+    } else {
+        // 검색어가 없으면 클라이언트 측 정렬
+        const sortedData = [...inventoryData].sort((a, b) => {
+            let valA = a[column];
+            let valB = b[column];
 
-        valA = String(valA || '').toLowerCase();
-        valB = String(valB || '').toLowerCase();
+            if (typeof valA === 'number' && typeof valB === 'number') {
+                return currentInventorySortOrder === 'asc' ? valA - valB : valB - valA;
+            }
 
-        if (currentInventorySortOrder === 'asc') {
-            return valA.localeCompare(valB);
-        } else {
-            return valB.localeCompare(valA);
-        }
-    });
+            valA = String(valA || '').toLowerCase();
+            valB = String(valB || '').toLowerCase();
 
-    displayInventory(sortedData);
-    showMessage(`${column} 기준 ${currentInventorySortOrder === 'asc' ? '오름차순' : '내림차순'} 정렬`, 'info');
+            if (currentInventorySortOrder === 'asc') {
+                return valA.localeCompare(valB);
+            } else {
+                return valB.localeCompare(valA);
+            }
+        });
+
+        displayInventory(sortedData);
+        showMessage(`${column} 기준 ${currentInventorySortOrder === 'asc' ? '오름차순' : '내림차순'} 정렬`, 'info');
+    }
 }
 
 function displayInventory(inventory) {
@@ -1803,8 +1829,8 @@ async function loadImages(incomingId) {
 
         const renderImageCard = (img) => {
             const typeLabel = img.imageType === 'receipt' ? '🧾 영수증' :
-                             img.imageType === 'delivery' ? '📦 택배' :
-                             img.imageType === 'part' ? '📷 부품' : '📄 기타';
+                img.imageType === 'delivery' ? '📦 택배' :
+                    img.imageType === 'part' ? '📷 부품' : '📄 기타';
             const borderColor = img.imageType === 'receipt' ? '#ff9800' : '#ddd';
             return `
                 <div style="position: relative; border: 2px solid ${borderColor}; padding: 5px; border-radius: 4px; min-width: 200px; flex-shrink: 0;">
@@ -3009,7 +3035,7 @@ async function submitBulkInsert() {
         const purchaser = row.querySelector('.bulk-purchaser').value.trim();
         const note = row.querySelector('.bulk-note').value.trim();
 
-        console.log('행 데이터:', {partNumber, categoryId, partName, cabinetLocation, mapLocation, quantity, paymentMethodId, price, date, description, projectName, supplier, purchaser});
+        console.log('행 데이터:', { partNumber, categoryId, partName, cabinetLocation, mapLocation, quantity, paymentMethodId, price, date, description, projectName, supplier, purchaser });
 
         // 하나라도 입력된 경우 (완전히 빈 행이 아닌 경우)
         const hasAnyInput = partNumber || categoryId || partName || quantity || price || date;
