@@ -56,7 +56,7 @@ public class CsvBackupService {
     }
 
     /**
-     * 매일 오전 9시에 CSV 백업 실행
+     * 매일 오전 12시에 CSV 백업 실행
      * cron: 초 분 시 일 월 요일
      */
     @Scheduled(cron = "0 0 0 * * *")

@@ -47,10 +47,17 @@ public class PartLocationServiceImpl implements PartLocationService {
         if (existing == null) {
             boolean inserted = partLocationMapper.insertLocation(dto) > 0;
             if (inserted) {
+                // 캐비넷 위치인지 도면 위치인지 구분
+                String locationType = (dto.getPosX() != null && dto.getPosY() != null)
+                    ? "캐비넷" : "도면";
+                String locationInfo = (dto.getPosX() != null && dto.getPosY() != null)
+                    ? dto.getPosX() + "-" + dto.getPosY()
+                    : dto.getLocationCode();
+
                 auditLogger.log("part_location",
                         null,
                         "CREATE",
-                        "배치도 등록: " + dto.getLocationCode(),
+                        locationType + " 등록 [" + locationInfo + "]",
                         null,
                         null);
             }
@@ -106,10 +113,17 @@ public class PartLocationServiceImpl implements PartLocationService {
 
                 changedFields.append("}");
 
+                // 캐비넷 위치인지 도면 위치인지 구분
+                String locationType = (dto.getPosX() != null && dto.getPosY() != null)
+                    ? "캐비넷" : "도면";
+                String locationInfo = (dto.getPosX() != null && dto.getPosY() != null)
+                    ? dto.getPosX() + "-" + dto.getPosY()
+                    : dto.getLocationCode();
+
                 auditLogger.log("part_location",
                         null,
                         "UPDATE",
-                        "배치도 수정: " + dto.getLocationCode(),
+                        locationType + " 수정 [" + locationInfo + "]",
                         hasChanges ? changedFields.toString() : null,
                         null);
             }
@@ -130,10 +144,17 @@ public class PartLocationServiceImpl implements PartLocationService {
             // INSERT
             boolean inserted = partLocationMapper.insertLocation(dto) > 0;
             if (inserted) {
+                // 캐비넷 위치인지 도면 위치인지 구분
+                String locationType = (dto.getPosX() != null && dto.getPosY() != null)
+                    ? "캐비넷" : "도면";
+                String locationInfo = (dto.getPosX() != null && dto.getPosY() != null)
+                    ? dto.getPosX() + "-" + dto.getPosY()
+                    : (dto.getLocationCode() != null ? dto.getLocationCode() : "미지정");
+
                 auditLogger.log("part_location",
                         null,
                         "CREATE",
-                        "배치도 등록 (입고ID: " + dto.getIncomingId() + "): " + dto.getLocationCode(),
+                        locationType + " 등록 [" + locationInfo + "] (입고ID: " + dto.getIncomingId() + ")",
                         null,
                         null);
             }
@@ -179,10 +200,17 @@ public class PartLocationServiceImpl implements PartLocationService {
 
                 changedFields.append("}");
 
+                // 캐비넷 위치인지 도면 위치인지 구분
+                String locationType = (dto.getPosX() != null && dto.getPosY() != null)
+                    ? "캐비넷" : "도면";
+                String locationInfo = (dto.getPosX() != null && dto.getPosY() != null)
+                    ? dto.getPosX() + "-" + dto.getPosY()
+                    : (dto.getLocationCode() != null ? dto.getLocationCode() : "미지정");
+
                 auditLogger.log("part_location",
                         null,
                         "UPDATE",
-                        "배치도 수정 (입고ID: " + dto.getIncomingId() + "): " + dto.getLocationCode(),
+                        locationType + " 수정 [" + locationInfo + "] (입고ID: " + dto.getIncomingId() + ")",
                         hasChanges ? changedFields.toString() : null,
                         null);
             }
@@ -199,10 +227,17 @@ public class PartLocationServiceImpl implements PartLocationService {
         // INSERT만 수행
         boolean inserted = partLocationMapper.insertLocation(dto) > 0;
         if (inserted) {
+            // 캐비넷 위치인지 도면 위치인지 구분
+            String locationType = (dto.getPosX() != null && dto.getPosY() != null)
+                ? "캐비넷" : "도면";
+            String locationInfo = (dto.getPosX() != null && dto.getPosY() != null)
+                ? dto.getPosX() + "-" + dto.getPosY()
+                : (dto.getLocationCode() != null ? dto.getLocationCode() : "미지정");
+
             auditLogger.log("part_location",
                     null,
                     "CREATE",
-                    "배치도 등록 (입고ID: " + dto.getIncomingId() + "): " + dto.getLocationCode(),
+                    locationType + " 등록 [" + locationInfo + "] (입고ID: " + dto.getIncomingId() + ")",
                     null,
                     null);
         }
@@ -260,10 +295,17 @@ public class PartLocationServiceImpl implements PartLocationService {
 
             changedFields.append("}");
 
+            // 캐비넷 위치인지 도면 위치인지 구분
+            String locationType = (dto.getPosX() != null && dto.getPosY() != null)
+                ? "캐비넷" : "도면";
+            String locationInfo = (dto.getPosX() != null && dto.getPosY() != null)
+                ? dto.getPosX() + "-" + dto.getPosY()
+                : (dto.getLocationCode() != null ? dto.getLocationCode() : "미지정");
+
             auditLogger.log("part_location",
                     null,
                     "UPDATE",
-                    "배치도 수정 (입고ID: " + dto.getIncomingId() + "): " + dto.getLocationCode(),
+                    locationType + " 수정 [" + locationInfo + "] (입고ID: " + dto.getIncomingId() + ")",
                     hasChanges ? changedFields.toString() : null,
                     null);
         }

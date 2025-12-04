@@ -458,8 +458,20 @@
         <div id="message" class="message"></div>
     </div>
 
-    <script src="js/main.js?v=32"></script>
+    <!-- 모듈화된 JavaScript 파일들 - 순서대로 로드 -->
+    <script src="js/constants.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/category.js"></script>
+    <script src="js/grid.js"></script>
+    <script src="js/inventory.js"></script>
+    <script src="js/incoming.js"></script>
+    <script src="js/usage.js"></script>
+    <script src="js/document.js"></script>
+    <script src="js/library.js"></script>
+    <script src="js/location.js"></script>
     <script src="js/template-editor.js"></script>
+    <script src="js/csv.js"></script>
+    <script src="js/main-new.js"></script>
     <script>
         // 관리자 권한 확인 및 관리자 페이지 버튼 표시
         async function checkAdminRole() {

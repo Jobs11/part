@@ -182,16 +182,20 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Transactional
     public void deleteCategory(int categoryId) {
+        // 삭제 전에 카테고리 이름 조회
+        CategoryDTO category = categoryMapper.findById(categoryId);
+        String categoryName = (category != null) ? category.getCategoryName() : String.valueOf(categoryId);
+
         int result = categoryMapper.deleteCategory(categoryId);
         if (result == 0) {
             throw new RuntimeException("카테고리 삭제에 실패했습니다.");
         }
-        log.info("카테고리 삭제 완료: ID {}", categoryId);
+        log.info("카테고리 삭제 완료: ID {} ({})", categoryId, categoryName);
 
         auditLogger.log("category",
                 (long) categoryId,
                 "DELETE",
-                "카테고리 삭제: " + categoryId,
+                "카테고리 삭제: " + categoryName,
                 null,
                 null);
     }
