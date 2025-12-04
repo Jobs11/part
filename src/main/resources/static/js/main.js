@@ -844,6 +844,8 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
                 cell.textContent = displayValue || '-';
             } else if (field === 'originalPrice') {
                 cell.textContent = originalValue ? formatNumber(originalValue) : '-';
+            } else if (field === 'purchasePrice') {
+                cell.textContent = formatNumber(originalValue) + ' 원';
             } else {
                 cell.textContent = originalValue || '-';
             }
@@ -889,8 +891,8 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
                     }
                 }
             } else if (field === 'purchaseDatetime') {
-                // date 값을 yyyy-MM-dd 00:00:00 형식으로 변환
-                updatedData[field] = newValue ? newValue + ' 00:00:00' : null;
+                // date 값을 yyyy-MM-dd 형식으로 전송 (LocalDate)
+                updatedData[field] = newValue || null;
             } else {
                 updatedData[field] = newValue;
             }
@@ -923,6 +925,8 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
                 const message = await response.text();
                 if (field === 'originalPrice') {
                     cell.textContent = originalValue ? formatNumber(originalValue) : '-';
+                } else if (field === 'purchasePrice') {
+                    cell.textContent = formatNumber(originalValue) + ' 원';
                 } else {
                     cell.textContent = originalValue || '-';
                 }
@@ -931,6 +935,8 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
         } catch (error) {
             if (field === 'originalPrice') {
                 cell.textContent = originalValue ? formatNumber(originalValue) : '-';
+            } else if (field === 'purchasePrice') {
+                cell.textContent = formatNumber(originalValue) + ' 원';
             } else {
                 cell.textContent = originalValue || '-';
             }
@@ -1378,7 +1384,7 @@ async function registerUsage(e) {
         partNumber: document.getElementById('usagePartNumber').value,
         quantityUsed: parseInt(document.getElementById('quantityUsed').value),
         usageLocation: document.getElementById('usageLocation').value,
-        usedDatetime: usedDateValue ? usedDateValue + ' 00:00:00' : null,  // 날짜만 입력
+        usedDatetime: usedDateValue || null,  // yyyy-MM-dd 형식 (LocalDate)
         note: document.getElementById('usageNote').value,
         createdBy: 'system'
     };
@@ -1789,8 +1795,8 @@ function makeUsageEditable(event, usageId, field, currentValue) {
             if (field === 'quantityUsed') {
                 bodyData[field] = parseInt(newValue);
             } else if (field === 'usedDatetime') {
-                // date 값을 yyyy-MM-dd 00:00:00 형식으로 변환
-                bodyData[field] = newValue ? newValue + ' 00:00:00' : null;
+                // date 값을 yyyy-MM-dd 형식으로 전송 (LocalDate)
+                bodyData[field] = newValue || null;
             } else {
                 bodyData[field] = newValue;
             }
@@ -2200,6 +2206,9 @@ function closeImageModal() {
     document.getElementById('imageModal').style.display = 'none';
     currentIncomingIdForImage = null;
     document.getElementById('modalFileInput').value = '';
+
+    // 입고 리스트 새로고침
+    loadAllIncoming();
 }
 
 // 이미지 목록 불러오기
@@ -3433,8 +3442,8 @@ async function submitBulkInsert() {
 
         // 필수 항목: 부품번호, 카테고리, 부품명, 수량, 금액, 구매일자
         if (partNumber && categoryId && paymentMethodId && partName && quantity && price && date) {
-            // date 값을 yyyy-MM-dd 00:00:00 형식으로 변환
-            const formattedDate = date ? date + ' 00:00:00' : null;
+            // date 값을 yyyy-MM-dd 형식으로 전송 (LocalDate)
+            const formattedDate = date || null;
 
             const data = {
                 partNumber: partNumber,
@@ -4421,10 +4430,6 @@ async function deleteLibraryImage(imageId, title) {
     }
 }
 
-function formatDateTime(dateTime) {
-    if (!dateTime) return '';
-    return dateTime.replace('T', ' ').substring(0, 19);
-}
 
 // ==================== 도면 좌표 마킹 (UI 준비) ====================
 let mapSpotImagesCache = [];

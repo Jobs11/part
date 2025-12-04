@@ -1,6 +1,7 @@
 package com.example.part.dto;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -37,7 +38,7 @@ public class PartIncomingDTO {
 
     // 구매 정보
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDateTime purchaseDatetime;
+    private LocalDate purchaseDatetime;
     private String supplier;
     private String purchaser;
     private String invoiceNumber;

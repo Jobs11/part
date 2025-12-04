@@ -410,7 +410,21 @@
             <choose>
                 <!-- 컬럼이 지정된 경우 해당 컬럼만 검색 -->
                 <when test="column != null and column != ''">
-                    AND ${column} LIKE CONCAT('%', #{kw}, '%')
+                    <choose>
+                        <!-- 숫자/날짜 컬럼은 CAST 처리 -->
+                        <when test="column == 'incoming_quantity'
+                                or column == 'purchase_price'
+                                or column == 'pi.incoming_quantity'
+                                or column == 'pi.purchase_price'
+                                or column == 'purchase_datetime'
+                                or column == 'pi.purchase_datetime'">
+                            AND CAST(${column} AS CHAR) LIKE CONCAT('%', #{kw}, '%')
+                        </when>
+                        <!-- 텍스트 컬럼 -->
+                        <otherwise>
+                            AND ${column} LIKE CONCAT('%', #{kw}, '%')
+                        </otherwise>
+                    </choose>
                 </when>
                 <!-- 컬럼이 없으면 전체 검색 -->
                 <otherwise>
@@ -423,6 +437,7 @@
                         OR pm.category_name LIKE CONCAT('%', #{kw}, '%')
                         OR CAST(pi.incoming_quantity AS CHAR) LIKE CONCAT('%', #{kw}, '%')
                         OR CAST(pi.purchase_price AS CHAR) LIKE CONCAT('%', #{kw}, '%')
+                        OR CAST(pi.purchase_datetime AS CHAR) LIKE CONCAT('%', #{kw}, '%')
                         OR COALESCE(pl.location_code, CONCAT(pl.pos_x, '-', pl.pos_y)) LIKE CONCAT('%', #{kw}, '%')
                     )
                 </otherwise>
@@ -436,7 +451,21 @@
             <choose>
                 <!-- 컬럼이 지정된 경우 해당 컬럼만 제외 -->
                 <when test="column != null and column != ''">
-                    AND NOT (${column} LIKE CONCAT('%', #{kw}, '%'))
+                    <choose>
+                        <!-- 숫자/날짜 컬럼은 CAST 처리 -->
+                        <when test="column == 'incoming_quantity'
+                                or column == 'purchase_price'
+                                or column == 'pi.incoming_quantity'
+                                or column == 'pi.purchase_price'
+                                or column == 'purchase_datetime'
+                                or column == 'pi.purchase_datetime'">
+                            AND NOT (CAST(${column} AS CHAR) LIKE CONCAT('%', #{kw}, '%'))
+                        </when>
+                        <!-- 텍스트 컬럼 -->
+                        <otherwise>
+                            AND NOT (${column} LIKE CONCAT('%', #{kw}, '%'))
+                        </otherwise>
+                    </choose>
                 </when>
                 <!-- 컬럼이 없으면 전체에서 제외 -->
                 <otherwise>
@@ -449,6 +478,7 @@
                         OR COALESCE(pm.category_name, '') LIKE CONCAT('%', #{kw}, '%')
                         OR CAST(pi.incoming_quantity AS CHAR) LIKE CONCAT('%', #{kw}, '%')
                         OR CAST(pi.purchase_price AS CHAR) LIKE CONCAT('%', #{kw}, '%')
+                        OR CAST(pi.purchase_datetime AS CHAR) LIKE CONCAT('%', #{kw}, '%')
                         OR COALESCE(pl.location_code, CONCAT(pl.pos_x, '-', pl.pos_y)) LIKE CONCAT('%', #{kw}, '%')
                     )
                 </otherwise>

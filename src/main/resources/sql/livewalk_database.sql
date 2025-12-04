@@ -31,7 +31,7 @@ CREATE TABLE `part_incoming` (
    `exchange_rate` decimal(10,4) DEFAULT '1.0000' COMMENT '환율 (외화→원화)',
    `original_price` decimal(15,2) DEFAULT NULL COMMENT '원래 금액 (외화인 경우)',
 
-   `purchase_datetime` datetime NOT NULL COMMENT '구매일시',
+   `purchase_datetime` date NOT NULL COMMENT '구매일시',
 
    `supplier` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '공급업체',
    `purchaser` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '구매업체',
@@ -45,7 +45,7 @@ CREATE TABLE `part_incoming` (
    PRIMARY KEY (`incoming_id`),
 
    -- 🔥 UNIQUE: part_number + purchase_datetime
-   UNIQUE KEY `uniq_part_purchase` (`part_number`, `created_at`),
+   UNIQUE KEY `uniq_part_purchase` (`part_number`, `purchase_datetime`),
 
    -- INDEX들
    KEY `idx_part_number` (`part_number`),
@@ -84,8 +84,8 @@ CREATE TABLE `part_location` (
    -- 입고ID당 하나의 위치만 허용
    UNIQUE KEY `uniq_location_per_incoming` (`incoming_id`),
 
-   -- 캐비닛 좌표 중복 방지 (유지)
-   UNIQUE KEY `uniq_part_location_pos` (`pos_x`, `pos_y`),
+--    -- 캐비닛 좌표 중복 방지 (유지)
+--    UNIQUE KEY `uniq_part_location_pos` (`pos_x`, `pos_y`),
 
    -- FK 연결
    CONSTRAINT `fk_location_incoming`
@@ -102,7 +102,7 @@ CREATE TABLE `part_usage` (
    `usage_location` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '사용처',
 
    -- 여기 변경됨
-   `used_datetime` datetime NOT NULL COMMENT '사용일시',
+   `used_datetime` date NOT NULL COMMENT '사용일시',
 
    `note` text COLLATE utf8mb4_unicode_ci COMMENT '비고',
    `created_by` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'system' COMMENT '등록자',
