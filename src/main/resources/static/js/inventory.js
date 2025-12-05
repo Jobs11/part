@@ -81,8 +81,15 @@ async function searchInventoryWithFallback(searchTerm, selectedColumn) {
 
             if (inventoryList.length > 0) {
                 inventoryData = inventoryList;
-                displayInventory(inventoryData);
-                showMessage(`${columnNames[selectedColumn]} 컬럼에서 ${inventoryList.length}개 검색됨`, 'info');
+
+                // 카테고리 필터 적용
+                const selectedCategory = document.getElementById('inventoryCategoryFilter')?.value;
+                const filteredData = selectedCategory
+                    ? inventoryData.filter(item => item.category_name === selectedCategory)
+                    : inventoryData;
+
+                displayInventory(filteredData);
+                showMessage(`${columnNames[selectedColumn]} 컬럼에서 ${filteredData.length}개 검색됨`, 'info');
                 return true;
             }
         } catch (error) {
@@ -123,10 +130,17 @@ async function searchInventoryWithFallback(searchTerm, selectedColumn) {
                 }
 
                 inventoryData = inventoryList;
-                displayInventory(inventoryData);
+
+                // 카테고리 필터 적용
+                const selectedCategory = document.getElementById('inventoryCategoryFilter')?.value;
+                const filteredData = selectedCategory
+                    ? inventoryData.filter(item => item.category_name === selectedCategory)
+                    : inventoryData;
+
+                displayInventory(filteredData);
                 const message = selectedColumn
-                    ? `${columnNames[selectedColumn]} 컬럼에서 결과 없음 → ${columnNames[column]} 컬럼에서 ${inventoryList.length}개 발견!`
-                    : `${columnNames[column]} 컬럼에서 ${inventoryList.length}개 검색됨`;
+                    ? `${columnNames[selectedColumn]} 컬럼에서 결과 없음 → ${columnNames[column]} 컬럼에서 ${filteredData.length}개 발견!`
+                    : `${columnNames[column]} 컬럼에서 ${filteredData.length}개 검색됨`;
                 showMessage(message, 'success');
                 return true;
             }
@@ -204,8 +218,15 @@ async function requestInventorySearch(searchTerm, column) {
         if (!response.ok) throw new Error('검색 실패');
 
         inventoryData = await response.json();
-        displayInventory(inventoryData);
-        showMessage(`${inventoryData.length}개 검색됨`, 'info');
+
+        // 카테고리 필터 적용
+        const selectedCategory = document.getElementById('inventoryCategoryFilter')?.value;
+        const filteredData = selectedCategory
+            ? inventoryData.filter(item => item.category_name === selectedCategory)
+            : inventoryData;
+
+        displayInventory(filteredData);
+        showMessage(`${filteredData.length}개 검색됨`, 'info');
     } catch (error) {
         showMessage('검색 오류: ' + error.message, 'error');
     }
@@ -262,8 +283,15 @@ async function sortInventoryTable(column) {
             if (!response.ok) throw new Error('검색+정렬 실패');
 
             inventoryData = await response.json();
-            displayInventory(inventoryData);
-            showMessage(`${column} 기준 ${currentInventorySortOrder === 'asc' ? '오름차순' : '내림차순'} 정렬 (검색: ${inventoryData.length}건)`, 'info');
+
+            // 카테고리 필터 적용
+            const selectedCategory = document.getElementById('inventoryCategoryFilter')?.value;
+            const filteredData = selectedCategory
+                ? inventoryData.filter(item => item.category_name === selectedCategory)
+                : inventoryData;
+
+            displayInventory(filteredData);
+            showMessage(`${column} 기준 ${currentInventorySortOrder === 'asc' ? '오름차순' : '내림차순'} 정렬 (검색: ${filteredData.length}건)`, 'info');
         } catch (error) {
             showMessage('검색+정렬 오류: ' + error.message, 'error');
         }

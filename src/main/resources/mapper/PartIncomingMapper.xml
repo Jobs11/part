@@ -158,11 +158,18 @@
              ORDER BY pi4.incoming_id ASC
              LIMIT 1) AS unit,
             SUM(pi.incoming_quantity) AS total_incoming,
-            COALESCE(SUM(pu.quantity_used), 0) AS total_used,
-            (SUM(pi.incoming_quantity) - COALESCE(SUM(pu.quantity_used), 0)) AS current_stock,
+            COALESCE((SELECT SUM(pu2.quantity_used)
+                      FROM part_usage pu2
+                      WHERE pu2.incoming_id IN (SELECT pi5.incoming_id
+                                                FROM part_incoming pi5
+                                                WHERE pi5.part_number = pi.part_number)), 0) AS total_used,
+            (SUM(pi.incoming_quantity) - COALESCE((SELECT SUM(pu3.quantity_used)
+                                                    FROM part_usage pu3
+                                                    WHERE pu3.incoming_id IN (SELECT pi6.incoming_id
+                                                                              FROM part_incoming pi6
+                                                                              WHERE pi6.part_number = pi.part_number)), 0)) AS current_stock,
             COUNT(DISTINCT pi.incoming_id) AS incoming_count
         FROM part_incoming pi
-        LEFT JOIN part_usage pu ON pi.incoming_id = pu.incoming_id
         GROUP BY pi.part_number
         ORDER BY pi.part_number
     </select>
@@ -188,11 +195,18 @@
              ORDER BY pi4.incoming_id ASC
              LIMIT 1) AS unit,
             SUM(pi.incoming_quantity) AS total_incoming,
-            COALESCE(SUM(pu.quantity_used), 0) AS total_used,
-            (SUM(pi.incoming_quantity) - COALESCE(SUM(pu.quantity_used), 0)) AS current_stock,
+            COALESCE((SELECT SUM(pu2.quantity_used)
+                      FROM part_usage pu2
+                      WHERE pu2.incoming_id IN (SELECT pi5.incoming_id
+                                                FROM part_incoming pi5
+                                                WHERE pi5.part_number = pi.part_number)), 0) AS total_used,
+            (SUM(pi.incoming_quantity) - COALESCE((SELECT SUM(pu3.quantity_used)
+                                                    FROM part_usage pu3
+                                                    WHERE pu3.incoming_id IN (SELECT pi6.incoming_id
+                                                                              FROM part_incoming pi6
+                                                                              WHERE pi6.part_number = pi.part_number)), 0)) AS current_stock,
             COUNT(DISTINCT pi.incoming_id) AS incoming_count
         FROM part_incoming pi
-        LEFT JOIN part_usage pu ON pi.incoming_id = pu.incoming_id
         WHERE 1 = 1
 
         <if test="columnKey != null and columnKey != '' and keyword != null and keyword != '' and columnKey == 'part_number'">

@@ -11,6 +11,20 @@ let currentUsageSearchColumn = ''; // 선택된 컬럼
 
 // ==================== 출고 등록 ====================
 
+// 현재 사용자 정보 가져오기
+async function getCurrentUser() {
+    try {
+        const response = await fetch('/livewalk/auth/current-user');
+        if (response.ok) {
+            const user = await response.json();
+            return user.fullName || user.username || 'system';
+        }
+    } catch (error) {
+        console.error('사용자 정보 조회 실패:', error);
+    }
+    return 'system';
+}
+
 function selectPartForUsage(partNumber, partName) {
     // 1) 출고 등록 폼 채우기
     document.getElementById('usagePartNumber').value = partNumber;
@@ -51,6 +65,9 @@ async function registerUsage(e) {
         return;
     }
 
+    // 현재 사용자 정보 가져오기
+    const currentUser = await getCurrentUser();
+
     const usedDateValue = document.getElementById('usedDate').value;
     const usageData = {
         incomingId: parseInt(incomingId),
@@ -59,7 +76,7 @@ async function registerUsage(e) {
         usageLocation: document.getElementById('usageLocation').value,
         usedDatetime: usedDateValue || null,  // yyyy-MM-dd 형식 (LocalDate)
         note: document.getElementById('usageNote').value,
-        createdBy: 'system'
+        createdBy: currentUser
     };
 
     try {
@@ -367,7 +384,8 @@ async function sortUsageTable(column) {
         'quantity_used': 3,
         'usage_location': 5,
         'note': 6,
-        'created_at': 7
+        'created_by': 7,     // 등록자
+        'created_at': 8      // 등록일
     };
     if (columnIndex[column] !== undefined && headers[columnIndex[column]]) {
         headers[columnIndex[column]].style.backgroundColor = '#e3f2fd';
@@ -400,7 +418,7 @@ function displayUsageList(usageList) {
     const tbody = document.getElementById('usageTableBody');
 
     if (usageList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">출고 내역이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center;">출고 내역이 없습니다.</td></tr>';
         return;
     }
 
@@ -412,7 +430,8 @@ function displayUsageList(usageList) {
             <td class="editable" ondblclick="makeUsageEditable(event, ${usage.usageId}, 'quantityUsed', ${usage.quantityUsed})">${usage.quantityUsed}</td>
             <td>${usage.unit || '-'}</td>
             <td class="editable" ondblclick="makeUsageEditable(event, ${usage.usageId}, 'usageLocation', '${escapeHtml(usage.usageLocation || '')}')">${usage.usageLocation || '-'}</td>
-            <td>${usage.note || '-'}</td>
+            <td class="editable" ondblclick="makeUsageEditable(event, ${usage.usageId}, 'note', '${escapeHtml(usage.note || '')}')">${usage.note || '-'}</td>
+            <td>${usage.createdBy || '-'}</td>
             <td>${formatDateTime(usage.createdAt)}</td>
             <td><button class="btn-small" data-part-number="${escapeHtml(usage.partNumber)}" onclick="openPartLocationView(this.dataset.partNumber)">📍 배치도</button></td>
         </tr>

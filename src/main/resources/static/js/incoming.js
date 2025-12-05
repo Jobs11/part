@@ -77,12 +77,29 @@ async function loadProjects() {
 }
 
 // ==================== 입고 등록 ====================
+// 현재 사용자 정보 가져오기
+async function getCurrentUser() {
+    try {
+        const response = await fetch('/livewalk/auth/current-user');
+        if (response.ok) {
+            const user = await response.json();
+            return user.fullName || user.username || 'system';
+        }
+    } catch (error) {
+        console.error('사용자 정보 조회 실패:', error);
+    }
+    return 'system';
+}
+
 async function registerIncoming(e) {
     e.preventDefault();
 
     const categoryId = parseInt(document.getElementById('categoryId').value);
     const currency = document.getElementById('currency').value;
     const paymentMethodEl = document.getElementById('paymentMethodId');
+
+    // 현재 사용자 정보 가져오기
+    const currentUser = await getCurrentUser();
 
     const incomingData = {
         categoryId: categoryId,
@@ -94,7 +111,7 @@ async function registerIncoming(e) {
         currency: currency,
         purchaseDate: document.getElementById('purchaseDate').value,
         note: document.getElementById('note').value,
-        createdBy: 'system'
+        createdBy: currentUser
     };
 
     if (paymentMethodEl && paymentMethodEl.value) {
@@ -218,7 +235,7 @@ async function searchIncomingByColumn(column) {
     const headers = document.querySelectorAll('#incomingTable th');
     const columnIndex = {
         'description': 3,
-        'note': 10
+        'note': 14
     };
     if (columnIndex[column] !== undefined && headers[columnIndex[column]]) {
         headers[columnIndex[column]].style.backgroundColor = '#e3f2fd';
@@ -289,8 +306,9 @@ async function searchIncomingWithFallback(searchTerm, selectedColumn) {
         'purchaser': 9,
         'supplier': 10,
         'project_name': 11,
-        'created_at': 12,
-        'note': 13
+        'created_by': 12,     // 등록자
+        'created_at': 13,     // 등록일
+        'note': 14            // 비고
     };
 
     // 선택된 컬럼이 있으면 먼저 검색
@@ -423,8 +441,9 @@ async function sortIncomingTable(column) {
         'purchaser': 9,
         'supplier': 10,
         'project_name': 11,
-        'created_at': 12,
-        'note': 13
+        'created_by': 12,     // 등록자
+        'created_at': 13,     // 등록일
+        'note': 14            // 비고
     };
     if (columnIndex[column] !== undefined && headers[columnIndex[column]]) {
         headers[columnIndex[column]].style.backgroundColor = '#e3f2fd';
@@ -459,7 +478,7 @@ async function displayIncomingList(incomingList) {
     const tbody = document.getElementById('incomingTableBody');
 
     if (incomingList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="16" style="text-align: center;">입고 내역이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="17" style="text-align: center;">입고 내역이 없습니다.</td></tr>';
         return;
     }
 
@@ -490,6 +509,7 @@ async function displayIncomingList(incomingList) {
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'purchaser', '${escapeHtml(incoming.purchaser || '')}')">${incoming.purchaser || '-'}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'supplier', '${escapeHtml(incoming.supplier || '')}')">${incoming.supplier || '-'}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'projectName', '${escapeHtml(incoming.projectName || '')}')">${incoming.projectName || '-'}</td>
+                <td>${incoming.createdBy || '-'}</td>
                 <td>${formatDateTime(incoming.createdAt)}</td>
                 <td class="editable" ondblclick="makeIncomingEditable(event, ${incoming.incomingId}, 'note', '${escapeHtml(incoming.note || '')}')">${incoming.note || '-'}</td>
                 <td><button class="btn-small" onclick="openImageModal(${incoming.incomingId})">🖼 사진${imageCount > 0 ? ' ' + imageCount + '개' : ''}</button></td>
@@ -1047,5 +1067,196 @@ async function openPartLocationViewByIncomingId(incomingId) {
     } catch (error) {
         console.error('배치도 조회 오류:', error);
         showMessage('배치도 조회 오류: ' + error.message, 'error');
+    }
+}
+
+// ==================== 일괄 등록 ====================
+async function submitBulkInsert() {
+    const tbody = document.getElementById('bulkInsertTableBody');
+    const rows = tbody.querySelectorAll('tr');
+    const dataList = [];
+    const incompleteRows = [];
+
+    console.log('submitBulkInsert 시작, 행 개수:', rows.length);
+
+    // 현재 사용자 정보 가져오기
+    const currentUser = await getCurrentUser();
+
+    // 기존 에러 표시 제거
+    rows.forEach(row => {
+        row.style.backgroundColor = '';
+    });
+
+    // 입력된 행만 수집 (실제 행 인덱스를 함께 저장)
+    const rowIndexMap = []; // dataList 인덱스 -> 실제 행 인덱스 매핑
+
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const partNumber = row.querySelector('.bulk-part-number').value.trim();
+        const categoryId = row.querySelector('.bulk-category').value;
+        const partName = row.querySelector('.bulk-part-name').value.trim();
+        const cabinetLocation = normalizeCabinetLocationValue(row.querySelector('.bulk-cabinet-location').value);
+        const mapLocation = row.querySelector('.bulk-map-location').value.trim();
+        const quantity = row.querySelector('.bulk-quantity').value;
+        const unit = row.querySelector('.bulk-unit').value.trim();
+        const paymentMethodId = row.querySelector('.bulk-payment-method').value;
+        const price = row.querySelector('.bulk-price').value;
+        const date = row.querySelector('.bulk-date').value;
+        const description = row.querySelector('.bulk-description').value.trim();
+        const projectName = row.querySelector('.bulk-project-name').value.trim();
+        const supplier = row.querySelector('.bulk-supplier').value.trim();
+        const purchaser = row.querySelector('.bulk-purchaser').value.trim();
+        const note = row.querySelector('.bulk-note').value.trim();
+
+        console.log('행 데이터:', { partNumber, categoryId, partName, cabinetLocation, mapLocation, quantity, paymentMethodId, price, date, description, projectName, supplier, purchaser });
+
+        // 하나라도 입력된 경우 (완전히 빈 행이 아닌 경우)
+        const hasAnyInput = partNumber || categoryId || partName || quantity || price || date;
+
+        // 필수 항목: 부품번호, 카테고리, 부품명, 수량, 금액, 구매일자
+        if (partNumber && categoryId && paymentMethodId && partName && quantity && price && date) {
+            // date 값을 yyyy-MM-dd 형식으로 전송 (LocalDate)
+            const formattedDate = date || null;
+
+            const data = {
+                partNumber: partNumber,
+                categoryId: parseInt(categoryId),
+                partName: partName,
+                cabinetLocation: cabinetLocation || null,
+                mapLocation: mapLocation || null,
+                incomingQuantity: parseInt(quantity),
+                unit: unit || 'EA',
+                paymentMethodId: parseInt(paymentMethodId),
+                purchasePrice: parseFloat(price),
+                currency: 'KRW',
+                purchaseDatetime: formattedDate,
+                description: description || '-',
+                projectName: projectName || null,
+                supplier: supplier || null,
+                purchaser: purchaser || null,
+                note: note,
+                createdBy: currentUser
+            };
+
+            rowIndexMap.push(i); // dataList의 현재 인덱스에 대한 실제 행 인덱스 저장
+            dataList.push(data);
+        } else if (hasAnyInput) {
+            // 일부만 입력된 불완전한 행
+            const missingFields = [];
+            if (!partNumber) missingFields.push('부품번호');
+            if (!categoryId) missingFields.push('카테고리');
+            if (!paymentMethodId) missingFields.push('결제방법');
+            if (!partName) missingFields.push('부품명');
+            if (!quantity) missingFields.push('수량');
+            if (!price) missingFields.push('금액');
+            if (!date) missingFields.push('구매일자');
+
+            incompleteRows.push({
+                rowNumber: i + 1,
+                missingFields: missingFields,
+                row: row
+            });
+        }
+    }
+
+    console.log('수집된 데이터:', dataList);
+    console.log('불완전한 행:', incompleteRows);
+
+    if (dataList.length === 0) {
+        showMessage('등록할 데이터가 없습니다. 필수 항목을 입력하세요.', 'error');
+        return;
+    }
+
+    // 불완전한 행이 있는 경우 경고
+    if (incompleteRows.length > 0) {
+        // 불완전한 행 시각적으로 표시 (노란색 배경)
+        incompleteRows.forEach(item => {
+            item.row.style.backgroundColor = '#fff3cd';
+        });
+
+        const warningMessage = `${incompleteRows.length}개 행이 불완전하여 건너뜁니다.\n\n` +
+            incompleteRows.slice(0, 3).map(item =>
+                `${item.rowNumber}번째 행: ${item.missingFields.join(', ')} 누락`
+            ).join('\n') +
+            (incompleteRows.length > 3 ? `\n... 외 ${incompleteRows.length - 3}개` : '') +
+            `\n\n${dataList.length}건을 등록하시겠습니까?`;
+
+        if (!confirm(warningMessage)) {
+            return;
+        }
+    } else {
+        if (!confirm(`${dataList.length}건을 등록하시겠습니까?`)) return;
+    }
+
+    console.log('서버 전송 시작');
+
+    try {
+        const response = await fetch(`${INCOMING_API}/bulk`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dataList)
+        });
+
+        console.log('서버 응답:', response.status);
+
+        if (response.ok) {
+            const result = await response.json();
+            console.log('등록 결과:', result);
+
+            // 성공한 행만 제거 (rowIndexMap을 사용하여 실제 행 인덱스로 변환)
+            const tbody = document.getElementById('bulkInsertTableBody');
+            const successIndices = result.successIndices || [];
+
+            // dataList 인덱스를 실제 행 인덱스로 변환
+            const actualRowIndices = successIndices.map(dataIndex => rowIndexMap[dataIndex]);
+
+            // 역순으로 정렬하여 제거 (인덱스 꼬임 방지)
+            actualRowIndices.sort((a, b) => b - a);
+            actualRowIndices.forEach(rowIndex => {
+                if (tbody.children[rowIndex]) {
+                    tbody.children[rowIndex].remove();
+                }
+            });
+
+            // 모든 행이 성공한 경우 빈 행 하나 추가
+            if (tbody.children.length === 0) {
+                addBulkRow();
+            }
+
+            let message = `등록 완료: ${result.success}건 성공`;
+            if (result.fail > 0) {
+                message += `, ${result.fail}건 실패`;
+            }
+            if (result.skipped > 0) {
+                message += `, ${result.skipped}건 건너뜀`;
+            }
+
+            // 실패 상세 정보 표시
+            if (result.fail > 0 && result.failDetails && result.failDetails.length > 0) {
+                let failMessage = `\n\n실패한 항목:\n`;
+                result.failDetails.forEach((detail, idx) => {
+                    if (idx < 5) { // 최대 5개만 표시
+                        failMessage += `\n${detail.index + 1}번째 행: ${detail.partNumber} (${detail.partName})\n  ⚠️ ${detail.error}\n`;
+                    }
+                });
+                if (result.failDetails.length > 5) {
+                    failMessage += `\n... 외 ${result.failDetails.length - 5}건`;
+                }
+                alert(failMessage);
+            }
+
+            showMessage(message, result.fail > 0 ? 'warning' : 'success');
+
+            loadAllIncoming();
+            if (typeof loadInventory === 'function') loadInventory();
+            if (typeof loadLowStock === 'function') loadLowStock();
+        } else {
+            const message = await response.text();
+            console.error('등록 실패:', message);
+            showMessage('등록 실패: ' + message, 'error');
+        }
+    } catch (error) {
+        console.error('서버 연결 오류:', error);
+        showMessage('서버 연결 오류: ' + error.message, 'error');
     }
 }

@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     if (categoryIdEl) categoryIdEl.addEventListener('change', onCategoryChange);
 
-    // 관리자/일반 유저 버튼 표시 여부 확인
+    // 관리자/일반 유저 버튼 표시 여부 확인 및 사용자 이름 표시
     try {
         const response = await fetch('/livewalk/auth/current-user');
         if (response.ok) {
@@ -35,6 +35,12 @@ document.addEventListener('DOMContentLoaded', async function () {
             const adminBtn = document.getElementById('adminBtn');
             const myProfileBtn = document.getElementById('myProfileBtn');
             const mapSpotButton = document.getElementById('mapSpotButton');
+            const currentUserDisplay = document.getElementById('currentUserDisplay');
+
+            // 현재 로그인한 사용자 이름 표시
+            if (currentUserDisplay) {
+                currentUserDisplay.textContent = `👤 ${data.fullName || data.username || '사용자'}`;
+            }
 
             if (data.isAdmin) {
                 if (adminBtn) adminBtn.style.display = 'block';
@@ -46,6 +52,10 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     } catch (error) {
         console.error('사용자 정보 조회 오류:', error);
+        const currentUserDisplay = document.getElementById('currentUserDisplay');
+        if (currentUserDisplay) {
+            currentUserDisplay.textContent = '사용자';
+        }
     }
 
     // 환율 자동 계산 이벤트 리스너

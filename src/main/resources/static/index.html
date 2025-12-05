@@ -107,7 +107,8 @@
                     </button>
                 </div>
             </div>
-            <div style="display: flex; gap: 10px;">
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <span id="currentUserDisplay" style="font-size: 14px; color: #333; font-weight: 500; padding: 6px 12px; background: #f0f0f0; border-radius: 4px;">로딩 중...</span>
                 <button onclick="openLibraryModal()" class="btn">📁 자료실</button>
                 <button id="myProfileBtn" onclick="openMyProfileModal()" class="btn" style="display: none;">👤 내
                     정보</button>
@@ -217,6 +218,7 @@
                             <th onclick="sortIncomingTable('purchaser')" style="cursor: pointer;">구매업체 ▲▼</th>
                             <th onclick="sortIncomingTable('supplier')" style="cursor: pointer;">공급업체 ▲▼</th>
                             <th onclick="sortIncomingTable('project_name')" style="cursor: pointer;">프로젝트명 ▲▼</th>
+                            <th onclick="sortIncomingTable('created_by')" style="cursor: pointer;">등록자 ▲▼</th>
                             <th onclick="sortIncomingTable('created_at')" style="cursor: pointer;">등록일 ▲▼</th>
                             <th onclick="sortIncomingTable('note')" style="cursor: pointer;">비고 ▲▼</th>
                             <th>사진</th>
@@ -225,7 +227,7 @@
                     </thead>
                     <tbody id="incomingTableBody">
                         <tr>
-                            <td colspan="16" style="text-align: center;">로딩 중...</td>
+                            <td colspan="17" style="text-align: center;">로딩 중...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -381,13 +383,14 @@
                             <th>단위</th>
                             <th onclick="sortUsageTable('usage_location')" style="cursor: pointer;">사용처 ▲▼</th>
                             <th onclick="sortUsageTable('note')" style="cursor: pointer;">비고 ▲▼</th>
+                            <th onclick="sortUsageTable('created_by')" style="cursor: pointer;">등록자 ▲▼</th>
                             <th onclick="sortUsageTable('created_at')" style="cursor: pointer;">등록일 ▲▼</th>
                             <th>배치도</th>
                         </tr>
                     </thead>
                     <tbody id="usageTableBody">
                         <tr>
-                            <td colspan="9" style="text-align: center;">로딩 중...</td>
+                            <td colspan="10" style="text-align: center;">로딩 중...</td>
                         </tr>
                     </tbody>
                 </table>
