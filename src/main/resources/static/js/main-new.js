@@ -159,12 +159,8 @@ function openMyProfileModal() {
         .then(response => response.json())
         .then(user => {
             currentUserInfo = user;
-            document.getElementById('profileUsername').textContent = user.username || '-';
-            document.getElementById('profileName').textContent = user.name || '-';
-            document.getElementById('profileEmail').textContent = user.email || '-';
-            document.getElementById('profileRole').textContent = user.role || '-';
-            document.getElementById('profileCreatedAt').textContent = formatDateTime(user.createdAt) || '-';
-            document.getElementById('profileLastLogin').textContent = formatDateTime(user.lastLoginAt) || '-';
+            document.getElementById('myUsername').value = user.username || '';
+            document.getElementById('myFullName').value = user.fullName || user.name || '';
             document.getElementById('myProfileModal').style.display = 'block';
         })
         .catch(error => {
@@ -176,6 +172,74 @@ function openMyProfileModal() {
 function closeMyProfileModal() {
     document.getElementById('myProfileModal').style.display = 'none';
     currentUserInfo = null;
+}
+
+async function updateMyProfile() {
+    const fullName = document.getElementById('myFullName').value;
+    const currentPassword = document.getElementById('myCurrentPassword').value;
+    const newPassword = document.getElementById('myNewPassword').value;
+    const newPasswordConfirm = document.getElementById('myNewPasswordConfirm').value;
+
+    if (!fullName) {
+        alert('이름을 입력해주세요.');
+        return;
+    }
+
+    // 비밀번호 변경 검증
+    if (newPassword || newPasswordConfirm || currentPassword) {
+        if (!currentPassword) {
+            alert('비밀번호를 변경하려면 현재 비밀번호를 입력해주세요.');
+            return;
+        }
+        if (!newPassword) {
+            alert('새 비밀번호를 입력해주세요.');
+            return;
+        }
+        if (newPassword !== newPasswordConfirm) {
+            alert('새 비밀번호가 일치하지 않습니다.');
+            return;
+        }
+        if (newPassword.length < 4) {
+            alert('비밀번호는 최소 4자 이상이어야 합니다.');
+            return;
+        }
+    }
+
+    const updateData = {
+        userId: currentUserInfo.userId,
+        fullName: fullName
+    };
+
+    // 비밀번호 변경이 있는 경우에만 추가
+    if (currentPassword && newPassword) {
+        updateData.currentPassword = currentPassword;
+        updateData.password = newPassword;
+    }
+
+    try {
+        const response = await fetch(`/livewalk/users/${currentUserInfo.userId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updateData)
+        });
+
+        if (response.ok) {
+            showMessage('정보가 수정되었습니다.', 'success');
+            closeMyProfileModal();
+            // 화면에 표시된 사용자 이름도 업데이트
+            const currentUserDisplay = document.getElementById('currentUserDisplay');
+            if (currentUserDisplay) {
+                currentUserDisplay.textContent = `👤 ${fullName}`;
+            }
+        } else {
+            const errorText = await response.text();
+            showMessage('정보 수정 실패: ' + errorText, 'error');
+        }
+    } catch (error) {
+        showMessage('정보 수정 오류: ' + error.message, 'error');
+    }
 }
 
 function openChangePasswordModal() {

@@ -35,12 +35,8 @@ public class PartUsageController {
      * POST /livewalk/part-usage
      */
     @PostMapping
-    public ResponseEntity<String> registerUsage(@RequestBody PartUsageDTO partUsageDTO,
-            org.springframework.security.core.Authentication authentication) {
+    public ResponseEntity<String> registerUsage(@RequestBody PartUsageDTO partUsageDTO) {
         try {
-            if (authentication != null) {
-                partUsageDTO.setCreatedBy(authentication.getName());
-            }
             partUsageService.registerUsage(partUsageDTO);
             return ResponseEntity.ok("?? ?? ??");
         } catch (RuntimeException e) {
@@ -58,13 +54,9 @@ public class PartUsageController {
     @PutMapping("/{id}")
     public ResponseEntity<String> updateUsage(
             @PathVariable("id") int usageId,
-            @RequestBody PartUsageDTO partUsageDTO,
-            org.springframework.security.core.Authentication authentication) {
+            @RequestBody PartUsageDTO partUsageDTO) {
         try {
             partUsageDTO.setUsageId(usageId);
-            if (authentication != null) {
-                partUsageDTO.setCreatedBy(authentication.getName());
-            }
             partUsageService.updateUsage(partUsageDTO);
             return ResponseEntity.ok("?? ?? ?? ??");
         } catch (RuntimeException e) {

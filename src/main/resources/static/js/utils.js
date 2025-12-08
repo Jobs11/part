@@ -190,7 +190,9 @@ function toggleSearchPanel(panelId, buttonElement) {
 
 // 로그아웃
 function logout() {
-    window.location.href = '/livewalk/logout';
+    if (confirm('로그아웃 하시겠습니까?')) {
+        window.location.href = '/livewalk/logout';
+    }
 }
 
 // 파일 다운로드 함수

@@ -107,12 +107,21 @@ public class UserServiceImpl implements UserService {
             hasChanges = true;
         }
 
+        if (user.getFullName() != null && (before.getFullName() == null || !before.getFullName().equals(user.getFullName()))) {
+            if (hasChanges) changedFields.append(", ");
+            changedFields.append(String.format("\"%s\": {\"변경전\": \"%s\", \"변경후\": \"%s\"}",
+                    auditLogger.translateFieldName("user", "fullName"),
+                    before.getFullName() != null ? before.getFullName() : "",
+                    user.getFullName()));
+            hasChanges = true;
+        }
+
         changedFields.append("}");
 
         auditLogger.log("user",
                 user.getUserId() != null ? user.getUserId().longValue() : null,
                 "UPDATE",
-                "사용자 수정: " + user.getUsername(),
+                "사용자 수정: " + (user.getUsername() != null ? user.getUsername() : before.getUsername()),
                 hasChanges ? changedFields.toString() : null,
                 null);
     }

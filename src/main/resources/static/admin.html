@@ -127,8 +127,8 @@
             <table class="user-table" id="userTable">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>사용자명</th>
+                        <th>일련번호</th>
+                        <th>아이디</th>
                         <th>이름</th>
                         <th>이메일</th>
                         <th>권한</th>
@@ -155,8 +155,8 @@
                 <table class="user-table" id="accessLogTable">
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>사용자명</th>
+                            <th>일련번호</th>
+                            <th>아이디</th>
                             <th>접속 시간</th>
                             <th>로그아웃 시간</th>
                             <th>접속 IP</th>
@@ -185,9 +185,9 @@
                     <thead>
                         <tr>
                             <th>시간</th>
-                            <th>엔티티</th>
-                            <th>엔티티 ID</th>
-                            <th>액션</th>
+                            <th>메뉴</th>
+                            <th>일련번호</th>
+                            <th>관리 카테고리</th>
                             <th>사용자</th>
                             <th>요약</th>
                             <th>변경 필드</th>
@@ -214,7 +214,7 @@
                 <input type="hidden" id="userId">
 
                 <div class="form-group">
-                    <label for="username">사용자명 *</label>
+                    <label for="username">아이디 *</label>
                     <input type="text" id="username" required>
                 </div>
 
@@ -528,7 +528,7 @@
         // 로그아웃
         function logout() {
             if (confirm('로그아웃 하시겠습니까?')) {
-                window.location.href = '/logout';
+                window.location.href = '/livewalk/logout';
             }
         }
 

@@ -36,13 +36,16 @@ public class AuthController {
                 userInfo.put("userId", user.getUserId());
                 userInfo.put("username", user.getUsername());
                 userInfo.put("fullName", user.getFullName());
+                userInfo.put("name", user.getFullName()); // JavaScript 호환성을 위해 추가
                 userInfo.put("email", user.getEmail());
                 userInfo.put("authenticated", true);
+                userInfo.put("createdAt", user.getCreatedAt());
 
                 // 권한 확인
                 boolean isAdmin = authentication.getAuthorities().stream()
                         .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
                 userInfo.put("isAdmin", isAdmin);
+                userInfo.put("role", user.getUserRole()); // JavaScript 호환성을 위해 추가
             } else {
                 userInfo.put("authenticated", false);
                 userInfo.put("isAdmin", false);

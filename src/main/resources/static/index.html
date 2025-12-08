@@ -108,7 +108,9 @@
                 </div>
             </div>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <span id="currentUserDisplay" style="font-size: 14px; color: #333; font-weight: 500; padding: 6px 12px; background: #f0f0f0; border-radius: 4px;">로딩 중...</span>
+                <span id="currentUserDisplay"
+                    style="font-size: 14px; color: #333; font-weight: 500; padding: 6px 12px; background: #f0f0f0; border-radius: 4px;">로딩
+                    중...</span>
                 <button onclick="openLibraryModal()" class="btn">📁 자료실</button>
                 <button id="myProfileBtn" onclick="openMyProfileModal()" class="btn" style="display: none;">👤 내
                     정보</button>
@@ -131,21 +133,24 @@
                 <button onclick="clearBulkTable()" class="btn btn-gray">전체 초기화</button>
                 <button onclick="openCategoryModal()" class="btn">카테고리 추가</button>
 
-                <span style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
+                <span
+                    style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
                     <label style="margin: 0; font-weight: 500; font-size: 12px; color: #495057;">카테고리</label>
                     <select id="bulkCategorySelect" onchange="applyBulkCategory()"
                         style="padding: 4px 8px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; background: white; min-width: 110px; cursor: pointer;">
                         <option value="">선택</option>
                     </select>
                 </span>
-                <span style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
+                <span
+                    style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
                     <label style="margin: 0; font-weight: 500; font-size: 12px; color: #495057;">결제수단</label>
                     <select id="bulkPaymentMethodSelect" onchange="applyBulkPaymentMethod()"
                         style="padding: 4px 8px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; background: white; min-width: 110px; cursor: pointer;">
                         <option value="">선택</option>
                     </select>
                 </span>
-                <span style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
+                <span
+                    style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
                     <label style="margin: 0; font-weight: 500; font-size: 12px; color: #495057;">프로젝트</label>
                     <select id="bulkProjectSelect" onchange="applyBulkProject()"
                         style="padding: 4px 8px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; background: white; min-width: 110px; cursor: pointer;">

@@ -40,7 +40,7 @@ public class SecurityConfig {
                         .failureUrl("/login.html?error=true")
                         .permitAll())
                 .logout(logout -> logout
-                        .logoutUrl("/logout")
+                        .logoutUrl("/livewalk/logout")
                         .addLogoutHandler(customLogoutHandler)
                         .logoutSuccessHandler(customLogoutSuccessHandler)
                         .permitAll());
