@@ -10,6 +10,8 @@
         <result property="password" column="password"/>
         <result property="userRole" column="user_role"/>
         <result property="fullName" column="full_name"/>
+        <result property="position" column="position"/>
+        <result property="department" column="department"/>
         <result property="email" column="email"/>
         <result property="isActive" column="is_active"/>
         <result property="createdAt" column="created_at"/>
@@ -34,14 +36,16 @@
 
     <insert id="insertUser" parameterType="com.example.part.dto.UserDTO"
             useGeneratedKeys="true" keyProperty="userId">
-        INSERT INTO users (username, password, user_role, full_name, email)
-        VALUES (#{username}, #{password}, #{userRole}, #{fullName}, #{email})
+        INSERT INTO users (username, password, user_role, full_name, position, department, email)
+        VALUES (#{username}, #{password}, #{userRole}, #{fullName}, #{position}, #{department}, #{email})
     </insert>
 
     <update id="updateUser" parameterType="com.example.part.dto.UserDTO">
         UPDATE users
         <set>
             <if test="fullName != null">full_name = #{fullName},</if>
+            <if test="position != null">position = #{position},</if>
+            <if test="department != null">department = #{department},</if>
             <if test="email != null">email = #{email},</if>
             <if test="userRole != null">user_role = #{userRole},</if>
             <if test="password != null">password = #{password},</if>

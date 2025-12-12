@@ -130,6 +130,8 @@
                         <th>일련번호</th>
                         <th>아이디</th>
                         <th>이름</th>
+                        <th>부서</th>
+                        <th>직위</th>
                         <th>이메일</th>
                         <th>권한</th>
                         <th>가입일</th>
@@ -138,7 +140,7 @@
                 </thead>
                 <tbody id="userTableBody">
                     <tr>
-                        <td colspan="7" style="text-align: center;">로딩 중...</td>
+                        <td colspan="9" style="text-align: center;">로딩 중...</td>
                     </tr>
                 </tbody>
             </table>
@@ -229,6 +231,21 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="department">부서</label>
+                    <select id="department">
+                        <option value="">선택하세요</option>
+                        <option value="개발팀">개발팀</option>
+                        <option value="경영지원팀">경영지원팀</option>
+                        <option value="대표이사">대표이사</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="position">직위</label>
+                    <input type="text" id="position" placeholder="예: 팀장, 대리, 과장">
+                </div>
+
+                <div class="form-group">
                     <label for="email">이메일 *</label>
                     <input type="email" id="email" required>
                 </div>
@@ -291,7 +308,7 @@
         function displayUsers(users) {
             const tbody = document.getElementById('userTableBody');
             if (users.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">등록된 회원이 없습니다.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">등록된 회원이 없습니다.</td></tr>';
                 return;
             }
 
@@ -300,6 +317,8 @@
                     <td>${user.userId}</td>
                     <td>${user.username}</td>
                     <td>${user.fullName || '-'}</td>
+                    <td>${user.department || '-'}</td>
+                    <td>${user.position || '-'}</td>
                     <td>${user.email || '-'}</td>
                     <td><span class="role-badge role-${user.userRole.toLowerCase()}">${user.userRole}</span></td>
                     <td>${formatDateTime(user.createdAt)}</td>
@@ -345,6 +364,8 @@
                 document.getElementById('password').required = false;
                 document.getElementById('passwordHint').style.display = 'inline';
                 document.getElementById('fullName').value = user.fullName || '';
+                document.getElementById('position').value = user.position || '';
+                document.getElementById('department').value = user.department || '';
                 document.getElementById('email').value = user.email || '';
                 document.getElementById('userRole').value = user.userRole;
 
@@ -369,6 +390,8 @@
                 username: document.getElementById('username').value,
                 password: document.getElementById('password').value,
                 fullName: document.getElementById('fullName').value,
+                position: document.getElementById('position').value,
+                department: document.getElementById('department').value,
                 email: document.getElementById('email').value,
                 userRole: document.getElementById('userRole').value
             };

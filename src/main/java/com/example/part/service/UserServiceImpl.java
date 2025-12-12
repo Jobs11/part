@@ -116,6 +116,24 @@ public class UserServiceImpl implements UserService {
             hasChanges = true;
         }
 
+        if (user.getPosition() != null && (before.getPosition() == null || !before.getPosition().equals(user.getPosition()))) {
+            if (hasChanges) changedFields.append(", ");
+            changedFields.append(String.format("\"%s\": {\"변경전\": \"%s\", \"변경후\": \"%s\"}",
+                    auditLogger.translateFieldName("user", "position"),
+                    before.getPosition() != null ? before.getPosition() : "",
+                    user.getPosition()));
+            hasChanges = true;
+        }
+
+        if (user.getDepartment() != null && (before.getDepartment() == null || !before.getDepartment().equals(user.getDepartment()))) {
+            if (hasChanges) changedFields.append(", ");
+            changedFields.append(String.format("\"%s\": {\"변경전\": \"%s\", \"변경후\": \"%s\"}",
+                    auditLogger.translateFieldName("user", "department"),
+                    before.getDepartment() != null ? before.getDepartment() : "",
+                    user.getDepartment()));
+            hasChanges = true;
+        }
+
         changedFields.append("}");
 
         auditLogger.log("user",

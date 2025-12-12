@@ -161,6 +161,8 @@ function openMyProfileModal() {
             currentUserInfo = user;
             document.getElementById('myUsername').value = user.username || '';
             document.getElementById('myFullName').value = user.fullName || user.name || '';
+            document.getElementById('myPosition').value = user.position || '';
+            document.getElementById('myDepartment').value = user.department || '';
             document.getElementById('myProfileModal').style.display = 'block';
         })
         .catch(error => {
@@ -227,7 +229,14 @@ async function updateMyProfile() {
 
         if (response.ok) {
             showMessage('정보가 수정되었습니다.', 'success');
+
+            // 비밀번호 필드 초기화
+            document.getElementById('myCurrentPassword').value = '';
+            document.getElementById('myNewPassword').value = '';
+            document.getElementById('myNewPasswordConfirm').value = '';
+
             closeMyProfileModal();
+
             // 화면에 표시된 사용자 이름도 업데이트
             const currentUserDisplay = document.getElementById('currentUserDisplay');
             if (currentUserDisplay) {

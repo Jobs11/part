@@ -37,6 +37,8 @@ public class AuthController {
                 userInfo.put("username", user.getUsername());
                 userInfo.put("fullName", user.getFullName());
                 userInfo.put("name", user.getFullName()); // JavaScript 호환성을 위해 추가
+                userInfo.put("position", user.getPosition());
+                userInfo.put("department", user.getDepartment());
                 userInfo.put("email", user.getEmail());
                 userInfo.put("authenticated", true);
                 userInfo.put("createdAt", user.getCreatedAt());

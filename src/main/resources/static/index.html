@@ -8,6 +8,11 @@
     <link rel="stylesheet" href="css/excel-style.css">
     <!-- PDF.js 라이브러리 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- jsPDF 라이브러리 (PDF 생성용) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- jsPDF 한글 폰트 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.31/dist/jspdf.plugin.autotable.min.js"></script>
     <style>
         .help-section {
             display: none;
@@ -111,6 +116,7 @@
                 <span id="currentUserDisplay"
                     style="font-size: 14px; color: #333; font-weight: 500; padding: 6px 12px; background: #f0f0f0; border-radius: 4px;">로딩
                     중...</span>
+                <button onclick="openFullLayoutModal()" class="btn">📍 전체 배치도</button>
                 <button onclick="openLibraryModal()" class="btn">📁 자료실</button>
                 <button id="myProfileBtn" onclick="openMyProfileModal()" class="btn" style="display: none;">👤 내
                     정보</button>
@@ -1165,6 +1171,38 @@
         </div>
     </div>
 
+    <!-- 캐비넷 위치 부품 상세 모달 -->
+    <div id="cabinetLocationPartsModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000;">
+        <div
+            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 8px; width: 90%; max-width: 800px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+
+            <!-- 헤더 -->
+            <div
+                style="padding: 20px; border-bottom: 2px solid #e0e0e0; display: flex; align-items: center; justify-content: space-between;">
+                <h3 id="cabinetLocationTitle" style="margin: 0; font-size: 22px;">위치 상세 정보</h3>
+                <button type="button" class="btn btn-gray" onclick="closeCabinetLocationPartsModal()">닫기 ✕</button>
+            </div>
+
+            <!-- 본문 -->
+            <div style="flex: 1; overflow-y: auto; padding: 20px;">
+                <table class="parts-table" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>품번</th>
+                            <th>품명</th>
+                            <th>카테고리</th>
+                            <th>현재고</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cabinetLocationPartsBody">
+                        <!-- JavaScript로 동적 생성 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- 템플릿 에디터 모달 -->
     <div id="templateEditorModal"
         style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000;">
@@ -1402,6 +1440,18 @@
                     </div>
 
                     <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">부서</label>
+                        <input type="text" id="myDepartment" readonly
+                            style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5;">
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">직위</label>
+                        <input type="text" id="myPosition" readonly
+                            style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5;">
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; font-weight: bold;">현재 비밀번호 (변경 시에만
                             입력)</label>
                         <input type="password" id="myCurrentPassword"
@@ -1429,6 +1479,113 @@
                         <button type="button" class="btn" onclick="updateMyProfile()">저장</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 전체 배치도 모달 -->
+    <div id="fullLayoutModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999;">
+        <div
+            style="position: relative; width: 95%; max-width: 1400px; height: 90%; margin: 30px auto; background: white; border-radius: 8px; display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <!-- 헤더 -->
+            <div
+                style="position: sticky; top: 0; background: white; border-bottom: 2px solid #e0e0e0; padding: 15px 20px; border-radius: 8px 8px 0 0; z-index: 10;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <h3 style="margin: 0;">📍 전체 배치도</h3>
+                    <button type="button" class="btn btn-gray" onclick="closeFullLayoutModal()"
+                        style="padding: 6px 12px; font-weight: bold;">닫기 ✕</button>
+                </div>
+            </div>
+
+            <!-- 컨텐츠 영역 -->
+            <div style="overflow-y: auto; padding: 20px; flex: 1;">
+                <!-- 탭 선택 -->
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e0e0e0; padding-bottom: 10px;">
+                    <button id="cabinetTabBtn" onclick="switchLayoutTab('cabinet')"
+                        style="padding: 10px 20px; border: none; background: #007bff; color: white; cursor: pointer; font-weight: bold; border-radius: 5px 5px 0 0; transition: all 0.3s;">
+                        🗄️ 캐비넷 위치
+                    </button>
+                    <button id="mapTabBtn" onclick="switchLayoutTab('map')"
+                        style="padding: 10px 20px; border: none; background: #f0f0f0; color: #666; cursor: pointer; font-weight: bold; border-radius: 5px 5px 0 0; transition: all 0.3s;">
+                        🗺️ 도면 위치
+                    </button>
+                </div>
+
+                <!-- 캐비넷 위치 뷰 -->
+                <div id="cabinetLayoutView" style="display: block;">
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                        <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">
+                            💡 캐비넷의 각 칸에 등록된 부품 정보를 확인할 수 있습니다. 여러 부품이 있는 경우 수량이 표시됩니다.
+                        </p>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button onclick="downloadCsvTemplate()" class="btn" style="padding: 6px 12px; font-size: 13px; background: #6c757d; border-color: #6c757d;">
+                                📋 CSV 양식 다운로드
+                            </button>
+                            <input type="file" id="cabinetCsvInput" accept=".csv" style="display: none;" onchange="handleCabinetCsvUpload(event)">
+                            <button onclick="document.getElementById('cabinetCsvInput').click()" class="btn" style="padding: 6px 12px; font-size: 13px;">
+                                📄 CSV 업로드
+                            </button>
+                            <button onclick="exportCabinetToPDF()" class="btn" style="padding: 6px 12px; font-size: 13px; background: #28a745; border-color: #28a745;">
+                                📥 PDF 출력
+                            </button>
+                            <button onclick="exportCabinetToImage()" class="btn" style="padding: 6px 12px; font-size: 13px; background: #17a2b8; border-color: #17a2b8;">
+                                🖼️ 이미지 출력
+                            </button>
+                            <span id="csvUploadStatus" style="font-size: 12px; color: #666;"></span>
+                        </div>
+                        <!-- 찾지 못한 부품 목록 표시 영역 -->
+                        <div id="notFoundPartsContainer" style="display: none; margin-top: 10px; padding: 10px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 5px;">
+                            <strong style="color: #856404;">⚠️ 찾지 못한 부품:</strong>
+                            <div id="notFoundPartsList" style="margin-top: 5px; font-size: 12px; color: #856404;"></div>
+                        </div>
+                    </div>
+                    <div id="fullLayoutCabinetGrid" style="overflow: auto; max-height: calc(90vh - 250px);">
+                        <!-- 캐비넷 그리드가 여기에 표시됩니다 -->
+                    </div>
+                    <!-- PDF 출력용 캔버스 (숨김) -->
+                    <canvas id="cabinetCanvas" style="display: none;"></canvas>
+                </div>
+
+                <!-- 도면 위치 뷰 -->
+                <div id="mapLayoutView" style="display: none;">
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                        <p style="margin: 0; color: #666; font-size: 14px;">
+                            💡 등록된 도면과 각 도면에 마킹된 좌표 정보를 확인할 수 있습니다.
+                        </p>
+                    </div>
+                    <div id="mapListContainer">
+                        <!-- 도면 목록이 여기에 표시됩니다 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 캐비넷 상세정보 모달 -->
+    <div id="cabinetDetailModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000;">
+        <div
+            style="position: relative; width: 90%; max-width: 600px; max-height: 80vh; margin: 50px auto; background: white; border-radius: 8px; display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <!-- 헤더 -->
+            <div
+                style="position: sticky; top: 0; background: #007bff; color: white; padding: 15px 20px; border-radius: 8px 8px 0 0; z-index: 10;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <h3 id="cabinetDetailTitle" style="margin: 0;">📦 캐비넷 위치 정보</h3>
+                    <button type="button" onclick="closeCabinetDetailModal()"
+                        style="background: none; border: none; color: white; font-size: 24px; cursor: pointer; padding: 0; line-height: 1;">✕</button>
+                </div>
+            </div>
+
+            <!-- 컨텐츠 영역 -->
+            <div id="cabinetDetailContent" style="overflow-y: auto; padding: 20px; flex: 1;">
+                <!-- 부품 정보가 여기에 표시됩니다 -->
+            </div>
+
+            <!-- 푸터 -->
+            <div style="border-top: 1px solid #e0e0e0; padding: 15px 20px; text-align: right; background: #f8f9fa; border-radius: 0 0 8px 8px;">
+                <button type="button" class="btn btn-gray" onclick="closeCabinetDetailModal()"
+                    style="padding: 8px 16px;">닫기</button>
             </div>
         </div>
     </div>

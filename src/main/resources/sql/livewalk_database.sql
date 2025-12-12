@@ -238,3 +238,7 @@ CREATE TABLE `action_audit` (
    KEY `idx_action_audit_created_at` (`created_at`),
    KEY `idx_action_audit_action` (`action`)
  ) ENGINE=InnoDB AUTO_INCREMENT=52 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 회원 정보에 직위와 부서 필드 추가
+ALTER TABLE `users` ADD COLUMN `position` varchar(100) DEFAULT NULL COMMENT '직위' AFTER `full_name`;
+ALTER TABLE `users` ADD COLUMN `department` varchar(100) DEFAULT NULL COMMENT '부서' AFTER `position`;

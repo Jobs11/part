@@ -302,18 +302,19 @@ public class PartIncomingServiceImpl implements PartIncomingService {
             String posX = parts[0];
             Integer posY = Integer.parseInt(parts[1]);
 
-            PartLocationDTO occupied = partLocationService.getLocationByCabinet(posX, posY);
-            if (occupied != null && !partNumber.equals(occupied.getPartNumber())) {
-                if (!overrideCabinet) {
-                    throw new IllegalArgumentException(
-                            String.format("캐비닛 위치 %s-%s는 이미 다른 부품 '%s' (%s)이 사용 중입니다.",
-                                    posX, posY, occupied.getPartNumber(), occupied.getPartName()));
-                }
-                log.warn("캐비닛 위치 {}-{} 기존 데이터(부품 {})를 덮어쓰기 합니다.", posX, posY, occupied.getPartNumber());
-                if (StringUtils.hasText(occupied.getLocationCode())) {
-                    partLocationService.deleteByCode(occupied.getLocationCode());
-                }
-            }
+            // 캐비넷 중복 허용 - 체크 로직 비활성화
+            // PartLocationDTO occupied = partLocationService.getLocationByCabinet(posX, posY);
+            // if (occupied != null && !partNumber.equals(occupied.getPartNumber())) {
+            //     if (!overrideCabinet) {
+            //         throw new IllegalArgumentException(
+            //                 String.format("캐비닛 위치 %s-%s는 이미 다른 부품 '%s' (%s)이 사용 중입니다.",
+            //                         posX, posY, occupied.getPartNumber(), occupied.getPartName()));
+            //     }
+            //     log.warn("캐비닛 위치 {}-{} 기존 데이터(부품 {})를 덮어쓰기 합니다.", posX, posY, occupied.getPartNumber());
+            //     if (StringUtils.hasText(occupied.getLocationCode())) {
+            //         partLocationService.deleteByCode(occupied.getLocationCode());
+            //     }
+            // }
 
             locationDTO.setPosX(posX);
 

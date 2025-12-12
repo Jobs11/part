@@ -79,15 +79,12 @@ function attachCabinetNormalizer(inputEl) {
         }
     };
 
-    // blur 이벤트: 정규화 + 중복 체크
+    // blur 이벤트: 정규화만 수행 (중복 허용)
     const blurHandler = async () => {
         const normalized = normalizeCabinetLocationValue(inputEl.value);
         if (inputEl.value !== normalized) {
             inputEl.value = normalized;
         }
-
-        // 중복 체크
-        await checkCabinetDuplicate(inputEl);
     };
 
     inputEl.addEventListener('input', inputHandler);
@@ -118,75 +115,12 @@ function attachMapNormalizer(inputEl) {
     inputEl.addEventListener('blur', blurHandler);
 }
 
-// 캐비넷 위치 중복 체크
+// 캐비넷 위치 중복 체크 (중복 허용으로 비활성화)
 async function checkCabinetDuplicate(inputEl) {
-    const value = inputEl.value.trim();
-    if (!value) {
-        inputEl.style.borderColor = '';
-        removeWarningMessage(inputEl);
-        return;
-    }
-
-    // A-1 형식인지 확인
-    const match = value.match(/^([A-Z]{1,2})-(\d{1,2})$/);
-    if (!match) {
-        inputEl.style.borderColor = '';
-        removeWarningMessage(inputEl);
-        return;
-    }
-
-    const posX = match[1];
-    const posY = parseInt(match[2]);
-
-    // 현재 행의 부품번호 가져오기
-    const currentRow = inputEl.closest('tr');
-    const currentPartNumber = currentRow?.querySelector('.bulk-part-number')?.value?.trim() || '';
-
-    try {
-        const response = await fetch(`/livewalk/part-locations/check-cabinet?posX=${posX}&posY=${posY}`);
-
-        if (response.ok) {
-            // 응답 본문이 있는지 확인
-            const text = await response.text();
-            if (!text) {
-                // 빈 응답 - 중복 없음
-                inputEl.style.borderColor = '';
-                removeWarningMessage(inputEl);
-                return;
-            }
-
-            try {
-                const location = JSON.parse(text);
-                if (location && location.partNumber) {
-                    // 같은 부품번호면 경고 표시 안 함
-                    if (currentPartNumber && location.partNumber === currentPartNumber) {
-                        inputEl.style.borderColor = '';
-                        removeWarningMessage(inputEl);
-                        return;
-                    }
-
-                    // 다른 부품번호 - 중복 경고 표시
-                    inputEl.style.borderColor = '#ff9800';
-                    inputEl.style.borderWidth = '2px';
-                    showWarningMessage(inputEl, `⚠️ 이미 부품번호 "${location.partNumber}" (${location.partName || '이름없음'})이(가) 위치해 있습니다.`);
-                } else {
-                    // 중복 없음
-                    inputEl.style.borderColor = '';
-                    removeWarningMessage(inputEl);
-                }
-            } catch (e) {
-                // JSON 파싱 실패 - 중복 없음으로 처리
-                inputEl.style.borderColor = '';
-                removeWarningMessage(inputEl);
-            }
-        } else if (response.status === 404) {
-            // 중복 없음 (404는 정상)
-            inputEl.style.borderColor = '';
-            removeWarningMessage(inputEl);
-        }
-    } catch (error) {
-        console.error('캐비넷 위치 체크 오류:', error);
-    }
+    // 중복 허용 - 체크하지 않음
+    inputEl.style.borderColor = '';
+    removeWarningMessage(inputEl);
+    return;
 }
 
 // 경고 메시지 표시
@@ -826,7 +760,7 @@ async function createCabinetPickerGrid(highlightPartNumber = null) {
     const rows = 32;  // 세로 (숫자)
     const cols = 27;  // 가로 (영어)
 
-    // 등록된 캐비넷 위치 조회
+    // 등록된 캐비넷 위치 조회 (중복 허용 - 배열로 저장)
     let occupiedMap = new Map();
     try {
         const response = await fetch('/livewalk/part-locations/occupied-cabinets');
@@ -834,7 +768,10 @@ async function createCabinetPickerGrid(highlightPartNumber = null) {
             const occupiedList = await response.json();
             occupiedList.forEach(loc => {
                 const key = `${loc.posX}-${loc.posY}`;
-                occupiedMap.set(key, loc);
+                if (!occupiedMap.has(key)) {
+                    occupiedMap.set(key, []);
+                }
+                occupiedMap.get(key).push(loc);
             });
         }
     } catch (error) {
@@ -871,27 +808,38 @@ async function createCabinetPickerGrid(highlightPartNumber = null) {
             const posX = colLabels[col];
             const posY = row;
             const locationCode = `${posX}-${posY}`;
-            const occupied = occupiedMap.get(locationCode);
+            const occupiedArray = occupiedMap.get(locationCode);
 
-            if (occupied) {
-                // 이미 등록된 위치
-                const partInfo = occupied.partNumber || '점유';
-                const isSamePart = highlightPartNumber && occupied.partNumber === highlightPartNumber;
+            if (occupiedArray && occupiedArray.length > 0) {
+                // 이미 등록된 위치 - 중복 허용으로 모두 선택 가능
+                const hasSamePart = highlightPartNumber && occupiedArray.some(loc => loc.partNumber === highlightPartNumber);
 
-                if (isSamePart) {
-                    // 동일한 부품번호 - 노란색/금색 배경으로 강조 표기, 선택 가능
+                // 여러 물품이 있는 경우 개수 표시
+                const countText = occupiedArray.length > 1 ? `(${occupiedArray.length})` : '';
+                const partInfo = occupiedArray[0].partNumber ? `${occupiedArray[0].partNumber}${countText}` : `점유${countText}`;
+
+                // 툴팁에 모든 물품 정보 표시
+                const tooltipParts = occupiedArray.map(loc =>
+                    `${loc.partNumber || '?'} (${loc.partName || ''})`
+                ).join(', ');
+
+                if (hasSamePart) {
+                    // 동일한 부품번호 포함 - 노란색/금색 배경으로 강조 표기, 선택 가능
                     html += `<td
                         style="border: 2px solid #ff9800; padding: 6px; text-align: center; cursor: pointer; font-size: 9px; min-width: 40px; background: #fff3cd; color: #856404; font-weight: bold; box-shadow: 0 0 8px rgba(255, 152, 0, 0.5);"
                         onclick="selectCabinetPosition('${posX}', ${posY})"
                         onmouseover="this.style.background='#ffe082'"
                         onmouseout="this.style.background='#fff3cd'"
-                        title="🔍 동일 부품: ${occupied.partNumber} (${occupied.partName || ''}) - 클릭하여 선택 가능"
+                        title="🔍 등록된 위치: ${tooltipParts} - 클릭하여 선택 가능"
                     >${partInfo}</td>`;
                 } else {
-                    // 다른 부품번호 - 빨간색 배경, 선택 불가
+                    // 다른 부품번호 - 연한 파란색 배경, 선택 가능 (중복 허용)
                     html += `<td
-                        style="border: 1px solid #ddd; padding: 6px; text-align: center; cursor: not-allowed; font-size: 9px; min-width: 40px; background: #ffebee; color: #c62828; font-weight: bold;"
-                        title="이미 등록됨: ${occupied.partNumber} (${occupied.partName || ''})"
+                        style="border: 1px solid #2196F3; padding: 6px; text-align: center; cursor: pointer; font-size: 9px; min-width: 40px; background: #e3f2fd; color: #1565c0; font-weight: bold;"
+                        onclick="selectCabinetPosition('${posX}', ${posY})"
+                        onmouseover="this.style.background='#bbdefb'"
+                        onmouseout="this.style.background='#e3f2fd'"
+                        title="등록된 위치: ${tooltipParts} - 중복 가능"
                     >${partInfo}</td>`;
                 }
             } else {
@@ -2143,10 +2091,38 @@ function openCabinetGridView(partNumber, location) {
  * 가로: A~AA (27개)
  * 세로: 1~32 (32개)
  */
-function createCabinetGrid(highlightX, highlightY) {
+async function createCabinetGrid(highlightX, highlightY) {
     const container = document.getElementById('cabinetGridContainer');
     const rows = 32;  // 세로 (숫자)
     const cols = 27;  // 가로 (영어)
+
+    // 재고 현황에서 캐비넷 위치 정보 가져오기
+    let locationMap = {};
+    try {
+        const response = await fetch('/livewalk/incoming/inventory');
+        if (response.ok) {
+            const inventory = await response.json();
+            // 캐비넷 위치별로 부품 그룹화
+            inventory.forEach(item => {
+                if (item.cabinet_location) {
+                    const match = item.cabinet_location.match(/^([A-Z]{1,2})-(\d+)$/);
+                    if (match) {
+                        const key = `${match[1]}-${parseInt(match[2])}`;
+                        if (!locationMap[key]) {
+                            locationMap[key] = [];
+                        }
+                        locationMap[key].push({
+                            partNumber: item.part_number,
+                            partName: item.part_name,
+                            stock: item.current_stock
+                        });
+                    }
+                }
+            });
+        }
+    } catch (error) {
+        console.error('재고 정보 조회 실패:', error);
+    }
 
     let html = '<table style="border-collapse: collapse; margin: 0 auto;">';
 
@@ -2176,20 +2152,35 @@ function createCabinetGrid(highlightX, highlightY) {
         // 각 셀
         for (let col = 0; col < cols; col++) {
             const colLabel = colLabels[col];
+            const locationKey = `${colLabel}-${row}`;
             const isHighlight = (colLabel === highlightX && row === highlightY);
+            const partsAtLocation = locationMap[locationKey] || [];
+            const partCount = partsAtLocation.length;
 
-            let cellStyle = 'border: 2px solid #999; padding: 18px; text-align: center; min-width: 60px; min-height: 50px;';
+            let cellStyle = 'border: 2px solid #999; padding: 18px; text-align: center; min-width: 60px; min-height: 50px; cursor: pointer;';
             let cellContent = '';
 
             if (isHighlight) {
                 // 강조 셀 - 빨간색 배경
                 cellStyle += ' background: #dc3545; color: white; font-weight: bold; font-size: 17px;';
-                cellContent = `${colLabel}-${row}`;
+                if (partCount > 1) {
+                    cellContent = `${colLabel}-${row}<br><span style="font-size: 13px;">(x${partCount})</span>`;
+                } else {
+                    cellContent = `${colLabel}-${row}`;
+                }
+            } else if (partCount > 0) {
+                // 부품이 있는 셀 - 연한 파란색 배경
+                cellStyle += ' background: #d4edff; font-size: 14px; font-weight: bold; color: #0056b3;';
+                if (partCount > 1) {
+                    cellContent = `${colLabel}-${row}<br><span style="font-size: 12px;">(x${partCount})</span>`;
+                } else {
+                    cellContent = `${colLabel}-${row}`;
+                }
             } else {
                 cellStyle += ' background: #fff; font-size: 14px;';
             }
 
-            html += `<td style="${cellStyle}">${cellContent}</td>`;
+            html += `<td style="${cellStyle}" onclick="showCabinetLocationDetails('${colLabel}', ${row})">${cellContent}</td>`;
         }
         html += '</tr>';
     }
@@ -2220,6 +2211,70 @@ function editCabinetLocation() {
     } else {
         showLocationSelectionDialog(partNumber, partName);
     }
+}
+
+/**
+ * 캐비넷 위치의 부품 상세 정보 표시
+ */
+async function showCabinetLocationDetails(posX, posY) {
+    const locationKey = `${posX}-${posY}`;
+
+    try {
+        const response = await fetch('/livewalk/incoming/inventory');
+        if (!response.ok) {
+            throw new Error('재고 정보 조회 실패');
+        }
+
+        const inventory = await response.json();
+        const partsAtLocation = inventory.filter(item => {
+            if (!item.cabinet_location) return false;
+            const match = item.cabinet_location.match(/^([A-Z]{1,2})-(\d+)$/);
+            return match && `${match[1]}-${parseInt(match[2])}` === locationKey;
+        });
+
+        if (partsAtLocation.length === 0) {
+            showMessage(`위치 ${locationKey}에 부품이 없습니다.`, 'info');
+            return;
+        }
+
+        // 모달에 부품 목록 표시
+        showCabinetLocationModal(locationKey, partsAtLocation);
+    } catch (error) {
+        console.error('부품 정보 조회 실패:', error);
+        showMessage('부품 정보를 불러오는데 실패했습니다.', 'error');
+    }
+}
+
+/**
+ * 캐비넷 위치 부품 목록 모달 표시
+ */
+function showCabinetLocationModal(location, parts) {
+    const modal = document.getElementById('cabinetLocationPartsModal');
+    const title = document.getElementById('cabinetLocationPartsTitle');
+    const tbody = document.getElementById('cabinetLocationPartsBody');
+
+    title.textContent = `위치: ${location}`;
+
+    tbody.innerHTML = parts.map(part => `
+        <tr>
+            <td>${part.part_number}</td>
+            <td>${part.part_name}</td>
+            <td>${part.category_name || '-'}</td>
+            <td style="font-weight: bold; color: ${part.current_stock > 0 ? '#28a745' : '#dc3545'};">
+                ${part.current_stock || 0}
+            </td>
+        </tr>
+    `).join('');
+
+    modal.style.display = 'block';
+}
+
+/**
+ * 캐비넷 위치 부품 목록 모달 닫기
+ */
+function closeCabinetLocationPartsModal() {
+    document.getElementById('cabinetLocationPartsModal').style.display = 'none';
+    document.getElementById('cabinetLocationPartsBody').innerHTML = '';
 }
 
 /**
