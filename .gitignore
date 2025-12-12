@@ -35,7 +35,12 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Sensitive Data ###
 src/main/resources/application-secret.properties
+.env
+.env.local
+.env.*.local
 
 ### Uploads ###
 uploads/
