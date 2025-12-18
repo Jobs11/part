@@ -85,7 +85,7 @@ async function loadCabinetLayout() {
         });
 
         // 그리드 생성
-        let html = '<table style="border-collapse: collapse; margin: 0 auto;">';
+        let html = '<table style="border-collapse: collapse; margin: 0 auto; table-layout: fixed;">';
 
         // 가로 레이블 생성 (A-Z, AA) - 27개
         const colLabels = [];
@@ -98,9 +98,9 @@ async function loadCabinetLayout() {
         }
 
         // 헤더 (가로 - 영어)
-        html += '<tr><th style="border: 2px solid #999; padding: 8px; background: #f5f5f5; min-width: 40px; font-weight: bold;"></th>';
+        html += '<tr><th style="border: 2px solid #999; padding: 4px; background: #f5f5f5; width: 40px; font-weight: bold;"></th>';
         for (let col = 0; col < cols; col++) {
-            html += `<th style="border: 2px solid #999; padding: 8px; background: #f5f5f5; min-width: 40px; font-size: 13px; font-weight: bold;">${colLabels[col]}</th>`;
+            html += `<th style="border: 2px solid #999; padding: 4px; background: #f5f5f5; width: 60px; font-size: 11px; font-weight: bold;">${colLabels[col]}</th>`;
         }
         html += '</tr>';
 
@@ -108,7 +108,7 @@ async function loadCabinetLayout() {
         for (let row = 1; row <= rows; row++) {
             html += `<tr>`;
             // 행 레이블 (세로 - 숫자)
-            html += `<th style="border: 2px solid #999; padding: 8px; background: #f5f5f5; font-size: 13px; font-weight: bold;">${row}</th>`;
+            html += `<th style="border: 2px solid #999; padding: 4px; background: #f5f5f5; width: 40px; font-size: 11px; font-weight: bold;">${row}</th>`;
 
             // 셀 생성
             for (let col = 0; col < cols; col++) {
@@ -136,8 +136,9 @@ async function loadCabinetLayout() {
                         // 같은 부품번호만 있음 - 부품번호 표시
                         displayText = uniquePartNumbers[0];
                     } else {
-                        // 여러 부품번호 - 개수 표시
-                        displayText = `${uniqueCount}개`;
+                        // 여러 부품번호 - 첫 번째 부품번호(개수) 형식으로 표시
+                        const firstPartNumber = occupiedArray[0].partNumber || '미지정';
+                        displayText = `${firstPartNumber}(${uniqueCount}개)`;
                     }
 
                     // 툴팁에 부품번호별 정보 표시
@@ -148,14 +149,14 @@ async function loadCabinetLayout() {
                     }).join('\\n');
 
                     html += `<td
-                        style="border: 2px solid #c62828; padding: 6px; text-align: center; cursor: pointer; font-size: 10px; min-width: 40px; background: #e53935; color: white; font-weight: bold;"
+                        style="border: 2px solid #f9a825; padding: 4px; text-align: center; cursor: pointer; font-size: 10px; width: 60px; background: #fff9c4; color: #333; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
                         onclick="showCabinetDetail('${posX}', ${posY})"
                         title="${tooltipParts}"
                     >${displayText}</td>`;
                 } else {
                     // 비어있는 위치
                     html += `<td
-                        style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 11px; min-width: 40px; background: white; color: #ccc;"
+                        style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 9px; width: 60px; background: white; color: #ccc;"
                         title="${locationCode}"
                     >-</td>`;
                 }
@@ -384,7 +385,7 @@ function loadCabinetLayoutFromCSV() {
     const cols = 27;
 
     // 그리드 생성
-    let html = '<table style="border-collapse: collapse; margin: 0 auto;">';
+    let html = '<table style="border-collapse: collapse; margin: 0 auto; table-layout: fixed;">';
 
     // 가로 레이블 생성 (A-Z, AA) - 27개
     const colLabels = [];
@@ -397,16 +398,16 @@ function loadCabinetLayoutFromCSV() {
     }
 
     // 헤더 (가로 - 영어)
-    html += '<tr><th style="border: 2px solid #999; padding: 8px; background: #f5f5f5; min-width: 40px; font-weight: bold;"></th>';
+    html += '<tr><th style="border: 2px solid #999; padding: 4px; background: #f5f5f5; width: 40px; font-weight: bold;"></th>';
     for (let col = 0; col < cols; col++) {
-        html += `<th style="border: 2px solid #999; padding: 8px; background: #f5f5f5; min-width: 40px; font-size: 13px; font-weight: bold;">${colLabels[col]}</th>`;
+        html += `<th style="border: 2px solid #999; padding: 4px; background: #f5f5f5; width: 60px; font-size: 11px; font-weight: bold;">${colLabels[col]}</th>`;
     }
     html += '</tr>';
 
     // 행 생성 (세로 - 숫자)
     for (let row = 1; row <= rows; row++) {
         html += `<tr>`;
-        html += `<th style="border: 2px solid #999; padding: 8px; background: #f5f5f5; font-size: 13px; font-weight: bold;">${row}</th>`;
+        html += `<th style="border: 2px solid #999; padding: 4px; background: #f5f5f5; width: 40px; font-size: 11px; font-weight: bold;">${row}</th>`;
 
         for (let col = 0; col < cols; col++) {
             const posX = colLabels[col];
@@ -415,17 +416,17 @@ function loadCabinetLayoutFromCSV() {
             const parts = csvCabinetData[locationCode];
 
             if (parts && parts.length > 0) {
-                // CSV에서 입력한 부품이 있는 칸 - 빨강 배경에 흰 글자
+                // CSV에서 입력한 부품이 있는 칸 - 연한 노란 배경에 검정 글자
                 const uniqueParts = [...new Set(parts)];
-                const displayText = uniqueParts.length === 1 ? uniqueParts[0] : `${uniqueParts.length}개`;
+                const displayText = uniqueParts.join('<br>');
 
                 html += `<td
-                    style="border: 2px solid #c62828; padding: 6px; text-align: center; font-size: 10px; min-width: 40px; background: #e53935; color: white; font-weight: bold;"
+                    style="border: 2px solid #f9a825; padding: 4px 2px; text-align: center; font-size: 9px; line-height: 1.2; width: 60px; background: #fff9c4; color: #333; font-weight: bold; overflow: hidden; word-break: break-all;"
                     title="${uniqueParts.join(', ')}"
                 >${displayText}</td>`;
             } else {
                 html += `<td
-                    style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 11px; min-width: 40px; background: white; color: #ccc;"
+                    style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 9px; width: 60px; background: white; color: #ccc;"
                     title="${locationCode}"
                 ></td>`;
             }
@@ -527,20 +528,28 @@ async function exportCabinetToPDF() {
                 const parts = csvCabinetData[locationCode];
 
                 if (parts && parts.length > 0) {
-                    // CSV에서 입력한 부품이 있는 셀 - 빨강 배경에 흰 글자
-                    ctx.fillStyle = '#e53935';
+                    // CSV에서 입력한 부품이 있는 셀 - 연한 노란 배경에 검정 글자
+                    ctx.fillStyle = '#fff9c4';
                     ctx.fillRect(x, y, cellWidth, cellHeight);
-                    ctx.strokeStyle = '#c62828';
+                    ctx.strokeStyle = '#f9a825';
                     ctx.lineWidth = 2.5;
                     ctx.strokeRect(x, y, cellWidth, cellHeight);
 
-                    // 부품번호 또는 개수 표시
+                    // 부품번호 리스트 표시 (여러 줄)
                     const uniqueParts = [...new Set(parts)];
-                    const displayText = uniqueParts.length === 1 ? uniqueParts[0] : `${uniqueParts.length}개`;
-
-                    ctx.fillStyle = 'white';
+                    ctx.fillStyle = '#333';
                     ctx.font = 'bold 9px Arial, "Malgun Gothic", "맑은 고딕"';
-                    ctx.fillText(displayText, x + cellWidth / 2, y + cellHeight / 2);
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+
+                    // 줄 간격 계산
+                    const lineHeight = 10;
+                    const totalHeight = uniqueParts.length * lineHeight;
+                    const startY = y + (cellHeight - totalHeight) / 2 + lineHeight / 2;
+
+                    uniqueParts.forEach((part, index) => {
+                        ctx.fillText(part, x + cellWidth / 2, startY + index * lineHeight);
+                    });
                 } else {
                     // 빈 셀
                     ctx.fillStyle = 'white';
@@ -715,17 +724,27 @@ async function exportCabinetToImage() {
 
                 if (parts && parts.length > 0) {
                     const uniqueParts = [...new Set(parts)];
-                    const displayText = uniqueParts.length === 1 ? uniqueParts[0] : `${uniqueParts.length}개`;
 
-                    ctx.fillStyle = '#e53935';
+                    ctx.fillStyle = '#fff9c4';
                     ctx.fillRect(x, y, cellWidth, cellHeight);
-                    ctx.strokeStyle = '#c62828';
+                    ctx.strokeStyle = '#f9a825';
                     ctx.lineWidth = 2.5;
                     ctx.strokeRect(x, y, cellWidth, cellHeight);
 
-                    ctx.fillStyle = 'white';
+                    // 부품번호 리스트 표시 (여러 줄)
+                    ctx.fillStyle = '#333';
                     ctx.font = 'bold 9px Arial, "Malgun Gothic", "맑은 고딕"';
-                    ctx.fillText(displayText, x + cellWidth / 2, y + cellHeight / 2);
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+
+                    // 줄 간격 계산
+                    const lineHeight = 10;
+                    const totalHeight = uniqueParts.length * lineHeight;
+                    const startY = y + (cellHeight - totalHeight) / 2 + lineHeight / 2;
+
+                    uniqueParts.forEach((part, index) => {
+                        ctx.fillText(part, x + cellWidth / 2, startY + index * lineHeight);
+                    });
                 } else {
                     ctx.fillStyle = 'white';
                     ctx.fillRect(x, y, cellWidth, cellHeight);
@@ -928,12 +947,6 @@ function drawMapLayoutMarkers(canvas, imageId) {
         }
     }
 
-    console.log('🔍 [drawMapLayoutMarkers] imageId:', imageId);
-    console.log('🔍 [drawMapLayoutMarkers] 이미지 제목:', currentImage?.title);
-    console.log('🔍 [drawMapLayoutMarkers] 추출된 층:', floorNumber);
-    console.log('🔍 [drawMapLayoutMarkers] spots:', spots);
-    console.log('🔍 [drawMapLayoutMarkers] currentMapLocations:', currentMapLocations);
-
     spots.forEach(spot => {
         const radius = spot.radius || 12;
 
@@ -976,8 +989,6 @@ function drawMapLayoutMarkers(canvas, imageId) {
                 }
             });
             const count = uniquePartNumbers.size;
-
-            console.log(`🔍 [Spot: ${spot.spotName}] 층: ${floorNumber}, 고유 부품 종류:`, count, '전체 건수:', partsInSpot.length, '부품 목록:', partsInSpot);
 
             // 표시 텍스트: 구역명 (고유 부품 종류 수)
             const displayText = count > 0 ? `${spot.spotName} (${count})` : spot.spotName;

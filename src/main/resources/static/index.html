@@ -163,6 +163,14 @@
                         <option value="">선택</option>
                     </select>
                 </span>
+                <span
+                    style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <label style="margin: 0; font-weight: 500; font-size: 12px; color: #495057;">캐비넷위치</label>
+                    <input type="text" id="bulkCabinetLocationInput" placeholder="예: A-1" maxlength="10"
+                        style="padding: 4px 8px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; width: 80px;">
+                    <button onclick="openBulkCabinetPicker()" class="btn" style="padding: 4px 8px; font-size: 12px;">캐비넷</button>
+                    <button onclick="applyBulkCabinetLocation()" class="btn" style="padding: 4px 8px; font-size: 12px;">적용</button>
+                </span>
             </div>
 
             <div class="table-wrapper" style="max-height: 400px;">

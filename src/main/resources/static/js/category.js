@@ -251,6 +251,56 @@ function applyBulkProject() {
     showMessage('모든 행에 프로젝트가 일괄 적용되었습니다.', 'success');
 }
 
+function openBulkCabinetPicker() {
+    // 일괄 캐비넷 위치 입력 필드를 대상으로 설정
+    cabinetPickerTargetInput = document.getElementById('bulkCabinetLocationInput');
+
+    // 입력 모드로 설정 (일괄 적용 모드)
+    currentPartLocationMode = 'bulk'; // 일괄 적용 모드 플래그
+    currentPartLocationPartNumber = null;
+    currentPartLocationPartName = null;
+
+    // 캐비넷 피커 모달 열기
+    document.getElementById('cabinetPickerModal').style.display = 'block';
+
+    // 그리드 생성 (선택 모드)
+    createCabinetPickerGrid();
+}
+
+function applyBulkCabinetLocation() {
+    const bulkCabinetLocation = document.getElementById('bulkCabinetLocationInput').value.trim();
+
+    if (!bulkCabinetLocation) {
+        showMessage('캐비넷 위치를 입력하세요.', 'error');
+        return;
+    }
+
+    // 위치 코드 정규화 (대문자 변환, 하이픈 자동 삽입)
+    // normalizeCabinetLocationValue 함수가 location.js에 정의되어 있음
+    const normalized = typeof normalizeCabinetLocationValue === 'function'
+        ? normalizeCabinetLocationValue(bulkCabinetLocation)
+        : bulkCabinetLocation.trim().toUpperCase();
+
+    // 유효성 검증 (A-1, AA-32 형식)
+    if (!/^[A-Z]{1,2}-\d+$/.test(normalized)) {
+        showMessage('캐비넷 위치 형식이 올바르지 않습니다. (예: A-1, AA-32)', 'error');
+        return;
+    }
+
+    // 모든 행의 캐비넷 위치를 선택된 값으로 변경
+    const inputs = document.querySelectorAll('.bulk-cabinet-location');
+    console.log('찾은 입력 필드 개수:', inputs.length);
+
+    inputs.forEach(input => {
+        input.value = normalized;
+    });
+
+    // 입력 필드 초기화
+    document.getElementById('bulkCabinetLocationInput').value = '';
+
+    showMessage(`모든 행에 캐비넷 위치 "${normalized}"가 일괄 적용되었습니다.`, 'success');
+}
+
 // ==================== 카테고리 모달 관련 ====================
 async function openCategoryModal() {
     document.getElementById('categoryModal').style.display = 'block';

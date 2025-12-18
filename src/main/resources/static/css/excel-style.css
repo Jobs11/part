@@ -129,13 +129,13 @@ th {
     font-weight: bold;
     border: 1px solid #d0d0d0;
     background-color: #e7e7e7;
-    font-size: 12px;
+    font-size: 10px;
 }
 
 td {
     padding: 6px 8px;
     border: 1px solid #e0e0e0;
-    font-size: 12px;
+    font-size: 10px;
 }
 
 tbody tr:hover {

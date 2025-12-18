@@ -285,55 +285,28 @@ public class PartIncomingServiceImpl implements PartIncomingService {
         locationDTO.setPartNumber(partNumber);
         locationDTO.setPartName(partName);
 
-        // ??? ?? ?? (A-1 ?? -> x="A", y="1")
-
+        // 캐비넷 위치 파싱 (A-1 형식 -> x="A", y="1")
         if (StringUtils.hasText(cabinetLocation)) {
-
             String normalized = normalizeCabinetLocation(cabinetLocation.trim());
 
             if (normalized == null) {
-
-                throw new IllegalArgumentException("??? ??? A~AA, 1~32 ??? A-1 ???? ?????. ???: " + cabinetLocation);
-
+                throw new IllegalArgumentException("캐비넷 위치는 A~AA, 1~32 범위의 A-1 형식이어야 합니다. 입력값: " + cabinetLocation);
             }
 
             String[] parts = normalized.split("-");
-
             String posX = parts[0];
             Integer posY = Integer.parseInt(parts[1]);
 
-            // 캐비넷 중복 허용 - 체크 로직 비활성화
-            // PartLocationDTO occupied = partLocationService.getLocationByCabinet(posX, posY);
-            // if (occupied != null && !partNumber.equals(occupied.getPartNumber())) {
-            //     if (!overrideCabinet) {
-            //         throw new IllegalArgumentException(
-            //                 String.format("캐비닛 위치 %s-%s는 이미 다른 부품 '%s' (%s)이 사용 중입니다.",
-            //                         posX, posY, occupied.getPartNumber(), occupied.getPartName()));
-            //     }
-            //     log.warn("캐비닛 위치 {}-{} 기존 데이터(부품 {})를 덮어쓰기 합니다.", posX, posY, occupied.getPartNumber());
-            //     if (StringUtils.hasText(occupied.getLocationCode())) {
-            //         partLocationService.deleteByCode(occupied.getLocationCode());
-            //     }
-            // }
-
             locationDTO.setPosX(posX);
-
             locationDTO.setPosY(posY);
-
         }
 
-        // ?? ?? (8-A ??)
-
+        // 도면 위치 (8-A 형식)
         if (StringUtils.hasText(mapLocation)) {
-
             locationDTO.setLocationCode(mapLocation.trim());
-
         } else if (StringUtils.hasText(oldLocation)) {
-
-            // ?? ?? ??
-
+            // 이전 위치 정보 유지
             locationDTO.setLocationCode(oldLocation.trim());
-
         }
 
         // location_code 또는 posX/posY 중 하나라도 있으면 저장
@@ -431,19 +404,16 @@ public class PartIncomingServiceImpl implements PartIncomingService {
 
         PartIncomingDTO before = partIncomingMapper.findById(partIncomingDTO.getIncomingId());
 
-        // ??? ????
-
+        // 환율 자동 계산
         calculateExchangeRate(partIncomingDTO);
 
         int result = partIncomingMapper.updateIncoming(partIncomingDTO);
 
         if (result == 0) {
-
-            throw new RuntimeException("??? ???? ?????? ??????????.");
-
+            throw new RuntimeException("입고 정보 수정에 실패했습니다.");
         }
 
-        log.info("??? ???? ???? ???: ID {}", partIncomingDTO.getIncomingId());
+        log.info("입고 정보 수정 완료: ID {}", partIncomingDTO.getIncomingId());
 
         // 🔥 부품번호 또는 부품명이 변경되었으면 part_location도 업데이트
         if (!before.getPartNumber().equals(partIncomingDTO.getPartNumber()) ||

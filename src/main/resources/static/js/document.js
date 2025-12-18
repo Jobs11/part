@@ -2064,7 +2064,7 @@ function addBulkRow() {
                 <option value="">선택</option>
             </select>
         </td>
-        <td><input type="number" class="bulk-input bulk-price" placeholder="금액" min="0" step="0.01"></td>
+        <td><input type="number" class="bulk-input bulk-price" placeholder="금액" min="0" step="0.01" value="0"></td>
         <td><input type="date" class="bulk-input bulk-date"></td>
         <td><input type="text" class="bulk-input bulk-purchaser" placeholder="구매업체"></td>
         <td><input type="text" class="bulk-input bulk-supplier" placeholder="공급업체"></td>
