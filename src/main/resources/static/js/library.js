@@ -98,9 +98,9 @@ async function loadCabinetLayout() {
         }
 
         // 헤더 (가로 - 영어)
-        html += '<tr><th style="border: 2px solid #999; padding: 4px; background: #f5f5f5; width: 40px; font-weight: bold;"></th>';
+        html += '<tr><th style="border: 2px solid #999; padding: 8px; background: #f5f5f5; width: 50px; height: 35px; font-weight: bold;"></th>';
         for (let col = 0; col < cols; col++) {
-            html += `<th style="border: 2px solid #999; padding: 4px; background: #f5f5f5; width: 60px; font-size: 11px; font-weight: bold;">${colLabels[col]}</th>`;
+            html += `<th style="border: 2px solid #999; padding: 8px; background: #f5f5f5; width: 80px; height: 35px; font-size: 11px; font-weight: bold;">${colLabels[col]}</th>`;
         }
         html += '</tr>';
 
@@ -108,7 +108,7 @@ async function loadCabinetLayout() {
         for (let row = 1; row <= rows; row++) {
             html += `<tr>`;
             // 행 레이블 (세로 - 숫자)
-            html += `<th style="border: 2px solid #999; padding: 4px; background: #f5f5f5; width: 40px; font-size: 11px; font-weight: bold;">${row}</th>`;
+            html += `<th style="border: 2px solid #999; padding: 8px; background: #f5f5f5; width: 50px; height: 40px; font-size: 11px; font-weight: bold;">${row}</th>`;
 
             // 셀 생성
             for (let col = 0; col < cols; col++) {
@@ -149,14 +149,14 @@ async function loadCabinetLayout() {
                     }).join('\\n');
 
                     html += `<td
-                        style="border: 2px solid #f9a825; padding: 4px; text-align: center; cursor: pointer; font-size: 10px; width: 60px; background: #fff9c4; color: #333; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                        style="border: 2px solid #f9a825; padding: 8px 4px; text-align: center; cursor: pointer; font-size: 10px; width: 80px; min-height: 40px; background: #fff9c4; color: #333; font-weight: bold; overflow-wrap: break-word; word-break: break-all; line-height: 1.3;"
                         onclick="showCabinetDetail('${posX}', ${posY})"
                         title="${tooltipParts}"
                     >${displayText}</td>`;
                 } else {
                     // 비어있는 위치
                     html += `<td
-                        style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 9px; width: 60px; background: white; color: #ccc;"
+                        style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 9px; width: 80px; min-height: 40px; background: white; color: #ccc;"
                         title="${locationCode}"
                     >-</td>`;
                 }
@@ -398,16 +398,16 @@ function loadCabinetLayoutFromCSV() {
     }
 
     // 헤더 (가로 - 영어)
-    html += '<tr><th style="border: 2px solid #999; padding: 4px; background: #f5f5f5; width: 40px; font-weight: bold;"></th>';
+    html += '<tr><th style="border: 2px solid #999; padding: 8px; background: #f5f5f5; width: 50px; height: 35px; font-weight: bold;"></th>';
     for (let col = 0; col < cols; col++) {
-        html += `<th style="border: 2px solid #999; padding: 4px; background: #f5f5f5; width: 60px; font-size: 11px; font-weight: bold;">${colLabels[col]}</th>`;
+        html += `<th style="border: 2px solid #999; padding: 8px; background: #f5f5f5; width: 80px; height: 35px; font-size: 11px; font-weight: bold;">${colLabels[col]}</th>`;
     }
     html += '</tr>';
 
     // 행 생성 (세로 - 숫자)
     for (let row = 1; row <= rows; row++) {
         html += `<tr>`;
-        html += `<th style="border: 2px solid #999; padding: 4px; background: #f5f5f5; width: 40px; font-size: 11px; font-weight: bold;">${row}</th>`;
+        html += `<th style="border: 2px solid #999; padding: 8px; background: #f5f5f5; width: 50px; height: 40px; font-size: 11px; font-weight: bold;">${row}</th>`;
 
         for (let col = 0; col < cols; col++) {
             const posX = colLabels[col];
@@ -421,12 +421,12 @@ function loadCabinetLayoutFromCSV() {
                 const displayText = uniqueParts.join('<br>');
 
                 html += `<td
-                    style="border: 2px solid #f9a825; padding: 4px 2px; text-align: center; font-size: 9px; line-height: 1.2; width: 60px; background: #fff9c4; color: #333; font-weight: bold; overflow: hidden; word-break: break-all;"
+                    style="border: 2px solid #f9a825; padding: 8px 4px; text-align: center; font-size: 9px; line-height: 1.3; width: 80px; min-height: 40px; background: #fff9c4; color: #333; font-weight: bold; overflow-wrap: break-word; word-break: break-all;"
                     title="${uniqueParts.join(', ')}"
                 >${displayText}</td>`;
             } else {
                 html += `<td
-                    style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 9px; width: 60px; background: white; color: #ccc;"
+                    style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 9px; width: 80px; height: 40px; background: white; color: #ccc;"
                     title="${locationCode}"
                 ></td>`;
             }

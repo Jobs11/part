@@ -2137,9 +2137,9 @@ async function createCabinetGrid(highlightX, highlightY) {
     }
 
     // 헤더 (가로 - 영어)
-    html += '<tr><th style="border: 2px solid #999; padding: 12px; background: #f5f5f5; min-width: 60px; font-weight: bold;"></th>';
+    html += '<tr><th style="border: 1px solid #999; padding: 2px; background: #f5f5f5; width: 24px; font-weight: bold; font-size: 9px; text-align: center;"></th>';
     for (let col = 0; col < cols; col++) {
-        html += `<th style="border: 2px solid #999; padding: 12px; background: #f5f5f5; min-width: 60px; font-size: 15px; font-weight: bold;">${colLabels[col]}</th>`;
+        html += `<th style="border: 1px solid #999; padding: 2px; background: #f5f5f5; width: 24px; font-size: 9px; font-weight: bold; text-align: center;">${colLabels[col]}</th>`;
     }
     html += '</tr>';
 
@@ -2147,7 +2147,7 @@ async function createCabinetGrid(highlightX, highlightY) {
     for (let row = 1; row <= rows; row++) {
         html += '<tr>';
         // 행 헤더 (숫자)
-        html += `<th style="border: 2px solid #999; padding: 12px; background: #f5f5f5; font-size: 15px; font-weight: bold;">${row}</th>`;
+        html += `<th style="border: 1px solid #999; padding: 2px; background: #f5f5f5; width: 24px; font-size: 9px; font-weight: bold; text-align: center;">${row}</th>`;
 
         // 각 셀
         for (let col = 0; col < cols; col++) {
@@ -2157,27 +2157,27 @@ async function createCabinetGrid(highlightX, highlightY) {
             const partsAtLocation = locationMap[locationKey] || [];
             const partCount = partsAtLocation.length;
 
-            let cellStyle = 'border: 2px solid #999; padding: 18px; text-align: center; min-width: 60px; min-height: 50px; cursor: pointer;';
+            let cellStyle = 'border: 1px solid #999; padding: 3px; text-align: center; width: 24px; height: 20px; cursor: pointer;';
             let cellContent = '';
 
             if (isHighlight) {
                 // 강조 셀 - 빨간색 배경
-                cellStyle += ' background: #dc3545; color: white; font-weight: bold; font-size: 17px;';
+                cellStyle += ' background: #dc3545; color: white; font-weight: bold; font-size: 10px;';
                 if (partCount > 1) {
-                    cellContent = `${colLabel}-${row}<br><span style="font-size: 13px;">(x${partCount})</span>`;
+                    cellContent = `${colLabel}-${row}<br><span style="font-size: 8px;">(x${partCount})</span>`;
                 } else {
                     cellContent = `${colLabel}-${row}`;
                 }
             } else if (partCount > 0) {
                 // 부품이 있는 셀 - 연한 파란색 배경
-                cellStyle += ' background: #d4edff; font-size: 14px; font-weight: bold; color: #0056b3;';
+                cellStyle += ' background: #d4edff; font-size: 9px; font-weight: bold; color: #0056b3;';
                 if (partCount > 1) {
-                    cellContent = `${colLabel}-${row}<br><span style="font-size: 12px;">(x${partCount})</span>`;
+                    cellContent = `${colLabel}-${row}<br><span style="font-size: 8px;">(x${partCount})</span>`;
                 } else {
                     cellContent = `${colLabel}-${row}`;
                 }
             } else {
-                cellStyle += ' background: #fff; font-size: 14px;';
+                cellStyle += ' background: #fff; font-size: 9px;';
             }
 
             html += `<td style="${cellStyle}" onclick="showCabinetLocationDetails('${colLabel}', ${row})">${cellContent}</td>`;
