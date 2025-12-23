@@ -267,6 +267,68 @@ function closeCabinetDetailModal() {
 let csvCabinetData = null; // CSV에서 읽은 캐비넷 데이터 저장
 let notFoundParts = []; // 찾지 못한 부품번호 목록
 
+// 텍스트 자동 줄바꿈 헬퍼 함수
+function wrapText(ctx, text, maxWidth) {
+    const words = text.split('');
+    const lines = [];
+    let currentLine = '';
+
+    for (let i = 0; i < words.length; i++) {
+        const testLine = currentLine + words[i];
+        const metrics = ctx.measureText(testLine);
+
+        if (metrics.width > maxWidth && currentLine.length > 0) {
+            lines.push(currentLine);
+            currentLine = words[i];
+        } else {
+            currentLine = testLine;
+        }
+    }
+
+    if (currentLine.length > 0) {
+        lines.push(currentLine);
+    }
+
+    return lines;
+}
+
+// CSV 데이터 초기화
+function clearCsvData() {
+    // CSV 데이터 초기화
+    csvCabinetData = null;
+    notFoundParts = [];
+
+    // 파일 입력 초기화
+    const fileInput = document.getElementById('cabinetCsvInput');
+    if (fileInput) {
+        fileInput.value = '';
+    }
+
+    // 상태 메시지 초기화
+    const statusEl = document.getElementById('csvUploadStatus');
+    if (statusEl) {
+        statusEl.textContent = '';
+        statusEl.style.color = '#666';
+    }
+
+    // 찾지 못한 부품 목록 숨기기
+    const notFoundContainer = document.getElementById('notFoundPartsContainer');
+    if (notFoundContainer) {
+        notFoundContainer.style.display = 'none';
+    }
+
+    // 미리보기 그리드 초기화
+    const previewGrid = document.getElementById('csvPreviewGrid');
+    if (previewGrid) {
+        previewGrid.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">CSV 파일을 업로드하면 미리보기가 여기에 표시됩니다.</p>';
+    }
+
+    // 전체 캐비넷 그리드 다시 로드
+    loadCabinetLayout();
+
+    showMessage('CSV 데이터가 초기화되고 전체 배치도가 다시 로드되었습니다.', 'success');
+}
+
 // CSV 양식 다운로드
 function downloadCsvTemplate() {
     const csvContent = '부품번호\n여기서부터 밑으로 쭉 적어주세요\n\n\n\n\n\n\n\n';
@@ -515,7 +577,7 @@ async function exportCabinetToPDF() {
         }
 
         // 행 그리기
-        ctx.font = '10px Arial, "Malgun Gothic", "맑은 고딕"';
+        ctx.font = '8px Arial, "Malgun Gothic", "맑은 고딕"';
         for (let row = 1; row <= rows; row++) {
             const y = headerSize + row * cellHeight;
 
@@ -546,20 +608,29 @@ async function exportCabinetToPDF() {
                     ctx.lineWidth = 2.5;
                     ctx.strokeRect(x, y, cellWidth, cellHeight);
 
-                    // 부품번호 리스트 표시 (여러 줄)
+                    // 부품번호 리스트 표시 (자동 줄바꿈 적용)
                     const uniqueParts = [...new Set(parts)];
                     ctx.fillStyle = '#333';
-                    ctx.font = 'bold 9px Arial, "Malgun Gothic", "맑은 고딕"';
+                    ctx.font = 'bold 7px Arial, "Malgun Gothic", "맑은 고딕"';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
 
+                    // 각 부품번호를 줄바꿈 처리
+                    const allLines = [];
+                    const maxTextWidth = cellWidth - 4; // 좌우 여백 2px씩
+
+                    uniqueParts.forEach(part => {
+                        const wrappedLines = wrapText(ctx, part, maxTextWidth);
+                        allLines.push(...wrappedLines);
+                    });
+
                     // 줄 간격 계산
-                    const lineHeight = 10;
-                    const totalHeight = uniqueParts.length * lineHeight;
+                    const lineHeight = 8;
+                    const totalHeight = allLines.length * lineHeight;
                     const startY = y + (cellHeight - totalHeight) / 2 + lineHeight / 2;
 
-                    uniqueParts.forEach((part, index) => {
-                        ctx.fillText(part, x + cellWidth / 2, startY + index * lineHeight);
+                    allLines.forEach((line, index) => {
+                        ctx.fillText(line, x + cellWidth / 2, startY + index * lineHeight);
                     });
                 } else {
                     // 빈 셀
@@ -742,19 +813,28 @@ async function exportCabinetToImage() {
                     ctx.lineWidth = 2.5;
                     ctx.strokeRect(x, y, cellWidth, cellHeight);
 
-                    // 부품번호 리스트 표시 (여러 줄)
+                    // 부품번호 리스트 표시 (자동 줄바꿈 적용)
                     ctx.fillStyle = '#333';
-                    ctx.font = 'bold 9px Arial, "Malgun Gothic", "맑은 고딕"';
+                    ctx.font = 'bold 7px Arial, "Malgun Gothic", "맑은 고딕"';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
 
+                    // 각 부품번호를 줄바꿈 처리
+                    const allLines = [];
+                    const maxTextWidth = cellWidth - 4; // 좌우 여백 2px씩
+
+                    uniqueParts.forEach(part => {
+                        const wrappedLines = wrapText(ctx, part, maxTextWidth);
+                        allLines.push(...wrappedLines);
+                    });
+
                     // 줄 간격 계산
-                    const lineHeight = 10;
-                    const totalHeight = uniqueParts.length * lineHeight;
+                    const lineHeight = 8;
+                    const totalHeight = allLines.length * lineHeight;
                     const startY = y + (cellHeight - totalHeight) / 2 + lineHeight / 2;
 
-                    uniqueParts.forEach((part, index) => {
-                        ctx.fillText(part, x + cellWidth / 2, startY + index * lineHeight);
+                    allLines.forEach((line, index) => {
+                        ctx.fillText(line, x + cellWidth / 2, startY + index * lineHeight);
                     });
                 } else {
                     ctx.fillStyle = 'white';
