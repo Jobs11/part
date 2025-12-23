@@ -4,14 +4,25 @@
 // LIBRARY_API 상수는 constants.js에서 선언됩니다.
 
 // ==================== 전체 배치도 ====================
+let fullLayoutPrevBodyOverflow = null; // 전체 배치도 모달 시 본문 스크롤 복구용
 function openFullLayoutModal() {
     document.getElementById('fullLayoutModal').style.display = 'block';
+    // 메인 스크롤 잠금
+    if (fullLayoutPrevBodyOverflow === null) {
+        fullLayoutPrevBodyOverflow = document.body.style.overflow || '';
+    }
+    document.body.style.overflow = 'hidden';
     // 기본적으로 캐비넷 뷰 표시
     switchLayoutTab('cabinet');
 }
 
 function closeFullLayoutModal() {
     document.getElementById('fullLayoutModal').style.display = 'none';
+    // 메인 스크롤 복원
+    if (fullLayoutPrevBodyOverflow !== null) {
+        document.body.style.overflow = fullLayoutPrevBodyOverflow;
+        fullLayoutPrevBodyOverflow = null;
+    }
 
     // CSV 데이터 초기화
     csvCabinetData = null;
