@@ -19,6 +19,10 @@ public interface PartLocationMapper {
 
     PartLocationDTO findByCabinetPosition(@Param("posX") String posX, @Param("posY") Integer posY);
 
+    List<PartLocationDTO> findByPartNumbersExact(@Param("partNumbers") List<String> partNumbers);
+
+    List<PartLocationDTO> findByPartNumbersLike(@Param("partNumbers") List<String> partNumbers);
+
     int insertLocation(PartLocationDTO dto);
 
     int updateLocation(PartLocationDTO dto);

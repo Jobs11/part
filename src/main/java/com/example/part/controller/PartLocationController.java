@@ -57,6 +57,14 @@ public class PartLocationController {
                 .collect(java.util.stream.Collectors.toList());
     }
 
+    @PostMapping("/search-by-part-numbers")
+    public org.springframework.http.ResponseEntity<java.util.Map<String, Object>> searchByPartNumbers(
+            @RequestBody List<String> partNumbers) {
+        return org.springframework.http.ResponseEntity.ok(
+                partLocationService.searchByPartNumbersWithFallback(partNumbers)
+        );
+    }
+
     @PostMapping
     public String saveLocation(@RequestBody PartLocationDTO dto) {
         boolean result = partLocationService.saveOrUpdate(dto);

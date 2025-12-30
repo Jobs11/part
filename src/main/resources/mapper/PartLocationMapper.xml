@@ -46,6 +46,39 @@
         LIMIT 1
     </select>
 
+    <!-- 부품번호 목록으로 정확히 일치하는 위치 조회 (중복 제거: 같은 부품번호+위치는 가장 오래된 것만) -->
+    <select id="findByPartNumbersExact" resultMap="partLocationResultMap">
+        SELECT p1.* FROM part_location p1
+        INNER JOIN (
+            SELECT part_number, pos_x, pos_y, MIN(location_id) as min_id
+            FROM part_location
+            WHERE part_number IN
+            <foreach collection="partNumbers" item="pn" open="(" separator="," close=")">
+                #{pn}
+            </foreach>
+            AND pos_x IS NOT NULL AND pos_y IS NOT NULL
+            GROUP BY part_number, pos_x, pos_y
+        ) p2 ON p1.location_id = p2.min_id
+        ORDER BY p1.pos_x, p1.pos_y
+    </select>
+
+    <!-- 부품번호 목록으로 부분 일치하는 위치 조회 (LIKE 검색, 중복 제거) -->
+    <select id="findByPartNumbersLike" resultMap="partLocationResultMap">
+        SELECT p1.* FROM part_location p1
+        INNER JOIN (
+            SELECT part_number, pos_x, pos_y, MIN(location_id) as min_id
+            FROM part_location
+            WHERE pos_x IS NOT NULL AND pos_y IS NOT NULL
+            AND (
+            <foreach collection="partNumbers" item="pn" separator=" OR ">
+                part_number LIKE CONCAT('%', #{pn}, '%')
+            </foreach>
+            )
+            GROUP BY part_number, pos_x, pos_y
+        ) p2 ON p1.location_id = p2.min_id
+        ORDER BY p1.pos_x, p1.pos_y
+    </select>
+
     <!-- 등록 (INSERT) -->
     <insert id="insertLocation" parameterType="com.example.part.dto.PartLocationDTO" useGeneratedKeys="true" keyProperty="locationId">
         INSERT INTO part_location (incoming_id, location_code, part_number, part_name, pos_x, pos_y, note)

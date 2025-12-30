@@ -1,6 +1,7 @@
 package com.example.part.service;
 
 import java.util.List;
+import java.util.Map;
 
 import com.example.part.dto.PartLocationDTO;
 
@@ -14,6 +15,8 @@ public interface PartLocationService {
     PartLocationDTO getLocationByIncomingId(Integer incomingId);
 
     PartLocationDTO getLocationByCabinet(String posX, Integer posY);
+
+    Map<String, Object> searchByPartNumbersWithFallback(List<String> partNumbers);
 
     boolean saveOrUpdate(PartLocationDTO dto);
 

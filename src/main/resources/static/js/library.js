@@ -370,36 +370,39 @@ async function handleCabinetCsvUpload(event) {
             return;
         }
 
-        statusEl.textContent = '위치 정보 조회 중...';
+        statusEl.textContent = '위치 정보 조회 중 (2단계 검색)...';
 
-        // 서버에서 위치 정보 조회
-        const response = await fetch('/livewalk/part-locations/occupied-cabinets');
+        // 서버에서 2단계 검색 실행 (정확 일치 → 부분 일치)
+        const response = await fetch('/livewalk/part-locations/search-by-part-numbers', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(partNumbers)
+        });
+
         if (!response.ok) throw new Error('위치 정보 조회 실패');
 
-        const allLocations = await response.json();
+        const searchResult = await response.json();
+        const allLocations = searchResult.locations || [];
+        const exactMatchCount = searchResult.exactMatchCount || 0;
+        const likeMatchCount = searchResult.likeMatchCount || 0;
+        const notFoundPartNumbers = searchResult.notFound || [];
 
-        // 부품번호로 필터링하여 csvCabinetData 생성
+        // 부품번호로 csvCabinetData 생성
         csvCabinetData = {};
         let foundCount = 0;
         const foundPartNumbers = new Set();
-        const notFoundPartNumbers = [];
 
-        partNumbers.forEach(partNumber => {
-            const locations = allLocations.filter(loc => loc.partNumber === partNumber);
-            if (locations.length > 0) {
-                foundPartNumbers.add(partNumber);
-                locations.forEach(loc => {
-                    if (loc.posX && loc.posY) {
-                        const key = `${loc.posX}-${loc.posY}`;
-                        if (!csvCabinetData[key]) {
-                            csvCabinetData[key] = [];
-                        }
-                        csvCabinetData[key].push(partNumber);
-                        foundCount++;
-                    }
-                });
-            } else {
-                notFoundPartNumbers.push(partNumber);
+        allLocations.forEach(loc => {
+            if (loc.posX && loc.posY) {
+                const key = `${loc.posX}-${loc.posY}`;
+                if (!csvCabinetData[key]) {
+                    csvCabinetData[key] = [];
+                }
+                csvCabinetData[key].push(loc.partNumber);
+                foundPartNumbers.add(loc.partNumber);
+                foundCount++;
             }
         });
 
@@ -415,10 +418,20 @@ async function handleCabinetCsvUpload(event) {
             return;
         }
 
-        // 상태 메시지 생성
-        let statusMessage = `✅ ${foundPartNumbers.size}개 부품번호, ${foundCount}개 위치 데이터 로드됨`;
+        // 상태 메시지 생성 (검색 방법 포함)
+        let statusMessage = `✅ ${foundPartNumbers.size}개 부품번호, ${foundCount}개 위치 로드`;
+
+        // 검색 방법 표시
+        if (exactMatchCount > 0 && likeMatchCount > 0) {
+            statusMessage += ` (정확: ${exactMatchCount}, 부분: ${likeMatchCount})`;
+        } else if (exactMatchCount > 0) {
+            statusMessage += ` (정확 일치)`;
+        } else if (likeMatchCount > 0) {
+            statusMessage += ` (부분 일치)`;
+        }
+
         if (notFoundPartNumbers.length > 0) {
-            statusMessage += ` (${notFoundPartNumbers.length}개 미등록)`;
+            statusMessage += ` [${notFoundPartNumbers.length}개 미발견]`;
         }
         statusEl.textContent = statusMessage;
         statusEl.style.color = '#28a745';

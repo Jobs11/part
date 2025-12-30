@@ -1,6 +1,12 @@
 package com.example.part.service;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
@@ -39,6 +45,77 @@ public class PartLocationServiceImpl implements PartLocationService {
     @Override
     public PartLocationDTO getLocationByCabinet(String posX, Integer posY) {
         return partLocationMapper.findByCabinetPosition(posX, posY);
+    }
+
+    @Override
+    public Map<String, Object> searchByPartNumbersWithFallback(List<String> partNumbers) {
+        Map<String, Object> result = new HashMap<>();
+
+        // 1차 검색: 정확히 일치하는 부품번호 찾기
+        List<PartLocationDTO> exactMatches = partLocationMapper.findByPartNumbersExact(partNumbers);
+
+        // 정확히 찾은 부품번호 목록
+        Set<String> foundPartNumbers = exactMatches.stream()
+                .map(PartLocationDTO::getPartNumber)
+                .collect(Collectors.toSet());
+
+        // 못 찾은 부품번호 목록
+        List<String> notFoundExact = partNumbers.stream()
+                .filter(pn -> !foundPartNumbers.contains(pn))
+                .collect(Collectors.toList());
+
+        List<PartLocationDTO> likeMatches = new ArrayList<>();
+        List<String> notFoundLike = new ArrayList<>();
+
+        // 2차 검색: 못 찾은 것들만 부분 검색 (LIKE)
+        Set<String> likeFoundPartNumbers = new HashSet<>();
+        if (!notFoundExact.isEmpty()) {
+            List<PartLocationDTO> allLikeMatches = partLocationMapper.findByPartNumbersLike(notFoundExact);
+
+            // 1차에서 이미 찾은 부품번호는 제외 (중복 방지)
+            likeMatches = allLikeMatches.stream()
+                    .filter(loc -> !foundPartNumbers.contains(loc.getPartNumber()))
+                    .collect(Collectors.toList());
+
+            // 2차 검색에서 찾은 부품번호 목록 (실제 DB의 부품번호, 1차 제외)
+            likeFoundPartNumbers = likeMatches.stream()
+                    .map(PartLocationDTO::getPartNumber)
+                    .collect(Collectors.toSet());
+
+            // 2차 검색에서 찾은 검색어 추적 (CSV 입력값 기준)
+            Set<String> foundSearchTerms = new HashSet<>();
+            for (PartLocationDTO location : likeMatches) {
+                for (String searchTerm : notFoundExact) {
+                    if (location.getPartNumber().contains(searchTerm)) {
+                        foundSearchTerms.add(searchTerm);
+                        break;
+                    }
+                }
+            }
+
+            // 2차 검색에서도 못 찾은 부품번호
+            notFoundLike = notFoundExact.stream()
+                    .filter(pn -> !foundSearchTerms.contains(pn))
+                    .collect(Collectors.toList());
+        }
+
+        // 전체 결과 합치기
+        List<PartLocationDTO> allMatches = new ArrayList<>();
+        allMatches.addAll(exactMatches);
+        allMatches.addAll(likeMatches);
+
+        // 통계: CSV에서 입력한 부품번호 개수 기준
+        int exactFoundInputCount = foundPartNumbers.size(); // 정확 일치로 찾은 입력값 개수
+        int likeFoundInputCount = likeFoundPartNumbers.size(); // 부분 일치로 찾은 실제 부품번호 개수
+
+        result.put("locations", allMatches);
+        result.put("exactMatchCount", exactFoundInputCount);  // CSV 입력값 중 정확 일치한 개수
+        result.put("likeMatchCount", likeFoundInputCount);    // 부분 일치로 찾은 실제 부품번호 개수
+        result.put("notFound", notFoundLike);
+        result.put("totalRequested", partNumbers.size());
+        result.put("totalFound", allMatches.size());
+
+        return result;
     }
 
     @Override
