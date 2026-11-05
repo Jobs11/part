@@ -64,14 +64,13 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (originalPriceEl) originalPriceEl.addEventListener('input', calculateKRW);
     if (exchangeRateEl) exchangeRateEl.addEventListener('input', calculateKRW);
 
-    // 통화 변경 시 환율 자동 조회
+    // 통화 변경 시 입력 UI 표시 여부만 제어
     const currencyEl = document.getElementById('currency');
     if (currencyEl) {
-        currencyEl.addEventListener('change', async function () {
+        currencyEl.addEventListener('change', function () {
             const currency = this.value;
             const exchangeRateGroup = document.getElementById('exchangeRateGroup');
             const originalPriceGroup = document.getElementById('originalPriceGroup');
-            const exchangeRateInput = document.getElementById('exchangeRate');
 
             if (currency === 'KRW') {
                 if (exchangeRateGroup) exchangeRateGroup.style.display = 'none';
@@ -79,18 +78,6 @@ document.addEventListener('DOMContentLoaded', async function () {
             } else {
                 if (exchangeRateGroup) exchangeRateGroup.style.display = 'flex';
                 if (originalPriceGroup) originalPriceGroup.style.display = 'flex';
-
-                try {
-                    const response = await fetch(`/livewalk/exchange-rate/${currency}`);
-                    if (response.ok) {
-                        const rate = await response.json();
-                        if (exchangeRateInput) exchangeRateInput.value = rate;
-                        showMessage(`${currency} 환율: ${rate}`, 'info');
-                        calculateKRW();
-                    }
-                } catch (error) {
-                    showMessage('환율 조회 실패', 'error');
-                }
             }
         });
     }

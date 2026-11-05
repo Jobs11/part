@@ -319,6 +319,8 @@ td.editable:hover {
     /* 🔹 한글 단어 단위로 줄바꿈 */
     overflow-wrap: break-word;
     /* 🔹 긴 단어 자동 줄바꿈 */
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 
@@ -342,6 +344,29 @@ td.editable:hover {
     transition: background 0.2s;
     vertical-align: middle;
     /* 🔹 가운데 정렬 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.cell strong,
+.cell span {
+    display: block;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 
 .cell:hover {

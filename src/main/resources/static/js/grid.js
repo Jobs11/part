@@ -346,7 +346,9 @@ async function loadPartLocations() {
                 .find(c => (c.dataset.code || '').trim() === code);
 
             if (cell) {
-                cell.innerHTML = `<strong>${name}</strong><br><span style="font-size:10px;">${number}</span>`;
+                const shortName = name.length > 10 ? name.substring(0, 10) + '…' : name;
+                const shortNumber = number.length > 8 ? number.substring(0, 8) + '…' : number;
+                cell.innerHTML = `<strong>${shortName}</strong><span style="font-size:10px;">${shortNumber}</span>`;
                 cell.style.backgroundColor = '#d7eaff';
                 cell.style.color = '#004578';
             } else {

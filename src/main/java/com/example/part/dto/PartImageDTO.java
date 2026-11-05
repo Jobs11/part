@@ -8,7 +8,7 @@ public class PartImageDTO {
     private Integer incomingId;
     private String imageType; // delivery, part, etc
     private String imageUrl;
-    private String storageType; // local, cloudinary, s3
+    private String storageType; // local, s3
     private String fileName;
     private Long fileSize;
     private String mimeType;

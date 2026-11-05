@@ -14,14 +14,6 @@ DB_URL=jdbc:mysql://localhost:3306/livewalk?createDatabaseIfNotExist=true&useSSL
 DB_USERNAME=your_db_username
 DB_PASSWORD=your_strong_password_here
 
-# API 키 설정
-BOK_API_KEY=your_bok_api_key_here
-
-# Cloudinary 설정
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-
 # 파일 업로드 경로
 UPLOAD_DIR=/var/livewalk/uploads/images
 BACKUP_DIR=/var/livewalk/backups/csv
@@ -47,7 +39,7 @@ BACKUP_DIR=/var/livewalk/backups/csv
 2. Spring Boot 실행 구성 선택
 3. Environment variables 필드에 입력:
    ```
-   DB_USERNAME=root;DB_PASSWORD=your_password;BOK_API_KEY=your_key
+   DB_USERNAME=root;DB_PASSWORD=your_password
    ```
 
 #### 방법 3: 명령줄에서 실행 시
@@ -55,7 +47,6 @@ BACKUP_DIR=/var/livewalk/backups/csv
 ```bash
 set DB_USERNAME=root
 set DB_PASSWORD=your_password
-set BOK_API_KEY=your_key
 gradlew bootRun
 ```
 
@@ -66,10 +57,6 @@ gradlew bootRun
 ```bash
 export DB_USERNAME="root"
 export DB_PASSWORD="your_strong_password"
-export BOK_API_KEY="your_bok_api_key"
-export CLOUDINARY_CLOUD_NAME="your_cloud_name"
-export CLOUDINARY_API_KEY="your_api_key"
-export CLOUDINARY_API_SECRET="your_api_secret"
 ```
 
 설정 후 적용:
@@ -82,7 +69,6 @@ source ~/.bashrc
 ```bash
 docker run -e DB_USERNAME=root \
            -e DB_PASSWORD=your_password \
-           -e BOK_API_KEY=your_key \
            your-image-name
 ```
 
@@ -93,7 +79,6 @@ services:
     environment:
       - DB_USERNAME=root
       - DB_PASSWORD=${DB_PASSWORD}
-      - BOK_API_KEY=${BOK_API_KEY}
 ```
 
 ### 5. 프로덕션 환경 권장 사항

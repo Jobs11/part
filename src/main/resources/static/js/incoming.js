@@ -632,25 +632,8 @@ function makeIncomingEditable(event, incomingId, field, currentValue, exchangeRa
                 // originalPrice 수정 시 purchasePrice도 자동 재계산
                 if (field === 'originalPrice' && currentData.currency !== 'KRW') {
                     const newOriginalPrice = parseFloat(newValue);
-
-                    // 최신 환율 조회
-                    try {
-                        const rateResponse = await fetch(`/livewalk/exchange-rate/${currentData.currency}`);
-                        if (rateResponse.ok) {
-                            const latestRate = await rateResponse.json();
-                            updatedData.exchangeRate = latestRate;
-                            updatedData.purchasePrice = newOriginalPrice * latestRate;
-                            showMessage(`최신 환율(${currentData.currency}: ${latestRate}) 적용`, 'info');
-                        } else {
-                            // 환율 조회 실패 시 기존 환율 사용
-                            updatedData.purchasePrice = newOriginalPrice * storedExchangeRate;
-                            showMessage('기존 환율 사용 (최신 환율 조회 실패)', 'info');
-                        }
-                    } catch (error) {
-                        // 환율 조회 실패 시 기존 환율 사용
-                        updatedData.purchasePrice = newOriginalPrice * storedExchangeRate;
-                        showMessage('기존 환율 사용 (환율 조회 오류)', 'info');
-                    }
+                    updatedData.purchasePrice = newOriginalPrice * storedExchangeRate;
+                    showMessage('기존 환율 값으로 계산 적용', 'info');
                 }
             } else if (field === 'purchaseDatetime') {
                 // date 값을 yyyy-MM-dd 형식으로 전송 (LocalDate)

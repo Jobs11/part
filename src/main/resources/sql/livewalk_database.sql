@@ -121,7 +121,7 @@ CREATE TABLE `part_images` (
    `incoming_id` int NOT NULL COMMENT '입고 ID',
    `image_type` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '이미지 타입 (delivery:택배, part:부품, etc:기타)',
    `image_url` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '이미지 경로 또는 URL',
-   `storage_type` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT 'local' COMMENT '저장소 타입 (local, cloudinary, s3)',
+   `storage_type` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT 'local' COMMENT '저장소 타입 (local, s3)',
    `file_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '원본 파일명',
    `file_size` bigint DEFAULT NULL COMMENT '파일 크기 (bytes)',
    `mime_type` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'MIME 타입 (image/jpeg, image/png)',
