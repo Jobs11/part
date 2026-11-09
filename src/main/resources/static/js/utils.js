@@ -22,8 +22,8 @@ function normalizeLocationCode(value = '') {
 
     // 하이픈이 없는 경우 자동으로 삽입 시도 (예: AA13 -> AA-13, A1 -> A-1)
     if (normalized && !normalized.includes('-')) {
-        // A~AA 다음에 숫자가 오는 패턴 찾기
-        const match = normalized.match(/^(AA|[A-Z])(\d+)$/);
+        // A~AD 다음에 숫자가 오는 패턴 찾기
+        const match = normalized.match(/^(A[A-D]|[A-Z])(\d+)$/);
         if (match) {
             normalized = `${match[1]}-${match[2]}`;
         }
@@ -62,7 +62,7 @@ function attachLocationInputHandlers(inputEl) {
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
             pointer-events: none;
         `;
-        tooltip.innerHTML = '형식 오류: A~AA 구역과 1~32 행을 하이픈(-)으로 구분해주세요. 예: A-1, AA-32';
+        tooltip.innerHTML = '형식 오류: A~AD 구역과 1~32 행을 하이픈(-)으로 구분해주세요. 예: A-1, AD-32';
 
         // 화살표 추가
         const arrow = document.createElement('div');

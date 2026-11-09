@@ -295,7 +295,7 @@ td.editable:hover {
 
 .grid-container {
     display: grid;
-    grid-template-columns: 40px repeat(27, 100px);
+    grid-template-columns: 40px repeat(30, 100px);
     /* 80px → 100px */
     grid-auto-rows: 60px;
     /* 50px → 60px */
@@ -396,4 +396,16 @@ td.editable:hover {
     display: block;
     font-size: 10px;
     color: #333;
+}
+
+/* Keep full-layout cabinet text inside its own cell. */
+#fullLayoutCabinetGrid table {
+    min-width: 2450px;
+    table-layout: fixed;
+}
+
+#fullLayoutCabinetGrid td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }

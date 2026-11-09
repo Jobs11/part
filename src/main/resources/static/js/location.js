@@ -758,7 +758,7 @@ function closeCabinetPicker() {
 async function createCabinetPickerGrid(highlightPartNumber = null) {
     const container = document.getElementById('cabinetPickerContainer');
     const rows = 32;  // 세로 (숫자)
-    const cols = 27;  // 가로 (영어)
+    const cols = 30;  // 가로 (영어)
 
     // 등록된 캐비넷 위치 조회 (중복 허용 - 배열로 저장)
     let occupiedMap = new Map();
@@ -778,9 +778,14 @@ async function createCabinetPickerGrid(highlightPartNumber = null) {
         console.error('등록된 캐비넷 위치 조회 오류:', error);
     }
 
-    let html = '<table style="border-collapse: collapse; margin: 0 auto;">';
+    const rowLabelWidth = 28;
+    const cellWidth = `calc((100% - ${rowLabelWidth}px) / ${cols})`;
+    const cellSizeStyle = 'box-sizing: border-box; padding: 0 2px; line-height: 12px; text-align: center; vertical-align: middle; white-space: nowrap; overflow: hidden;';
+    const rowStyle = `height: calc(100% / ${rows + 1});`;
+    let html = `<table style="border-collapse: separate; border-spacing: 0; margin: 0 auto; table-layout: fixed; width: 100%; min-width: 660px; height: 100%; min-height: ${(rows + 1) * 14}px;">
+        <colgroup><col style="width: ${rowLabelWidth}px;">${`<col style="width: ${cellWidth};">`.repeat(cols)}</colgroup>`;
 
-    // 가로 레이블 생성 (A-Z, AA) - 27개
+    // 가로 레이블 생성 (A-Z, AA-AD) - 30개
     const colLabels = [];
     for (let i = 0; i < cols; i++) {
         if (i < 26) {
@@ -791,17 +796,17 @@ async function createCabinetPickerGrid(highlightPartNumber = null) {
     }
 
     // 헤더 (가로 - 영어)
-    html += '<tr><th style="border: 2px solid #999; padding: 8px; background: #f5f5f5; min-width: 40px; font-weight: bold;"></th>';
+    html += `<tr style="${rowStyle}"><th style="${cellSizeStyle} width: ${rowLabelWidth}px; border: 1px solid #999; background: #f5f5f5; font-weight: bold;"></th>`;
     for (let col = 0; col < cols; col++) {
-        html += `<th style="border: 2px solid #999; padding: 8px; background: #f5f5f5; min-width: 40px; font-size: 13px; font-weight: bold;">${colLabels[col]}</th>`;
+        html += `<th style="${cellSizeStyle} border: 1px solid #999; background: #f5f5f5; font-size: 11px; font-weight: bold;">${colLabels[col]}</th>`;
     }
     html += '</tr>';
 
     // 행 생성 (세로 - 숫자)
     for (let row = 1; row <= rows; row++) {
-        html += `<tr>`;
+        html += `<tr style="${rowStyle}">`;
         // 행 레이블 (세로 - 숫자)
-        html += `<th style="border: 2px solid #999; padding: 8px; background: #f5f5f5; font-size: 13px; font-weight: bold;">${row}</th>`;
+        html += `<th style="${cellSizeStyle} width: ${rowLabelWidth}px; border: 1px solid #999; background: #f5f5f5; font-size: 11px; font-weight: bold;">${row}</th>`;
 
         // 셀 생성
         for (let col = 0; col < cols; col++) {
@@ -826,26 +831,26 @@ async function createCabinetPickerGrid(highlightPartNumber = null) {
                 if (hasSamePart) {
                     // 동일한 부품번호 포함 - 노란색/금색 배경으로 강조 표기, 선택 가능
                     html += `<td
-                        style="border: 2px solid #ff9800; padding: 6px; text-align: center; cursor: pointer; font-size: 9px; min-width: 40px; background: #fff3cd; color: #856404; font-weight: bold; box-shadow: 0 0 8px rgba(255, 152, 0, 0.5);"
+                        style="${cellSizeStyle} border: 1px solid #ff9800; text-align: center; cursor: pointer; font-size: 9px; background: #fff3cd; color: #856404; font-weight: bold; box-shadow: 0 0 8px rgba(255, 152, 0, 0.5);"
                         onclick="selectCabinetPosition('${posX}', ${posY})"
                         onmouseover="this.style.background='#ffe082'"
                         onmouseout="this.style.background='#fff3cd'"
-                        title="🔍 등록된 위치: ${tooltipParts} - 클릭하여 선택 가능"
-                    >${partInfo}</td>`;
+                        title="🔍 등록된 위치: ${escapeHtml(tooltipParts).replace(/"/g, '&quot;')} - 클릭하여 선택 가능"
+                    ><span style="display: block; width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">${escapeHtml(partInfo)}</span></td>`;
                 } else {
                     // 다른 부품번호 - 연한 파란색 배경, 선택 가능 (중복 허용)
                     html += `<td
-                        style="border: 1px solid #2196F3; padding: 6px; text-align: center; cursor: pointer; font-size: 9px; min-width: 40px; background: #e3f2fd; color: #1565c0; font-weight: bold;"
+                        style="${cellSizeStyle} border: 1px solid #2196F3; text-align: center; cursor: pointer; font-size: 9px; background: #e3f2fd; color: #1565c0; font-weight: bold;"
                         onclick="selectCabinetPosition('${posX}', ${posY})"
                         onmouseover="this.style.background='#bbdefb'"
                         onmouseout="this.style.background='#e3f2fd'"
-                        title="등록된 위치: ${tooltipParts} - 중복 가능"
-                    >${partInfo}</td>`;
+                        title="등록된 위치: ${escapeHtml(tooltipParts).replace(/"/g, '&quot;')} - 중복 가능"
+                    ><span style="display: block; width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">${escapeHtml(partInfo)}</span></td>`;
                 }
             } else {
                 // 비어있는 위치 - 클릭 가능
                 html += `<td
-                    style="border: 1px solid #ddd; padding: 8px; text-align: center; cursor: pointer; font-size: 11px; min-width: 40px; background: white;"
+                    style="${cellSizeStyle} border: 1px solid #ddd; text-align: center; cursor: pointer; font-size: 11px; background: white;"
                     onclick="selectCabinetPosition('${posX}', ${posY})"
                     onmouseover="this.style.background='#e3f2fd'"
                     onmouseout="this.style.background='white'"
@@ -2082,19 +2087,19 @@ function openCabinetGridView(partNumber, location) {
     document.getElementById('cabinetGridInfo').innerHTML =
         `부품번호: <strong>${partNumber}</strong> | 위치: <strong style="color: #dc3545;">${locationText}</strong>`;
 
-    // 그리드 생성 (32x27)
+    // 그리드 생성 (32x30)
     createCabinetGrid(location.posX, location.posY);
 }
 
 /**
- * 32x27 캐비넷 그리드 생성
- * 가로: A~AA (27개)
+ * 32x30 캐비넷 그리드 생성
+ * 가로: A~AD (30개)
  * 세로: 1~32 (32개)
  */
 async function createCabinetGrid(highlightX, highlightY) {
     const container = document.getElementById('cabinetGridContainer');
     const rows = 32;  // 세로 (숫자)
-    const cols = 27;  // 가로 (영어)
+    const cols = 30;  // 가로 (영어)
 
     // 재고 현황에서 캐비넷 위치 정보 가져오기
     let locationMap = {};
@@ -2126,7 +2131,7 @@ async function createCabinetGrid(highlightX, highlightY) {
 
     let html = '<table style="border-collapse: collapse; margin: 0 auto;">';
 
-    // 가로 레이블 생성 (A-Z, AA) - 27개
+    // 가로 레이블 생성 (A-Z, AA-AD) - 30개
     const colLabels = [];
     for (let i = 0; i < cols; i++) {
         if (i < 26) {

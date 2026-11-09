@@ -264,7 +264,7 @@ public class PartIncomingServiceImpl implements PartIncomingService {
 
         int row = Integer.parseInt(matcher.group(2));
 
-        // 허용 범위: 열 A~AA, 행 1~32
+        // 허용 범위: 열 A~AD, 행 1~32
 
         if (col.length() == 0 || col.length() > 2 || row < 1 || row > 32) {
 
@@ -290,7 +290,7 @@ public class PartIncomingServiceImpl implements PartIncomingService {
             String normalized = normalizeCabinetLocation(cabinetLocation.trim());
 
             if (normalized == null) {
-                throw new IllegalArgumentException("캐비넷 위치는 A~AA, 1~32 범위의 A-1 형식이어야 합니다. 입력값: " + cabinetLocation);
+                throw new IllegalArgumentException("캐비넷 위치는 A~AD, 1~32 범위의 A-1 형식이어야 합니다. 입력값: " + cabinetLocation);
             }
 
             String[] parts = normalized.split("-");

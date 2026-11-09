@@ -73,10 +73,15 @@ function switchLayoutTab(tab) {
 }
 
 // 캐비넷 위치 뷰 로드
+function renderCabinetCellText(parts) {
+    const text = parts.map(part => String(part ?? '')).join(', ');
+    return `<span style="display: block; width: 100%; max-width: 100%; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3;">${escapeHtml(text)}</span>`;
+}
+
 async function loadCabinetLayout() {
     const container = document.getElementById('fullLayoutCabinetGrid');
     const rows = 32;  // 세로 (숫자)
-    const cols = 27;  // 가로 (영어)
+    const cols = 30;  // 가로 (영어)
 
     try {
         // 등록된 캐비넷 위치 조회 (중복 허용 - 배열로 저장)
@@ -96,9 +101,9 @@ async function loadCabinetLayout() {
         });
 
         // 그리드 생성
-        let html = '<table style="border-collapse: collapse; margin: 0 auto; table-layout: fixed;">';
+        let html = `<table style="border-collapse: collapse; margin: 0 auto; table-layout: fixed; width: ${50 + cols * 80}px; min-width: ${50 + cols * 80}px;">`;
 
-        // 가로 레이블 생성 (A-Z, AA) - 27개
+        // 가로 레이블 생성 (A-Z, AA-AD) - 30개
         const colLabels = [];
         for (let i = 0; i < cols; i++) {
             if (i < 26) {
@@ -162,8 +167,8 @@ async function loadCabinetLayout() {
                     html += `<td
                         style="border: 2px solid #f9a825; padding: 8px 4px; text-align: center; cursor: pointer; font-size: 10px; width: 80px; min-height: 40px; background: #fff9c4; color: #333; font-weight: bold; overflow-wrap: break-word; word-break: break-all; line-height: 1.3;"
                         onclick="showCabinetDetail('${posX}', ${posY})"
-                        title="${tooltipParts}"
-                    >${displayText}</td>`;
+                        title="${escapeHtml(tooltipParts).replace(/"/g, '&quot;')}"
+                    >${renderCabinetCellText([displayText])}</td>`;
                 } else {
                     // 비어있는 위치
                     html += `<td
@@ -290,6 +295,49 @@ function wrapText(ctx, text, maxWidth) {
     }
 
     return lines;
+}
+
+// Fit export labels within the cell, including cells with many part numbers.
+function drawCabinetCellText(ctx, parts, x, y, width, height) {
+    const padding = 3;
+    const maxWidth = width - padding * 2;
+    const maxHeight = height - padding * 2;
+    const uniqueParts = [...new Set(parts)].map(part => String(part ?? ''));
+    let fontSize = 7;
+    let lines;
+    let lineHeight;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x + padding, y + padding, maxWidth, maxHeight);
+    ctx.clip();
+    ctx.fillStyle = '#333';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    while (true) {
+        ctx.font = `bold ${fontSize}px Arial, "Malgun Gothic", sans-serif`;
+        lineHeight = fontSize + 1;
+        lines = uniqueParts.flatMap(part => wrapText(ctx, part, maxWidth));
+        if (lines.length * lineHeight <= maxHeight || fontSize <= 5) break;
+        fontSize--;
+    }
+
+    const maxLines = Math.floor(maxHeight / lineHeight);
+    if (lines.length > maxLines) {
+        lines = lines.slice(0, maxLines);
+        let lastLine = lines[maxLines - 1];
+        while (lastLine && ctx.measureText(lastLine + '\u2026').width > maxWidth) {
+            lastLine = lastLine.slice(0, -1);
+        }
+        lines[maxLines - 1] = lastLine + '\u2026';
+    }
+
+    const startY = y + (height - lines.length * lineHeight) / 2 + lineHeight / 2;
+    lines.forEach((line, index) => {
+        ctx.fillText(line, x + width / 2, startY + index * lineHeight, maxWidth);
+    });
+    ctx.restore();
 }
 
 // CSV 데이터 초기화
@@ -468,12 +516,12 @@ function loadCabinetLayoutFromCSV() {
 
     const container = document.getElementById('fullLayoutCabinetGrid');
     const rows = 32;
-    const cols = 27;
+    const cols = 30;
 
     // 그리드 생성
-    let html = '<table style="border-collapse: collapse; margin: 0 auto; table-layout: fixed;">';
+    let html = `<table style="border-collapse: collapse; margin: 0 auto; table-layout: fixed; width: ${50 + cols * 80}px; min-width: ${50 + cols * 80}px;">`;
 
-    // 가로 레이블 생성 (A-Z, AA) - 27개
+    // 가로 레이블 생성 (A-Z, AA-AD) - 30개
     const colLabels = [];
     for (let i = 0; i < cols; i++) {
         if (i < 26) {
@@ -504,11 +552,11 @@ function loadCabinetLayoutFromCSV() {
             if (parts && parts.length > 0) {
                 // CSV에서 입력한 부품이 있는 칸 - 연한 노란 배경에 검정 글자
                 const uniqueParts = [...new Set(parts)];
-                const displayText = uniqueParts.join('<br>');
+                const displayText = renderCabinetCellText(uniqueParts);
 
                 html += `<td
                     style="border: 2px solid #f9a825; padding: 8px 4px; text-align: center; font-size: 9px; line-height: 1.3; width: 80px; min-height: 40px; background: #fff9c4; color: #333; font-weight: bold; overflow-wrap: break-word; word-break: break-all;"
-                    title="${uniqueParts.join(', ')}"
+                    title="${escapeHtml(uniqueParts.join(', ')).replace(/"/g, '&quot;')}"
                 >${displayText}</td>`;
             } else {
                 html += `<td
@@ -537,7 +585,7 @@ async function exportCabinetToPDF() {
         const ctx = canvas.getContext('2d');
 
         const rows = 32;
-        const cols = 27;
+        const cols = 30;
         const cellWidth = 45;  // 가로 폭 최대화 (A4 꽉 채우기)
         const cellHeight = 28;  // 세로 높이 증가
         const headerSize = 50;
@@ -621,30 +669,7 @@ async function exportCabinetToPDF() {
                     ctx.lineWidth = 2.5;
                     ctx.strokeRect(x, y, cellWidth, cellHeight);
 
-                    // 부품번호 리스트 표시 (자동 줄바꿈 적용)
-                    const uniqueParts = [...new Set(parts)];
-                    ctx.fillStyle = '#333';
-                    ctx.font = 'bold 7px Arial, "Malgun Gothic", "맑은 고딕"';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-
-                    // 각 부품번호를 줄바꿈 처리
-                    const allLines = [];
-                    const maxTextWidth = cellWidth - 4; // 좌우 여백 2px씩
-
-                    uniqueParts.forEach(part => {
-                        const wrappedLines = wrapText(ctx, part, maxTextWidth);
-                        allLines.push(...wrappedLines);
-                    });
-
-                    // 줄 간격 계산
-                    const lineHeight = 8;
-                    const totalHeight = allLines.length * lineHeight;
-                    const startY = y + (cellHeight - totalHeight) / 2 + lineHeight / 2;
-
-                    allLines.forEach((line, index) => {
-                        ctx.fillText(line, x + cellWidth / 2, startY + index * lineHeight);
-                    });
+                    drawCabinetCellText(ctx, parts, x, y, cellWidth, cellHeight);
                 } else {
                     // 빈 셀
                     ctx.fillStyle = 'white';
@@ -739,7 +764,7 @@ async function exportCabinetToImage() {
         const ctx = canvas.getContext('2d');
 
         const rows = 32;
-        const cols = 27;
+        const cols = 30;
         const cellWidth = 45;
         const cellHeight = 28;
         const headerSize = 50;
@@ -826,29 +851,7 @@ async function exportCabinetToImage() {
                     ctx.lineWidth = 2.5;
                     ctx.strokeRect(x, y, cellWidth, cellHeight);
 
-                    // 부품번호 리스트 표시 (자동 줄바꿈 적용)
-                    ctx.fillStyle = '#333';
-                    ctx.font = 'bold 7px Arial, "Malgun Gothic", "맑은 고딕"';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-
-                    // 각 부품번호를 줄바꿈 처리
-                    const allLines = [];
-                    const maxTextWidth = cellWidth - 4; // 좌우 여백 2px씩
-
-                    uniqueParts.forEach(part => {
-                        const wrappedLines = wrapText(ctx, part, maxTextWidth);
-                        allLines.push(...wrappedLines);
-                    });
-
-                    // 줄 간격 계산
-                    const lineHeight = 8;
-                    const totalHeight = allLines.length * lineHeight;
-                    const startY = y + (cellHeight - totalHeight) / 2 + lineHeight / 2;
-
-                    allLines.forEach((line, index) => {
-                        ctx.fillText(line, x + cellWidth / 2, startY + index * lineHeight);
-                    });
+                    drawCabinetCellText(ctx, uniqueParts, x, y, cellWidth, cellHeight);
                 } else {
                     ctx.fillStyle = 'white';
                     ctx.fillRect(x, y, cellWidth, cellHeight);
