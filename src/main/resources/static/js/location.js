@@ -758,7 +758,7 @@ function closeCabinetPicker() {
 async function createCabinetPickerGrid(highlightPartNumber = null) {
     const container = document.getElementById('cabinetPickerContainer');
     const rows = 32;  // 세로 (숫자)
-    const cols = 30;  // 가로 (영어)
+    const cols = 36;  // 가로 (영어)
 
     // 등록된 캐비넷 위치 조회 (중복 허용 - 배열로 저장)
     let occupiedMap = new Map();
@@ -785,7 +785,7 @@ async function createCabinetPickerGrid(highlightPartNumber = null) {
     let html = `<table style="border-collapse: separate; border-spacing: 0; margin: 0 auto; table-layout: fixed; width: 100%; min-width: 660px; height: 100%; min-height: ${(rows + 1) * 14}px;">
         <colgroup><col style="width: ${rowLabelWidth}px;">${`<col style="width: ${cellWidth};">`.repeat(cols)}</colgroup>`;
 
-    // 가로 레이블 생성 (A-Z, AA-AD) - 30개
+    // 가로 레이블 생성 (A-Z, AA-AJ) - 36개
     const colLabels = [];
     for (let i = 0; i < cols; i++) {
         if (i < 26) {
@@ -2087,19 +2087,19 @@ function openCabinetGridView(partNumber, location) {
     document.getElementById('cabinetGridInfo').innerHTML =
         `부품번호: <strong>${partNumber}</strong> | 위치: <strong style="color: #dc3545;">${locationText}</strong>`;
 
-    // 그리드 생성 (32x30)
+    // 그리드 생성 (32x36)
     createCabinetGrid(location.posX, location.posY);
 }
 
 /**
- * 32x30 캐비넷 그리드 생성
- * 가로: A~AD (30개)
+ * 32x36 캐비넷 그리드 생성
+ * 가로: A~AJ (36개)
  * 세로: 1~32 (32개)
  */
 async function createCabinetGrid(highlightX, highlightY) {
     const container = document.getElementById('cabinetGridContainer');
     const rows = 32;  // 세로 (숫자)
-    const cols = 30;  // 가로 (영어)
+    const cols = 36;  // 가로 (영어)
 
     // 재고 현황에서 캐비넷 위치 정보 가져오기
     let locationMap = {};
@@ -2131,7 +2131,7 @@ async function createCabinetGrid(highlightX, highlightY) {
 
     let html = '<table style="border-collapse: collapse; margin: 0 auto;">';
 
-    // 가로 레이블 생성 (A-Z, AA-AD) - 30개
+    // 가로 레이블 생성 (A-Z, AA-AJ) - 36개
     const colLabels = [];
     for (let i = 0; i < cols; i++) {
         if (i < 26) {

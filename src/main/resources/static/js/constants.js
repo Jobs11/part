@@ -7,4 +7,4 @@ const PROJECT_API = '/livewalk/categories/projects';
 const LIBRARY_API = '/livewalk/library';
 
 // ==================== 정규식 상수 ====================
-const LOCATION_CODE_REGEX = /^(?:[A-Z]|A[A-D])-(?:[1-9]|[12]\d|3[0-2])$/;
+const LOCATION_CODE_REGEX = /^(?:[A-Z]|A[A-J])-(?:[1-9]|[12]\d|3[0-2])$/;

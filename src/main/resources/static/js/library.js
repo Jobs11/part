@@ -81,7 +81,7 @@ function renderCabinetCellText(parts) {
 async function loadCabinetLayout() {
     const container = document.getElementById('fullLayoutCabinetGrid');
     const rows = 32;  // 세로 (숫자)
-    const cols = 30;  // 가로 (영어)
+    const cols = 36;  // 가로 (영어)
 
     try {
         // 등록된 캐비넷 위치 조회 (중복 허용 - 배열로 저장)
@@ -103,7 +103,7 @@ async function loadCabinetLayout() {
         // 그리드 생성
         let html = `<table style="border-collapse: collapse; margin: 0 auto; table-layout: fixed; width: ${50 + cols * 80}px; min-width: ${50 + cols * 80}px;">`;
 
-        // 가로 레이블 생성 (A-Z, AA-AD) - 30개
+        // 가로 레이블 생성 (A-Z, AA-AJ) - 36개
         const colLabels = [];
         for (let i = 0; i < cols; i++) {
             if (i < 26) {
@@ -516,12 +516,12 @@ function loadCabinetLayoutFromCSV() {
 
     const container = document.getElementById('fullLayoutCabinetGrid');
     const rows = 32;
-    const cols = 30;
+    const cols = 36;
 
     // 그리드 생성
     let html = `<table style="border-collapse: collapse; margin: 0 auto; table-layout: fixed; width: ${50 + cols * 80}px; min-width: ${50 + cols * 80}px;">`;
 
-    // 가로 레이블 생성 (A-Z, AA-AD) - 30개
+    // 가로 레이블 생성 (A-Z, AA-AJ) - 36개
     const colLabels = [];
     for (let i = 0; i < cols; i++) {
         if (i < 26) {
@@ -585,7 +585,7 @@ async function exportCabinetToPDF() {
         const ctx = canvas.getContext('2d');
 
         const rows = 32;
-        const cols = 30;
+        const cols = 36;
         const cellWidth = 45;  // 가로 폭 최대화 (A4 꽉 채우기)
         const cellHeight = 28;  // 세로 높이 증가
         const headerSize = 50;
@@ -764,7 +764,7 @@ async function exportCabinetToImage() {
         const ctx = canvas.getContext('2d');
 
         const rows = 32;
-        const cols = 30;
+        const cols = 36;
         const cellWidth = 45;
         const cellHeight = 28;
         const headerSize = 50;

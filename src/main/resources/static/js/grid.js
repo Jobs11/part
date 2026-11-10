@@ -23,8 +23,8 @@ function normalizeLocationCode(value = '') {
 
     // 하이픈이 없는 경우 자동으로 삽입 시도 (예: AA13 -> AA-13, A1 -> A-1)
     if (normalized && !normalized.includes('-')) {
-        // A~AD 다음에 숫자가 오는 패턴 찾기
-        const match = normalized.match(/^(A[A-D]|[A-Z])(\d+)$/);
+        // A~AJ 다음에 숫자가 오는 패턴 찾기
+        const match = normalized.match(/^(A[A-J]|[A-Z])(\d+)$/);
         if (match) {
             normalized = `${match[1]}-${match[2]}`;
         }
@@ -67,7 +67,7 @@ function attachLocationInputHandlers(inputEl) {
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
             pointer-events: none;
         `;
-        tooltip.innerHTML = '형식 오류: A~AD 구역과 1~32 행을 하이픈(-)으로 구분해주세요. 예: A-1, AD-32';
+        tooltip.innerHTML = '형식 오류: A~AJ 구역과 1~32 행을 하이픈(-)으로 구분해주세요. 예: A-1, AJ-32';
 
         // 화살표 추가
         const arrow = document.createElement('div');
@@ -186,11 +186,11 @@ async function toggleGrid() {
 // ==========================================
 
 /**
- * A~AD 라벨 생성
+ * A~AJ 라벨 생성
  */
 function generateColumnLabels() {
     const labels = [];
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 36; i++) {
         labels.push(i < 26 ? String.fromCharCode(65 + i) : 'A' + String.fromCharCode(65 + i - 26));
     }
     return labels;
@@ -207,7 +207,7 @@ function generateGrid() {
 
     grid.innerHTML = '';
 
-    // 상단 헤더 (맨 왼쪽 빈칸 + A~AD)
+    // 상단 헤더 (맨 왼쪽 빈칸 + A~AJ)
     grid.appendChild(document.createElement('div'));
     columns.forEach(c => {
         const div = document.createElement('div');
@@ -492,18 +492,18 @@ async function openLocationModal(partNumber) {
 }
 
 /**
- * 32x30 배치도 그리드 생성
+ * 32x36 배치도 그리드 생성
  * 세로: 숫자 (1-32)
- * 가로: 영어 (A-Z, AA-AD) - 30개
+ * 가로: 영어 (A-Z, AA-AJ) - 36개
  */
 function createLocationGrid(highlightLocation) {
     const container = document.getElementById('locationGridContainer');
     const rows = 32;  // 세로 (숫자)
-    const cols = 30;  // 가로 (영어)
+    const cols = 36;  // 가로 (영어)
 
     let html = '<table style="border-collapse: collapse; margin: 0 auto;">';
 
-    // 가로 레이블 (A-Z, AA-AD) - 30개
+    // 가로 레이블 (A-Z, AA-AJ) - 36개
     const colLabels = [];
     for (let i = 0; i < cols; i++) {
         if (i < 26) {
