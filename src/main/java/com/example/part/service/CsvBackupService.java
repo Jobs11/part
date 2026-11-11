@@ -2,15 +2,20 @@ package com.example.part.service;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +38,10 @@ import lombok.RequiredArgsConstructor;
 public class CsvBackupService {
 
     private static final Logger logger = LoggerFactory.getLogger(CsvBackupService.class);
+
+    private static final int RETENTION_DAYS = 7;
+    private static final Pattern BACKUP_FILE_PATTERN = Pattern.compile(
+            "(?:입고목록|출고목록|재고목록|위치정보)_(\\d{4}-\\d{2}-\\d{2})_backup\\.csv");
 
     private final PartIncomingMapper incomingMapper;
     private final PartUsageMapper usageMapper;
@@ -64,10 +73,17 @@ public class CsvBackupService {
         logger.info("=== CSV 자동 백업 시작 ===");
 
         try {
-            backupIncoming();
-            backupUsage();
-            backupInventory();
-            backupLocation();
+            LocalDate backupDate = LocalDate.now();
+            boolean incomingSucceeded = backupIncoming(backupDate);
+            boolean usageSucceeded = backupUsage(backupDate);
+            boolean inventorySucceeded = backupInventory(backupDate);
+            boolean locationSucceeded = backupLocation(backupDate);
+
+            if (!incomingSucceeded || !usageSucceeded || !inventorySucceeded || !locationSucceeded) {
+                logger.warn("CSV backup incomplete; preserving all older backups.");
+                return;
+            }
+            cleanupOldBackups(backupDate);
 
             logger.info("=== CSV 자동 백업 완료 ===");
         } catch (Exception e) {
@@ -78,7 +94,7 @@ public class CsvBackupService {
     /**
      * 입고목록 백업 - 모든 컬럼 포함
      */
-    private void backupIncoming() {
+    private boolean backupIncoming(LocalDate backupDate) {
         try {
             List<PartIncomingDTO> dtoList = incomingMapper.selectAllIncoming();
             List<Map<String, Object>> data = dtoList.stream()
@@ -112,7 +128,7 @@ public class CsvBackupService {
                     })
                     .collect(Collectors.toList());
 
-            String fileName = generateFileName("입고목록");
+            String fileName = generateFileName("입고목록", backupDate);
             writeCsvFile(fileName, data, new String[] {
                     "입고번호", "부품번호", "카테고리ID", "카테고리명", "부품명", "캐비넷위치", "도면위치",
                     "설명", "프로젝트명", "단위", "결제방법ID", "결제방법명", "입고수량",
@@ -126,15 +142,17 @@ public class CsvBackupService {
                     "purchaser", "invoice_number", "note", "created_by", "created_at"
             });
             logger.info("입고목록 백업 완료: {}", fileName);
+            return true;
         } catch (Exception e) {
             logger.error("입고목록 백업 실패", e);
+            return false;
         }
     }
 
     /**
      * 출고목록 백업 - 모든 컬럼 포함
      */
-    private void backupUsage() {
+    private boolean backupUsage(LocalDate backupDate) {
         try {
             List<PartUsageDTO> dtoList = usageMapper.selectAllUsage();
             List<Map<String, Object>> data = dtoList.stream()
@@ -156,7 +174,7 @@ public class CsvBackupService {
                     })
                     .collect(Collectors.toList());
 
-            String fileName = generateFileName("출고목록");
+            String fileName = generateFileName("출고목록", backupDate);
             writeCsvFile(fileName, data, new String[] {
                     "출고번호", "입고번호", "부품번호", "부품명", "카테고리", "단위",
                     "출고수량", "사용위치", "사용일시", "비고", "등록자", "등록일시"
@@ -165,18 +183,20 @@ public class CsvBackupService {
                     "quantity_used", "usage_location", "used_datetime", "note", "created_by", "created_at"
             });
             logger.info("출고목록 백업 완료: {}", fileName);
+            return true;
         } catch (Exception e) {
             logger.error("출고목록 백업 실패", e);
+            return false;
         }
     }
 
     /**
      * 재고목록 백업
      */
-    private void backupInventory() {
+    private boolean backupInventory(LocalDate backupDate) {
         try {
             List<Map<String, Object>> data = incomingMapper.getCurrentInventory();
-            String fileName = generateFileName("재고목록");
+            String fileName = generateFileName("재고목록", backupDate);
             writeCsvFile(fileName, data, new String[] {
                     "부품번호", "부품명", "카테고리", "현재재고", "단위", "총입고",
                     "총출고", "입고횟수"
@@ -185,15 +205,17 @@ public class CsvBackupService {
                     "total_incoming", "total_used", "incoming_count"
             });
             logger.info("재고목록 백업 완료: {}", fileName);
+            return true;
         } catch (Exception e) {
             logger.error("재고목록 백업 실패", e);
+            return false;
         }
     }
 
     /**
      * 위치정보 백업
      */
-    private void backupLocation() {
+    private boolean backupLocation(LocalDate backupDate) {
         try {
             List<PartLocationDTO> dtoList = locationMapper.selectAllLocations();
             List<Map<String, Object>> data = dtoList.stream()
@@ -212,7 +234,7 @@ public class CsvBackupService {
                     })
                     .collect(Collectors.toList());
 
-            String fileName = generateFileName("위치정보");
+            String fileName = generateFileName("위치정보", backupDate);
             writeCsvFile(fileName, data, new String[] {
                     "위치ID", "입고번호", "위치코드", "부품번호", "부품명", "위치X", "위치Y", "비고", "수정일시"
             }, new String[] {
@@ -220,16 +242,49 @@ public class CsvBackupService {
                     "pos_x", "pos_y", "note", "updated_at"
             });
             logger.info("위치정보 백업 완료: {}", fileName);
+            return true;
         } catch (Exception e) {
             logger.error("위치정보 백업 실패", e);
+            return false;
+        }
+    }
+
+    // Keep today and the preceding six calendar days; only delete our own CSV backups.
+    void cleanupOldBackups(LocalDate today) {
+        LocalDate oldestDateToKeep = today.minusDays(RETENTION_DAYS - 1);
+        Path directory = Paths.get(backupDir).toAbsolutePath().normalize();
+
+        try (DirectoryStream<Path> files = Files.newDirectoryStream(directory, "*_backup.csv")) {
+            for (Path file : files) {
+                if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) {
+                    continue;
+                }
+                Matcher matcher = BACKUP_FILE_PATTERN.matcher(file.getFileName().toString());
+                if (!matcher.matches()) {
+                    continue;
+                }
+                try {
+                    LocalDate backupDate = LocalDate.parse(matcher.group(1));
+                    if (backupDate.isBefore(oldestDateToKeep)) {
+                        Files.delete(file);
+                        logger.info("Deleted expired CSV backup: {}", file.getFileName());
+                    }
+                } catch (DateTimeParseException e) {
+                    logger.warn("Skipping CSV backup with invalid date: {}", file.getFileName());
+                } catch (IOException e) {
+                    logger.error("Could not delete expired CSV backup: {}", file, e);
+                }
+            }
+        } catch (IOException e) {
+            logger.error("Could not clean up CSV backup directory: {}", directory, e);
         }
     }
 
     /**
      * 파일명 생성: [리스트이름]_YYYY-MM-DD_backup.csv
      */
-    private String generateFileName(String listName) {
-        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+    private String generateFileName(String listName, LocalDate backupDate) {
+        String date = backupDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         return listName + "_" + date + "_backup.csv";
     }
 
